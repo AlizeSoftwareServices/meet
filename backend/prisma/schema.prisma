@@ -1,0 +1,160 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(auto()) @map("_id") @db.ObjectId
+  email         String         @unique
+  passwordHash  String?
+  googleId      String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  profile       Profile?
+  eventTypes    EventType[]
+  availability  Availability?
+  bookings      Booking[]      @relation("HostBookings")
+  sessions      Session[]
+  refreshTokens RefreshToken[]
+  contacts      Contact[]      @relation("HostContacts")
+  integrations  Integration[]
+}
+
+model Profile {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @unique @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String?
+  username  String?  @unique
+  avatar    String?
+  bio       String?
+  timezone  String   @default("UTC")
+  language  String   @default("en")
+  phone     String?
+  company   String?
+  website   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EventType {
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId           String    @db.ObjectId
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title            String
+  description      String?
+  duration         Int       // Duration in minutes
+  location         String?   // Google Meet, Phone, In Person
+  slug             String
+  color            String    @default("#000000")
+  isActive         Boolean   @default(true)
+  maxDailyBookings Int?
+  minNotice        Int?      // In minutes
+  maxAdvanceDays   Int?
+  bufferBefore     Int?      // In minutes
+  bufferAfter      Int?      // In minutes
+  bookings         Booking[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@unique([userId, slug])
+}
+
+model Availability {
+  id        String                 @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String                 @unique @db.ObjectId
+  user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  slots     AvailabilitySlot[]
+  overrides AvailabilityOverride[]
+}
+
+model AvailabilityOverride {
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  availabilityId String       @db.ObjectId
+  availability   Availability @relation(fields: [availabilityId], references: [id], onDelete: Cascade)
+  date           String       // e.g., "YYYY-MM-DD"
+  isAvailable    Boolean      @default(false)
+  startTime      String?      // Optional, if they want specific hours that day
+  endTime        String?
+}
+
+model AvailabilitySlot {
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  availabilityId String       @db.ObjectId
+  availability   Availability @relation(fields: [availabilityId], references: [id], onDelete: Cascade)
+  dayOfWeek      Int          // 0 = Sunday, 1 = Monday, etc.
+  startTime      String       // e.g., "09:00"
+  endTime        String       // e.g., "17:00"
+}
+
+model Booking {
+  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  hostId       String        @db.ObjectId
+  host         User          @relation("HostBookings", fields: [hostId], references: [id])
+  eventTypeId  String        @db.ObjectId
+  eventType    EventType     @relation(fields: [eventTypeId], references: [id])
+  guestName    String
+  guestEmail   String
+  guestPhone   String?
+  guestCompany String?
+  guestNotes   String?
+  startTime    DateTime
+  endTime      DateTime
+  status       String        @default("CONFIRMED")
+  cancelReason String?
+  meetLink     String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Session {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model RefreshToken {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  token     String   @unique
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Contact {
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  hostId          String   @db.ObjectId
+  host            User     @relation("HostContacts", fields: [hostId], references: [id], onDelete: Cascade)
+  name            String
+  email           String
+  phone           String?
+  company         String?
+  lastMeetingDate DateTime?
+  totalMeetings   Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([hostId, email])
+}
+
+model Integration {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String   @db.ObjectId
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider     String   // e.g., 'google', 'zoom'
+  accessToken  String
+  refreshToken String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, provider])
+}
