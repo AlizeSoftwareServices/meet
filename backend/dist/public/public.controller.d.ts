@@ -30,11 +30,14 @@ export declare class PublicController {
             maxAdvanceDays: number | null;
             bufferBefore: number | null;
             bufferAfter: number | null;
+            isGroupEvent: boolean;
+            maxInvitees: number;
         }[];
     }>;
     getAvailableSlots(username: string, eventSlug: string, date: string, timezone: string): Promise<{
         startTime: string;
         endTime: string;
+        spotsRemaining: number;
     }[]>;
     createBooking(dto: CreateBookingDto): Promise<any>;
 }

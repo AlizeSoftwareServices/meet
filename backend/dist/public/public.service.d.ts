@@ -1,7 +1,9 @@
 import { PrismaService } from '../prisma/prisma.service';
+import { CalendarService } from '../integrations/calendar.service';
 export declare class PublicService {
     private prisma;
-    constructor(prisma: PrismaService);
+    private calendarService;
+    constructor(prisma: PrismaService, calendarService: CalendarService);
     getUserProfile(username: string): Promise<{
         id: string;
         name: string | null;
@@ -27,11 +29,14 @@ export declare class PublicService {
             maxAdvanceDays: number | null;
             bufferBefore: number | null;
             bufferAfter: number | null;
+            isGroupEvent: boolean;
+            maxInvitees: number;
         }[];
     }>;
     getAvailableSlots(username: string, eventSlug: string, dateStr: string, guestTimezone?: string): Promise<{
         startTime: string;
         endTime: string;
+        spotsRemaining: number;
     }[]>;
     private createZonedDate;
 }

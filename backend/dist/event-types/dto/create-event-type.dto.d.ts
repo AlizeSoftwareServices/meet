@@ -6,4 +6,6 @@ export declare class CreateEventTypeDto {
     slug: string;
     color?: string;
     isActive?: boolean;
+    isGroupEvent?: boolean;
+    maxInvitees?: number;
 }

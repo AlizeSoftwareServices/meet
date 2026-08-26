@@ -21,8 +21,20 @@ export declare class EventTypesController {
         maxAdvanceDays: number | null;
         bufferBefore: number | null;
         bufferAfter: number | null;
+        isGroupEvent: boolean;
+        maxInvitees: number;
     }>;
-    findAll(req: any): Promise<{
+    findAll(req: any): Promise<({
+        workflows: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            eventTypeId: string;
+            triggerType: string;
+            timeOffset: number;
+            actionType: string;
+        }[];
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -39,8 +51,20 @@ export declare class EventTypesController {
         maxAdvanceDays: number | null;
         bufferBefore: number | null;
         bufferAfter: number | null;
-    }[]>;
+        isGroupEvent: boolean;
+        maxInvitees: number;
+    })[]>;
     findOne(req: any, id: string): Promise<{
+        workflows: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            eventTypeId: string;
+            triggerType: string;
+            timeOffset: number;
+            actionType: string;
+        }[];
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -57,8 +81,20 @@ export declare class EventTypesController {
         maxAdvanceDays: number | null;
         bufferBefore: number | null;
         bufferAfter: number | null;
+        isGroupEvent: boolean;
+        maxInvitees: number;
     }>;
     findBySlug(hostId: string, slug: string): Promise<{
+        workflows: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            eventTypeId: string;
+            triggerType: string;
+            timeOffset: number;
+            actionType: string;
+        }[];
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -75,6 +111,8 @@ export declare class EventTypesController {
         maxAdvanceDays: number | null;
         bufferBefore: number | null;
         bufferAfter: number | null;
+        isGroupEvent: boolean;
+        maxInvitees: number;
     }>;
     update(req: any, id: string, updateEventTypeDto: UpdateEventTypeDto): Promise<{
         id: string;
@@ -93,6 +131,8 @@ export declare class EventTypesController {
         maxAdvanceDays: number | null;
         bufferBefore: number | null;
         bufferAfter: number | null;
+        isGroupEvent: boolean;
+        maxInvitees: number;
     }>;
     remove(req: any, id: string): Promise<{
         id: string;
@@ -111,5 +151,7 @@ export declare class EventTypesController {
         maxAdvanceDays: number | null;
         bufferBefore: number | null;
         bufferAfter: number | null;
+        isGroupEvent: boolean;
+        maxInvitees: number;
     }>;
 }

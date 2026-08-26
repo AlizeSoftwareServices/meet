@@ -30,6 +30,8 @@ export declare class BookingsService {
             maxAdvanceDays: number | null;
             bufferBefore: number | null;
             bufferAfter: number | null;
+            isGroupEvent: boolean;
+            maxInvitees: number;
         };
     } & {
         id: string;
@@ -66,6 +68,8 @@ export declare class BookingsService {
             maxAdvanceDays: number | null;
             bufferBefore: number | null;
             bufferAfter: number | null;
+            isGroupEvent: boolean;
+            maxInvitees: number;
         };
     } & {
         id: string;
@@ -102,6 +106,8 @@ export declare class BookingsService {
             maxAdvanceDays: number | null;
             bufferBefore: number | null;
             bufferAfter: number | null;
+            isGroupEvent: boolean;
+            maxInvitees: number;
         };
     } & {
         id: string;

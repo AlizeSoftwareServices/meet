@@ -18,22 +18,36 @@ let EventTypesService = class EventTypesService {
         this.prisma = prisma;
     }
     async create(userId, dto) {
-        return this.prisma.eventType.create({
+        const { enableReminder24h, ...data } = dto;
+        const eventType = await this.prisma.eventType.create({
             data: {
-                ...dto,
+                ...data,
                 userId,
             },
         });
+        if (enableReminder24h) {
+            await this.prisma.workflow.create({
+                data: {
+                    eventTypeId: eventType.id,
+                    triggerType: 'BEFORE_EVENT',
+                    timeOffset: 1440,
+                    actionType: 'EMAIL',
+                },
+            });
+        }
+        return eventType;
     }
     async findAllForUser(userId) {
         return this.prisma.eventType.findMany({
             where: { userId },
+            include: { workflows: true },
             orderBy: { createdAt: 'desc' },
         });
     }
     async findOne(id, userId) {
         const eventType = await this.prisma.eventType.findFirst({
             where: { id, userId },
+            include: { workflows: true },
         });
         if (!eventType) {
             throw new common_1.NotFoundException('Event type not found');
@@ -47,7 +61,8 @@ let EventTypesService = class EventTypesService {
                     userId: hostId,
                     slug,
                 }
-            }
+            },
+            include: { workflows: true },
         });
         if (!eventType) {
             throw new common_1.NotFoundException('Event type not found');
@@ -56,10 +71,34 @@ let EventTypesService = class EventTypesService {
     }
     async update(id, userId, dto) {
         await this.findOne(id, userId);
-        return this.prisma.eventType.update({
+        const { enableReminder24h, ...data } = dto;
+        const eventType = await this.prisma.eventType.update({
             where: { id },
-            data: dto,
+            data: data,
         });
+        if (enableReminder24h !== undefined) {
+            if (enableReminder24h) {
+                const existing = await this.prisma.workflow.findFirst({
+                    where: { eventTypeId: id, triggerType: 'BEFORE_EVENT', timeOffset: 1440 }
+                });
+                if (!existing) {
+                    await this.prisma.workflow.create({
+                        data: {
+                            eventTypeId: id,
+                            triggerType: 'BEFORE_EVENT',
+                            timeOffset: 1440,
+                            actionType: 'EMAIL',
+                        }
+                    });
+                }
+            }
+            else {
+                await this.prisma.workflow.deleteMany({
+                    where: { eventTypeId: id, triggerType: 'BEFORE_EVENT', timeOffset: 1440 }
+                });
+            }
+        }
+        return eventType;
     }
     async remove(id, userId) {
         await this.findOne(id, userId);

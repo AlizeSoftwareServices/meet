@@ -62,10 +62,8 @@ export default function LoginPage() {
         <div className="w-full max-w-md space-y-8 relative z-10">
           <div className="flex flex-col space-y-2 text-center mb-8 relative z-10">
             <Link href="/" className="flex items-center gap-2 justify-center mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-blue via-brand-purple to-brand-red flex items-center justify-center shadow-lg">
-                <Sparkles className="w-6 h-6 text-white" />
-              </div>
-              <span className="font-extrabold text-2xl tracking-tight">MeetSync</span>
+              <img src="/logo.png" alt="Meet Logo" className="w-10 h-10 rounded-xl object-contain shadow-lg" />
+              <span className="font-extrabold text-2xl tracking-tight">Meet</span>
             </Link>
             <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-foreground">Welcome back</h1>
             <p className="text-muted-foreground text-sm sm:text-base font-medium">
@@ -138,6 +136,24 @@ export default function LoginPage() {
                   </span>
                 )}
               </Button>
+              <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-border/50"></div>
+                <span className="flex-shrink mx-4 text-xs font-bold text-muted-foreground uppercase tracking-widest">Or</span>
+                <div className="flex-grow border-t border-border/50"></div>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  localStorage.setItem('demoMode', 'true');
+                  router.push('/dashboard');
+                }}
+                className="w-full h-13 text-base font-bold rounded-xl border-2 border-border/60 hover:bg-muted/80 text-foreground transition-all duration-300"
+              >
+                <Sparkles className="w-4 h-4 mr-2 text-primary" />
+                Explore Demo Mode (No Login Required)
+              </Button>
             </form>
           </motion.div>
 
@@ -170,7 +186,7 @@ export default function LoginPage() {
             </div>
             <div>
               <h3 className="text-white font-bold text-lg">Smart Scheduling</h3>
-              <p className="text-white/70 text-sm">Automate your meetings and eliminate double booking.</p>
+              <p className="text-white/70 text-sm">Automate your Meets and eliminate double booking.</p>
             </div>
           </motion.div>
 

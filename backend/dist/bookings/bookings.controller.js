@@ -52,6 +52,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], BookingsController.prototype, "getHostBookings", null);
 __decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Post)(':id/cancel'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)('reason')),
@@ -61,6 +62,7 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], BookingsController.prototype, "cancelBooking", null);
 __decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Post)(':id/reschedule'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)('newStartTime')),

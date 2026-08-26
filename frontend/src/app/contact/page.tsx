@@ -16,7 +16,7 @@ export default function ContactPage() {
             <ArrowLeft className="w-4 h-4" /> Back to home
           </Link>
           <div className="flex items-center gap-2">
-            <span className="font-extrabold text-xl tracking-tight text-foreground">MeetSync</span>
+            <span className="font-extrabold text-xl tracking-tight text-foreground">Meet</span>
           </div>
         </div>
       </nav>

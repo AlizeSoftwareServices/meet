@@ -40,7 +40,7 @@ export class CalendarService {
           attendees: [{ email: guestEmail }, { email: hostEmail }],
           conferenceData: {
             createRequest: {
-              requestId: `meetsync-${Date.now()}`,
+              requestId: `MeetSync-${Date.now()}`,
               conferenceSolutionKey: { type: 'hangoutsMeet' },
             },
           },
@@ -120,5 +120,61 @@ export class CalendarService {
       meetLink: 'https://meet.google.com/mock-link-xyz',
       eventId: 'mock-event-id-123'
     };
+  }
+
+  async getBusyPeriods(hostId: string, startTime: string, endTime: string): Promise<{start: Date, end: Date}[]> {
+    const busyPeriods: {start: Date, end: Date}[] = [];
+    
+    // 1. Check Google Integration
+    try {
+      const googleIntegration = await this.prisma.integration.findUnique({
+        where: { userId_provider: { userId: hostId, provider: 'google' } }
+      });
+
+      if (googleIntegration && googleIntegration.checkConflicts) {
+        const oauth2Client = this.getOAuth2Client();
+        oauth2Client.setCredentials({
+          access_token: googleIntegration.accessToken,
+          refresh_token: googleIntegration.refreshToken,
+        });
+
+        const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
+        
+        const response = await calendar.freebusy.query({
+          requestBody: {
+            timeMin: startTime,
+            timeMax: endTime,
+            items: [{ id: 'primary' }],
+          }
+        });
+
+        const calendars = response.data.calendars;
+        if (calendars && calendars.primary && calendars.primary.busy) {
+          for (const busy of calendars.primary.busy) {
+             if (busy.start && busy.end) {
+                busyPeriods.push({ start: new Date(busy.start), end: new Date(busy.end) });
+             }
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.error(`Failed to fetch Google busy periods: ${error.message}`);
+    }
+
+    // 2. Check Microsoft Integration
+    try {
+      const microsoftIntegration = await this.prisma.integration.findUnique({
+        where: { userId_provider: { userId: hostId, provider: 'microsoft' } }
+      });
+
+      if (microsoftIntegration && microsoftIntegration.checkConflicts) {
+        // Mocking MS Graph API for freebusy
+        this.logger.log('Microsoft two-way sync would fetch free/busy here.');
+      }
+    } catch (error) {
+       this.logger.error(`Failed to fetch Microsoft busy periods: ${error.message}`);
+    }
+
+    return busyPeriods;
   }
 }

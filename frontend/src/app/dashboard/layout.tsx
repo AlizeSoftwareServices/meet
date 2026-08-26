@@ -21,6 +21,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const [clickedLink, setClickedLink] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  // Check auth immediately
+  useEffect(() => {
+    const isDemo = localStorage.getItem('demoMode') === 'true';
+    if (isDemo) {
+      setIsAuthenticated(true);
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      router.push('/login');
+    } else {
+      setIsAuthenticated(true);
+    }
+  }, [router]);
 
   // Reset navigation state when pathname changes
   useEffect(() => {
@@ -38,8 +55,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const handleLogout = () => {
     localStorage.removeItem('token');
-    router.push('/login');
+    localStorage.removeItem('demoMode');
+    localStorage.removeItem('demo_integrations');
+    router.push('/');
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col md:flex-row font-sans selection:bg-primary/20">
@@ -47,11 +74,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Mobile Header (Glass) */}
       <div className="md:hidden flex items-center justify-between p-4 bg-background/80 backdrop-blur-xl border-b border-border sticky top-0 z-40">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-primary-foreground" />
-          </div>
-          <span className="font-bold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">
-            MeetSync
+          <img src="/logo.png" alt="Meet Logo" className="w-8 h-8 rounded-lg object-contain" />
+          <span className="font-bold text-xl tracking-tight">
+            Meet
           </span>
         </div>
         <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-foreground/80 hover:text-foreground transition-colors">
@@ -74,21 +99,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="absolute top-0 left-0 w-72 h-full bg-background shadow-2xl border-r border-border"
+              className="absolute inset-y-0 left-0 w-72 h-full bg-background shadow-2xl border-r border-border flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-6 flex items-center justify-between border-b border-border">
+              <div className="p-6 flex items-center justify-between border-b border-border shrink-0">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                    <Sparkles className="w-5 h-5 text-primary-foreground" />
-                  </div>
-                  <span className="font-bold text-xl tracking-tight">MeetSync</span>
+                  <img src="/logo.png" alt="Meet Logo" className="w-8 h-8 rounded-lg object-contain" />
+                  <span className="font-bold text-xl tracking-tight">Meet</span>
                 </div>
                 <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-foreground/70 hover:text-foreground bg-muted rounded-full transition-colors">
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <div className="p-4 flex flex-col gap-1.5 mt-2">
+              <div className="p-4 flex flex-col gap-1.5 mt-2 flex-1 overflow-y-auto scrollbar-hide">
                 {sidebarLinks.map((link) => {
                   const Icon = link.icon;
                   const isActive = pathname === link.href;
@@ -109,6 +132,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   );
                 })}
               </div>
+              <div className="p-4 border-t border-border/50 shrink-0">
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-sm font-medium text-destructive/80 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                >
+                  <LogOut className="w-5 h-5" />
+                  Exit demo
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}
@@ -118,11 +150,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <aside className="hidden md:flex flex-col w-72 border-r border-border bg-sidebar/50 backdrop-blur-2xl h-screen sticky top-0 transition-all shadow-[1px_0_40px_rgba(0,0,0,0.02)] dark:shadow-[1px_0_40px_rgba(0,0,0,0.2)]">
         <div className="p-8 pb-6">
           <Link href="/dashboard" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/30 group-hover:shadow-primary/50 transition-all duration-300">
-              <Sparkles className="w-5 h-5 text-primary-foreground" />
-            </div>
+            <img src="/logo.png" alt="Meet Logo" className="w-10 h-10 rounded-xl object-contain shadow-lg shadow-primary/30 group-hover:shadow-primary/50 transition-all duration-300" />
             <span className="font-bold text-2xl tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-foreground to-foreground/70">
-              MeetSync
+              Meet
             </span>
           </Link>
         </div>
@@ -181,7 +211,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-sm font-medium text-destructive/80 hover:text-destructive hover:bg-destructive/10 transition-colors"
           >
             <LogOut className="w-5 h-5" />
-            Logout
+            Exit demo
           </motion.button>
         </div>
       </aside>

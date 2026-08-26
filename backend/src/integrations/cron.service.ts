@@ -12,36 +12,51 @@ export class CronService {
     private readonly emailService: EmailService,
   ) {}
 
-  // Run every hour at the 0th minute
   @Cron(CronExpression.EVERY_HOUR)
-  async handleUpcomingBookingsReminders() {
-    this.logger.debug('Running cron job to find upcoming bookings in 24 hours');
+  async handleWorkflows() {
+    this.logger.debug('Running cron job to execute event workflows and reminders');
 
-    const now = new Date();
-    const in24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-    const in25Hours = new Date(now.getTime() + 25 * 60 * 60 * 1000);
+    try {
+      const workflows = await this.prisma.workflow.findMany({
+        include: { eventType: true }
+      });
 
-    const upcomingBookings = await this.prisma.booking.findMany({
-      where: {
-        status: 'CONFIRMED',
-        startTime: {
-          gte: in24Hours,
-          lt: in25Hours,
-        },
-      },
-      include: {
-        eventType: true,
-      },
-    });
-
-    for (const booking of upcomingBookings) {
-      this.logger.debug(`Sending reminder for booking ${booking.id}`);
-      await this.emailService.sendBookingConfirmation(
-        booking.guestEmail,
-        booking.guestName,
-        `REMINDER: ${booking.eventType.title}`,
-        booking.startTime.toISOString()
-      );
+      const now = new Date();
+      
+      for (const workflow of workflows) {
+        if (workflow.triggerType === 'BEFORE_EVENT') {
+          // timeOffset is in minutes (e.g. 1440 for 24 hours, 60 for 1 hour)
+          const msOffset = (workflow.timeOffset || 1440) * 60 * 1000;
+          
+          // Target window for meetings starting between (now + offset) and (now + offset + 1 hour)
+          const targetStartMin = new Date(now.getTime() + msOffset);
+          const targetStartMax = new Date(now.getTime() + msOffset + 60 * 60 * 1000);
+          
+          const bookings = await this.prisma.booking.findMany({
+            where: {
+              eventTypeId: workflow.eventTypeId,
+              status: 'CONFIRMED',
+              startTime: {
+                gte: targetStartMin,
+                lt: targetStartMax,
+              }
+            }
+          });
+          
+          for (const booking of bookings) {
+            this.logger.debug(`Executing reminder workflow for booking ${booking.id} (${booking.guestEmail})`);
+            await this.emailService.sendReminderEmail(
+              booking.guestEmail,
+              booking.guestName,
+              workflow.eventType.title,
+              booking.startTime.toISOString(),
+              booking.meetLink || undefined
+            );
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.error(`Error in CronService handleWorkflows: ${error.message}`);
     }
   }
 }

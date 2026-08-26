@@ -5,5 +5,5 @@ export declare class CronService {
     private readonly emailService;
     private readonly logger;
     constructor(prisma: PrismaService, emailService: EmailService);
-    handleUpcomingBookingsReminders(): Promise<void>;
+    handleWorkflows(): Promise<void>;
 }

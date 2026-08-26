@@ -17,22 +17,66 @@ export class BookingsService {
   ) {}
 
   async createBooking(dto: CreateBookingDto) {
-    // 1. Check for overlapping bookings
-    const overlappingBooking = await this.prisma.booking.findFirst({
-      where: {
-        hostId: dto.hostId,
-        status: 'CONFIRMED',
-        OR: [
-          {
-            startTime: { lt: new Date(dto.endTime) },
-            endTime: { gt: new Date(dto.startTime) },
-          }
-        ]
-      }
+    // 1. Fetch Event Type
+    const eventType = await this.prisma.eventType.findUnique({
+      where: { id: dto.eventTypeId }
     });
 
-    if (overlappingBooking) {
-      throw new BadRequestException('This time slot is no longer available.');
+    if (!eventType) {
+      throw new BadRequestException('Event type not found');
+    }
+
+    // 2. Check for overlapping bookings
+    if (eventType.isGroupEvent) {
+      const existingBookingsCount = await this.prisma.booking.count({
+        where: {
+          eventTypeId: dto.eventTypeId,
+          status: 'CONFIRMED',
+          startTime: new Date(dto.startTime),
+          endTime: new Date(dto.endTime),
+        }
+      });
+
+      if (existingBookingsCount >= eventType.maxInvitees) {
+        throw new BadRequestException('This group event slot is full.');
+      }
+
+      // Check if host has an overlapping booking for a DIFFERENT event type
+      const otherOverlapping = await this.prisma.booking.findFirst({
+        where: {
+          hostId: dto.hostId,
+          status: 'CONFIRMED',
+          eventTypeId: { not: dto.eventTypeId },
+          OR: [
+            {
+              startTime: { lt: new Date(dto.endTime) },
+              endTime: { gt: new Date(dto.startTime) },
+            }
+          ]
+        }
+      });
+
+      if (otherOverlapping) {
+        throw new BadRequestException('The host is busy with another event at this time.');
+      }
+    } else {
+      // Standard 1-on-1 overlap check
+      const overlappingBooking = await this.prisma.booking.findFirst({
+        where: {
+          hostId: dto.hostId,
+          status: 'CONFIRMED',
+          OR: [
+            {
+              startTime: { lt: new Date(dto.endTime) },
+              endTime: { gt: new Date(dto.startTime) },
+            }
+          ]
+        }
+      });
+
+      if (overlappingBooking) {
+        throw new BadRequestException('This time slot is no longer available.');
+      }
     }
 
     // 2. Create the booking
@@ -79,7 +123,8 @@ export class BookingsService {
       bookingWithIncludes.guestEmail,
       bookingWithIncludes.guestName,
       bookingWithIncludes.eventType.title,
-      bookingWithIncludes.startTime.toISOString()
+      bookingWithIncludes.startTime.toISOString(),
+      calendarResult.meetLink
     );
 
     // Slack Notification
@@ -131,8 +176,13 @@ export class BookingsService {
       include: { eventType: true },
     });
 
-    // TODO: Trigger cancel email via EmailService
-    // await this.emailService.sendCancellationEmail(...)
+    // Trigger cancel email via EmailService
+    await this.emailService.sendCancellationEmail(
+      booking.guestEmail,
+      booking.guestName,
+      updatedBooking.eventType.title,
+      reason
+    );
 
     // Slack Notification
     await this.slackService.sendCancellationNotification(
@@ -185,7 +235,15 @@ export class BookingsService {
       include: { eventType: true },
     });
 
-    // TODO: Trigger reschedule email via EmailService
+    // Trigger reschedule email via EmailService
+    await this.emailService.sendRescheduleEmail(
+      booking.guestEmail,
+      booking.guestName,
+      updatedBooking.eventType.title,
+      newStartTime.toISOString(),
+      booking.meetLink || undefined
+    );
+
     return updatedBooking;
   }
 }

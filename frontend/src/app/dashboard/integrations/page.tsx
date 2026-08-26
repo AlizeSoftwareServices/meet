@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { useSearchParams } from 'next/navigation';
-import { Calendar, Video, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Calendar, Video, CheckCircle2, AlertCircle, RefreshCw, ShieldCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Switch } from '@/components/ui/switch';
 
 export default function IntegrationsPage() {
   const [loading, setLoading] = useState(true);
   const [integrations, setIntegrations] = useState<any[]>([]);
+  const [updatingProvider, setUpdatingProvider] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const success = searchParams.get('success');
   const error = searchParams.get('error');
@@ -38,13 +40,31 @@ export default function IntegrationsPage() {
     }
   };
 
-  const isGoogleConnected = integrations.some(i => i.provider === 'google');
+  const handleToggleConflicts = async (provider: string, currentVal: boolean) => {
+    setUpdatingProvider(provider);
+    try {
+      const nextVal = !currentVal;
+      await api.patch(`/integrations/${provider}/conflicts`, { checkConflicts: nextVal });
+      setIntegrations(prev =>
+        prev.map(item => (item.provider === provider ? { ...item, checkConflicts: nextVal } : item))
+      );
+    } catch (err) {
+      console.error('Failed to toggle conflicts', err);
+      alert('Failed to update calendar sync settings.');
+    } finally {
+      setUpdatingProvider(null);
+    }
+  };
+
+  const googleIntegration = integrations.find(i => i.provider === 'google');
+  const microsoftIntegration = integrations.find(i => i.provider === 'microsoft');
+  const slackIntegration = integrations.find(i => i.provider === 'slack');
 
   return (
     <div className="max-w-4xl space-y-8">
       <div>
         <h1 className="text-3xl font-bold mb-2 text-foreground">Integrations</h1>
-        <p className="text-muted-foreground">Connect your favorite tools to MeetSync to automate your workflow.</p>
+        <p className="text-muted-foreground">Connect your calendars and conferencing tools for two-way synchronization.</p>
       </div>
 
       {success === 'google_connected' && (
@@ -68,7 +88,7 @@ export default function IntegrationsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-card border border-border p-6 rounded-3xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
         >
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4">
             <div className="flex gap-4">
               <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-zinc-100 flex-shrink-0">
                 <svg className="w-8 h-8" viewBox="0 0 24 24">
@@ -81,12 +101,12 @@ export default function IntegrationsPage() {
               <div>
                 <h3 className="text-xl font-bold mb-1">Google Calendar & Meet</h3>
                 <p className="text-muted-foreground text-sm max-w-lg">
-                  Automatically sync your events, check for conflicts, and instantly generate Google Meet video links when someone books a time with you.
+                  Automatically sync your events, check for conflicts in real-time, and generate Google Meet video links when someone books a meeting.
                 </p>
                 <div className="flex gap-4 mt-4">
                   <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
                     <Calendar className="w-3.5 h-3.5" />
-                    Calendar Sync
+                    Two-Way Sync
                   </div>
                   <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
                     <Video className="w-3.5 h-3.5" />
@@ -98,7 +118,7 @@ export default function IntegrationsPage() {
             <div>
               {loading ? (
                 <div className="w-24 h-10 bg-muted animate-pulse rounded-xl" />
-              ) : isGoogleConnected ? (
+              ) : googleIntegration ? (
                 <div className="px-4 py-2 bg-green-500/10 text-green-600 font-medium rounded-xl flex items-center gap-2 border border-green-500/20">
                   <CheckCircle2 className="w-4 h-4" />
                   Connected
@@ -113,6 +133,24 @@ export default function IntegrationsPage() {
               )}
             </div>
           </div>
+
+          {/* Two-Way Conflict Check Toggle */}
+          {googleIntegration && (
+            <div className="mt-6 pt-4 border-t border-border/50 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="w-5 h-5 text-primary" />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Check Google Calendar for conflicts</p>
+                  <p className="text-xs text-muted-foreground">Block busy times on your public booking page when you add events to Google Calendar.</p>
+                </div>
+              </div>
+              <Switch
+                checked={googleIntegration.checkConflicts ?? true}
+                disabled={updatingProvider === 'google'}
+                onCheckedChange={() => handleToggleConflicts('google', googleIntegration.checkConflicts ?? true)}
+              />
+            </div>
+          )}
         </motion.div>
 
         {/* Microsoft Integration */}
@@ -122,7 +160,7 @@ export default function IntegrationsPage() {
           transition={{ delay: 0.1 }}
           className="bg-card border border-border p-6 rounded-3xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
         >
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4">
             <div className="flex gap-4">
               <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-zinc-100 flex-shrink-0 grid grid-cols-2 gap-0.5 p-3">
                 <div className="bg-[#F25022] w-full h-full rounded-sm" />
@@ -133,7 +171,7 @@ export default function IntegrationsPage() {
               <div>
                 <h3 className="text-xl font-bold mb-1">Microsoft Outlook & Teams</h3>
                 <p className="text-muted-foreground text-sm max-w-lg">
-                  Sync your availability with Outlook Calendar and generate Microsoft Teams meeting links.
+                  Sync your availability with Outlook Calendar and generate Microsoft Teams Meet links.
                 </p>
                 <div className="flex gap-4 mt-4">
                   <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
@@ -150,7 +188,7 @@ export default function IntegrationsPage() {
             <div>
               {loading ? (
                 <div className="w-24 h-10 bg-muted animate-pulse rounded-xl" />
-              ) : integrations.some(i => i.provider === 'microsoft') ? (
+              ) : microsoftIntegration ? (
                 <div className="px-4 py-2 bg-green-500/10 text-green-600 font-medium rounded-xl flex items-center gap-2 border border-green-500/20">
                   <CheckCircle2 className="w-4 h-4" />
                   Connected
@@ -168,6 +206,23 @@ export default function IntegrationsPage() {
               )}
             </div>
           </div>
+
+          {microsoftIntegration && (
+            <div className="mt-6 pt-4 border-t border-border/50 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="w-5 h-5 text-primary" />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Check Outlook Calendar for conflicts</p>
+                  <p className="text-xs text-muted-foreground">Block busy times on your public booking page when you have events on Outlook.</p>
+                </div>
+              </div>
+              <Switch
+                checked={microsoftIntegration.checkConflicts ?? true}
+                disabled={updatingProvider === 'microsoft'}
+                onCheckedChange={() => handleToggleConflicts('microsoft', microsoftIntegration.checkConflicts ?? true)}
+              />
+            </div>
+          )}
         </motion.div>
 
         {/* Slack Integration */}
@@ -177,7 +232,7 @@ export default function IntegrationsPage() {
           transition={{ delay: 0.2 }}
           className="bg-card border border-border p-6 rounded-3xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
         >
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4">
             <div className="flex gap-4">
               <div className="w-16 h-16 bg-[#4A154B] rounded-2xl flex items-center justify-center shadow-sm flex-shrink-0">
                 <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none">
@@ -190,7 +245,7 @@ export default function IntegrationsPage() {
               <div>
                 <h3 className="text-xl font-bold mb-1">Slack</h3>
                 <p className="text-muted-foreground text-sm max-w-lg">
-                  Get instant notifications in your Slack channels whenever a new meeting is booked, rescheduled, or canceled.
+                  Get instant notifications in your Slack channels whenever a new Meet is booked, rescheduled, or canceled.
                 </p>
                 <div className="flex gap-4 mt-4">
                   <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
@@ -203,7 +258,7 @@ export default function IntegrationsPage() {
             <div>
               {loading ? (
                 <div className="w-24 h-10 bg-muted animate-pulse rounded-xl" />
-              ) : integrations.some(i => i.provider === 'slack') ? (
+              ) : slackIntegration ? (
                 <div className="px-4 py-2 bg-green-500/10 text-green-600 font-medium rounded-xl flex items-center gap-2 border border-green-500/20">
                   <CheckCircle2 className="w-4 h-4" />
                   Connected

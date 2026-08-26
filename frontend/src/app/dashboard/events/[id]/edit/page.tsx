@@ -11,9 +11,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Check, Save } from 'lucide-react';
+import { ArrowLeft, Check, Save, Users, Bell } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { Switch } from '@/components/ui/switch';
 
 const eventTypeSchema = z.object({
   title: z.string().min(2, 'Title is required'),
@@ -22,6 +23,9 @@ const eventTypeSchema = z.object({
   location: z.string().optional(),
   slug: z.string().min(2, 'URL slug is required'),
   color: z.string().optional(),
+  isGroupEvent: z.boolean().optional(),
+  maxInvitees: z.coerce.number().min(1).optional(),
+  enableReminder24h: z.boolean().optional(),
 });
 
 type EventTypeFormValues = z.infer<typeof eventTypeSchema>;
@@ -48,7 +52,7 @@ export default function EditEventTypePage({ params }: { params: { id: string } }
     }
   });
 
-  const form = useForm({
+  const form = useForm<EventTypeFormValues>({
     resolver: zodResolver(eventTypeSchema),
     defaultValues: {
       title: '',
@@ -57,11 +61,18 @@ export default function EditEventTypePage({ params }: { params: { id: string } }
       location: 'Google Meet',
       slug: '',
       color: PRESET_COLORS[0],
+      isGroupEvent: false,
+      maxInvitees: 1,
+      enableReminder24h: false,
     },
   });
 
   useEffect(() => {
     if (event) {
+      const has24hReminder = event.workflows?.some(
+        (w: any) => w.triggerType === 'BEFORE_EVENT' && w.timeOffset === 1440
+      );
+
       form.reset({
         title: event.title,
         description: event.description || '',
@@ -69,6 +80,9 @@ export default function EditEventTypePage({ params }: { params: { id: string } }
         location: event.location || '',
         slug: event.slug,
         color: event.color || PRESET_COLORS[0],
+        isGroupEvent: Boolean(event.isGroupEvent),
+        maxInvitees: event.maxInvitees || 1,
+        enableReminder24h: Boolean(has24hReminder),
       });
     }
   }, [event, form]);
@@ -117,7 +131,7 @@ export default function EditEventTypePage({ params }: { params: { id: string } }
           <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/60">
             Edit Event Type
           </h1>
-          <p className="text-muted-foreground mt-1">Update the settings for this meeting type.</p>
+          <p className="text-muted-foreground mt-1">Update the settings for this Meet type.</p>
         </div>
       </motion.div>
 
@@ -191,9 +205,61 @@ export default function EditEventTypePage({ params }: { params: { id: string } }
                   <textarea
                     id="description"
                     className="flex min-h-[100px] w-full rounded-xl border border-border bg-background px-4 py-3 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 resize-none"
-                    placeholder="Describe the purpose of this meeting..."
+                    placeholder="Describe the purpose of this Meet..."
                     {...form.register('description')}
                   />
+                </div>
+
+                {/* Group Event Settings */}
+                <div className="space-y-4 border border-border/50 rounded-2xl p-5 bg-card/60">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                        <Users className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <Label className="text-base font-semibold">Group Event (1-to-Many)</Label>
+                        <p className="text-sm text-muted-foreground mt-0.5">Allow multiple people to book the same time slot simultaneously.</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={form.watch('isGroupEvent')}
+                      onCheckedChange={(val) => form.setValue('isGroupEvent', val)}
+                    />
+                  </div>
+                  
+                  {form.watch('isGroupEvent') && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="pt-4 border-t border-border/50">
+                      <Label htmlFor="maxInvitees" className="text-sm font-semibold">Maximum Attendees Per Slot</Label>
+                      <Input
+                        id="maxInvitees"
+                        type="number"
+                        min="1"
+                        className="h-[44px] mt-2 max-w-[200px] rounded-xl bg-background shadow-sm"
+                        {...form.register('maxInvitees')}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1.5">When this limit is reached, the time slot will automatically close.</p>
+                    </motion.div>
+                  )}
+                </div>
+
+                {/* Automated Workflow Reminders */}
+                <div className="space-y-4 border border-border/50 rounded-2xl p-5 bg-card/60">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500">
+                        <Bell className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <Label className="text-base font-semibold">Automated Email Reminder (24h Before)</Label>
+                        <p className="text-sm text-muted-foreground mt-0.5">Automatically send a reminder email to guests 24 hours prior to meeting.</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={form.watch('enableReminder24h')}
+                      onCheckedChange={(val) => form.setValue('enableReminder24h', val)}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-4">

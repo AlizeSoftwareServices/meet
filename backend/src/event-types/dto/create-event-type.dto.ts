@@ -26,4 +26,13 @@ export class CreateEventTypeDto {
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  isGroupEvent?: boolean;
+
+  @IsInt()
+  @Min(1)
+  @IsOptional()
+  maxInvitees?: number;
 }

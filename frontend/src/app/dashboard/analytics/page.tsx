@@ -33,7 +33,7 @@ export default function AnalyticsPage() {
         <h1 className="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/60">
           Analytics Overview
         </h1>
-        <p className="text-muted-foreground mt-2 text-lg">Track your booking volume, engagement, and meeting stats.</p>
+        <p className="text-muted-foreground mt-2 text-lg">Track your booking volume, engagement, and Meet stats.</p>
       </motion.div>
 
       {/* KPI Cards */}
@@ -166,7 +166,7 @@ export default function AnalyticsPage() {
                     </div>
                     <div>
                       <h4 className="font-semibold mb-1">CRM Engagements</h4>
-                      <p className="text-sm text-muted-foreground">You have {analytics?.stats.find((s:any) => s.title.includes('Contacts'))?.value} unique contacts in your CRM. Re-engage with past guests to drive more meetings.</p>
+                      <p className="text-sm text-muted-foreground">You have {analytics?.stats.find((s:any) => s.title.includes('Contacts'))?.value} unique contacts in your CRM. Re-engage with past guests to drive more Meets.</p>
                     </div>
                   </div>
                 </div>

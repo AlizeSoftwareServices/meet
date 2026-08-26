@@ -27,8 +27,8 @@ export default function DashboardPage() {
 
   const mockAnalytics = {
     stats: [
-      { title: 'Upcoming Meetings', value: '12' },
-      { title: 'Completed Meetings', value: '148' },
+      { title: 'Upcoming Meets', value: '12' },
+      { title: 'Completed Meets', value: '148' },
       { title: 'Total Contacts', value: '89' },
       { title: 'Total Hours Booked', value: '42.5' },
     ],
@@ -44,7 +44,7 @@ export default function DashboardPage() {
   };
 
   const mockBookings = [
-    { id: '1', guestName: 'Alice Johnson', eventType: { title: '30 Minute Meeting' }, startTime: new Date(Date.now() + 86400000).toISOString() },
+    { id: '1', guestName: 'Alice Johnson', eventType: { title: '30 Minute Meet' }, startTime: new Date(Date.now() + 86400000).toISOString() },
     { id: '2', guestName: 'Bob Smith', eventType: { title: '15 Minute Sync' }, startTime: new Date(Date.now() + 172800000).toISOString() },
     { id: '3', guestName: 'Charlie Brown', eventType: { title: '60 Min Interview' }, startTime: new Date(Date.now() + 259200000).toISOString() },
   ];
@@ -54,15 +54,15 @@ export default function DashboardPage() {
   const displayBookings = bookings || mockBookings;
 
   const statIcons: Record<string, any> = {
-    'Upcoming Meetings': CalendarIcon,
-    'Completed Meetings': Users,
+    'Upcoming Meets': CalendarIcon,
+    'Completed Meets': Users,
     'Total Contacts': LinkIcon,
     'Total Hours Booked': Clock,
   };
 
   const statColors: Record<string, string> = {
-    'Upcoming Meetings': 'from-blue-500/20 to-blue-500/5 text-blue-600 dark:text-blue-400 border-blue-500/20',
-    'Completed Meetings': 'from-emerald-500/20 to-emerald-500/5 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+    'Upcoming Meets': 'from-blue-500/20 to-blue-500/5 text-blue-600 dark:text-blue-400 border-blue-500/20',
+    'Completed Meets': 'from-emerald-500/20 to-emerald-500/5 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
     'Total Contacts': 'from-violet-500/20 to-violet-500/5 text-violet-600 dark:text-violet-400 border-violet-500/20',
     'Total Hours Booked': 'from-amber-500/20 to-amber-500/5 text-amber-600 dark:text-amber-400 border-amber-500/20',
   };
@@ -107,7 +107,7 @@ export default function DashboardPage() {
           Dashboard
         </h1>
         <p className="text-muted-foreground mt-2 text-sm max-w-2xl">
-          Welcome back to MeetSync. Here is a beautiful overview of your scheduling activity.
+          Welcome back to Meet. Here is a beautiful overview of your scheduling activity.
         </p>
       </motion.div>
 
@@ -228,7 +228,7 @@ export default function DashboardPage() {
                         <p className="font-semibold text-sm text-foreground">{booking.guestName}</p>
                         <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
                           <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                          {booking.eventType?.title || 'Meeting'}
+                          {booking.eventType?.title || 'Meet'}
                         </p>
                       </div>
                     </div>

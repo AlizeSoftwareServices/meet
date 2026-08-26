@@ -165,7 +165,18 @@ let IntegrationsController = class IntegrationsController {
     async getIntegrations(req) {
         return this.prisma.integration.findMany({
             where: { userId: req.user.userId },
-            select: { provider: true, createdAt: true }
+            select: { provider: true, checkConflicts: true, createdAt: true }
+        });
+    }
+    async toggleConflicts(req, provider, checkConflicts) {
+        return this.prisma.integration.update({
+            where: {
+                userId_provider: {
+                    userId: req.user.userId,
+                    provider: provider,
+                },
+            },
+            data: { checkConflicts: !!checkConflicts },
         });
     }
 };
@@ -229,6 +240,16 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], IntegrationsController.prototype, "getIntegrations", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Patch)(':provider/conflicts'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Param)('provider')),
+    __param(2, (0, common_1.Body)('checkConflicts')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Boolean]),
+    __metadata("design:returntype", Promise)
+], IntegrationsController.prototype, "toggleConflicts", null);
 exports.IntegrationsController = IntegrationsController = __decorate([
     (0, common_1.Controller)('integrations'),
     __metadata("design:paramtypes", [prisma_service_1.PrismaService])

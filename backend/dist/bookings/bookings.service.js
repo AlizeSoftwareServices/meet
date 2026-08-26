@@ -30,20 +30,57 @@ let BookingsService = class BookingsService {
         this.contactsService = contactsService;
     }
     async createBooking(dto) {
-        const overlappingBooking = await this.prisma.booking.findFirst({
-            where: {
-                hostId: dto.hostId,
-                status: 'CONFIRMED',
-                OR: [
-                    {
-                        startTime: { lt: new Date(dto.endTime) },
-                        endTime: { gt: new Date(dto.startTime) },
-                    }
-                ]
-            }
+        const eventType = await this.prisma.eventType.findUnique({
+            where: { id: dto.eventTypeId }
         });
-        if (overlappingBooking) {
-            throw new common_1.BadRequestException('This time slot is no longer available.');
+        if (!eventType) {
+            throw new common_1.BadRequestException('Event type not found');
+        }
+        if (eventType.isGroupEvent) {
+            const existingBookingsCount = await this.prisma.booking.count({
+                where: {
+                    eventTypeId: dto.eventTypeId,
+                    status: 'CONFIRMED',
+                    startTime: new Date(dto.startTime),
+                    endTime: new Date(dto.endTime),
+                }
+            });
+            if (existingBookingsCount >= eventType.maxInvitees) {
+                throw new common_1.BadRequestException('This group event slot is full.');
+            }
+            const otherOverlapping = await this.prisma.booking.findFirst({
+                where: {
+                    hostId: dto.hostId,
+                    status: 'CONFIRMED',
+                    eventTypeId: { not: dto.eventTypeId },
+                    OR: [
+                        {
+                            startTime: { lt: new Date(dto.endTime) },
+                            endTime: { gt: new Date(dto.startTime) },
+                        }
+                    ]
+                }
+            });
+            if (otherOverlapping) {
+                throw new common_1.BadRequestException('The host is busy with another event at this time.');
+            }
+        }
+        else {
+            const overlappingBooking = await this.prisma.booking.findFirst({
+                where: {
+                    hostId: dto.hostId,
+                    status: 'CONFIRMED',
+                    OR: [
+                        {
+                            startTime: { lt: new Date(dto.endTime) },
+                            endTime: { gt: new Date(dto.startTime) },
+                        }
+                    ]
+                }
+            });
+            if (overlappingBooking) {
+                throw new common_1.BadRequestException('This time slot is no longer available.');
+            }
         }
         const booking = await this.prisma.booking.create({
             data: {
@@ -73,7 +110,7 @@ let BookingsService = class BookingsService {
             where: { id: booking.id },
             data: { meetLink: calendarResult.meetLink },
         });
-        await this.emailService.sendBookingConfirmation(bookingWithIncludes.guestEmail, bookingWithIncludes.guestName, bookingWithIncludes.eventType.title, bookingWithIncludes.startTime.toISOString());
+        await this.emailService.sendBookingConfirmation(bookingWithIncludes.guestEmail, bookingWithIncludes.guestName, bookingWithIncludes.eventType.title, bookingWithIncludes.startTime.toISOString(), calendarResult.meetLink);
         await this.slackService.sendBookingNotification(dto.hostId, dto.guestName, dto.guestEmail, dto.startTime, bookingWithIncludes.eventType.title);
         await this.contactsService.createOrUpdateContact(dto.hostId, dto.guestName, dto.guestEmail, dto.guestPhone, dto.guestCompany, new Date(dto.startTime));
         return bookingWithIncludes;
@@ -100,6 +137,7 @@ let BookingsService = class BookingsService {
             data: { status: 'CANCELLED', cancelReason: reason },
             include: { eventType: true },
         });
+        await this.emailService.sendCancellationEmail(booking.guestEmail, booking.guestName, updatedBooking.eventType.title, reason);
         await this.slackService.sendCancellationNotification(hostId, booking.guestName, updatedBooking.eventType.title, reason);
         return updatedBooking;
     }
@@ -136,6 +174,7 @@ let BookingsService = class BookingsService {
             },
             include: { eventType: true },
         });
+        await this.emailService.sendRescheduleEmail(booking.guestEmail, booking.guestName, updatedBooking.eventType.title, newStartTime.toISOString(), booking.meetLink || undefined);
         return updatedBooking;
     }
 };

@@ -162,7 +162,7 @@ export default function BookingsManagementPage() {
                             </div>
                             <div className="flex items-center gap-2">
                               <Video className="w-4 h-4 text-primary/70" />
-                              <span className="font-medium">{booking.eventType?.title || 'Meeting'}</span>
+                              <span className="font-medium">{booking.eventType?.title || 'Meet'}</span>
                             </div>
                           </div>
 
@@ -213,8 +213,8 @@ export default function BookingsManagementPage() {
                   <h3 className="text-xl font-bold mb-2">No {activeTab.toLowerCase()} bookings</h3>
                   <p className="text-muted-foreground max-w-sm">
                     {activeTab === 'UPCOMING' 
-                      ? "You don't have any upcoming meetings scheduled yet. Share your event links to get booked!" 
-                      : `No ${activeTab.toLowerCase()} meetings found in your history.`}
+                      ? "You don't have any upcoming Meets scheduled yet. Share your event links to get booked!" 
+                      : `No ${activeTab.toLowerCase()} Meets found in your history.`}
                   </p>
                 </div>
               )}

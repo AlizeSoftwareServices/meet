@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 
 const profileSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').optional(),
+  email: z.string().email('Invalid email address').optional(),
   username: z.string().min(3, 'Username must be at least 3 characters').optional(),
   bio: z.string().max(160, 'Bio must be less than 160 characters').optional(),
   timezone: z.string().min(1, 'Timezone is required'),
@@ -40,6 +41,7 @@ export default function SettingsPage() {
     resolver: zodResolver(profileSchema),
     defaultValues: {
       name: '',
+      email: '',
       username: '',
       bio: '',
       timezone: 'UTC',
@@ -54,6 +56,7 @@ export default function SettingsPage() {
     if (profile) {
       form.reset({
         name: profile.name || '',
+        email: profile.email || '',
         username: profile.username || '',
         bio: profile.bio || '',
         timezone: profile.timezone || 'UTC',
@@ -115,10 +118,16 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-3 min-w-0">
+                <Label htmlFor="email" className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 ml-1">Email Address</Label>
+                <Input id="email" type="email" className="h-12 px-4 rounded-xl border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900 focus-visible:bg-background focus-visible:ring-brand-blue/30 focus-visible:ring-2 focus-visible:border-brand-blue/50 transition-all shadow-sm" placeholder="john@example.com" {...form.register('email')} />
+                {form.formState.errors.email && <p className="text-sm text-red-500 ml-1">{form.formState.errors.email.message}</p>}
+              </div>
+
+              <div className="space-y-3 min-w-0 md:col-span-2">
                 <Label htmlFor="username" className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 ml-1">Username (URL Slug)</Label>
                 <div className="flex rounded-xl shadow-sm w-full focus-within:ring-2 focus-within:ring-brand-blue/30 focus-within:border-brand-blue/50 transition-all bg-zinc-50/50 dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 overflow-hidden">
                   <span className="inline-flex items-center px-4 bg-muted/50 text-muted-foreground sm:text-sm whitespace-nowrap font-medium border-r border-zinc-200/80 dark:border-zinc-800">
-                    /book/
+                    meetsync.com/
                   </span>
                   <Input id="username" className="h-12 px-4 rounded-none border-0 min-w-0 flex-1 w-full focus-visible:ring-0 shadow-none bg-transparent" placeholder="johndoe" {...form.register('username')} />
                 </div>

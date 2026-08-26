@@ -19,6 +19,8 @@ class CreateEventTypeDto {
     slug;
     color;
     isActive;
+    isGroupEvent;
+    maxInvitees;
 }
 exports.CreateEventTypeDto = CreateEventTypeDto;
 __decorate([
@@ -54,4 +56,15 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     __metadata("design:type", Boolean)
 ], CreateEventTypeDto.prototype, "isActive", void 0);
+__decorate([
+    (0, class_validator_1.IsBoolean)(),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Boolean)
+], CreateEventTypeDto.prototype, "isGroupEvent", void 0);
+__decorate([
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(1),
+    (0, class_validator_1.IsOptional)(),
+    __metadata("design:type", Number)
+], CreateEventTypeDto.prototype, "maxInvitees", void 0);
 //# sourceMappingURL=create-event-type.dto.js.map

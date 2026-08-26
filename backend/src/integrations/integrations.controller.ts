@@ -1,4 +1,4 @@
-import { Controller, Get, Req, Res, UseGuards, Query } from '@nestjs/common';
+import { Controller, Get, Patch, Param, Body, Req, Res, UseGuards, Query } from '@nestjs/common';
 import { google } from 'googleapis';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -203,7 +203,25 @@ export class IntegrationsController {
   async getIntegrations(@Req() req: any) {
     return this.prisma.integration.findMany({
       where: { userId: req.user.userId },
-      select: { provider: true, createdAt: true }
+      select: { provider: true, checkConflicts: true, createdAt: true }
+    });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':provider/conflicts')
+  async toggleConflicts(
+    @Req() req: any,
+    @Param('provider') provider: string,
+    @Body('checkConflicts') checkConflicts: boolean
+  ) {
+    return this.prisma.integration.update({
+      where: {
+        userId_provider: {
+          userId: req.user.userId,
+          provider: provider,
+        },
+      },
+      data: { checkConflicts: !!checkConflicts },
     });
   }
 }

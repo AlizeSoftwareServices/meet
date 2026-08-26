@@ -1,9 +1,8 @@
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateEventTypeDto } from './dto/create-event-type.dto';
 export declare class EventTypesService {
     private prisma;
     constructor(prisma: PrismaService);
-    create(userId: string, dto: CreateEventTypeDto): Promise<{
+    create(userId: string, dto: any): Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -20,8 +19,20 @@ export declare class EventTypesService {
         maxAdvanceDays: number | null;
         bufferBefore: number | null;
         bufferAfter: number | null;
+        isGroupEvent: boolean;
+        maxInvitees: number;
     }>;
-    findAllForUser(userId: string): Promise<{
+    findAllForUser(userId: string): Promise<({
+        workflows: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            eventTypeId: string;
+            triggerType: string;
+            timeOffset: number;
+            actionType: string;
+        }[];
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -38,8 +49,20 @@ export declare class EventTypesService {
         maxAdvanceDays: number | null;
         bufferBefore: number | null;
         bufferAfter: number | null;
-    }[]>;
+        isGroupEvent: boolean;
+        maxInvitees: number;
+    })[]>;
     findOne(id: string, userId: string): Promise<{
+        workflows: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            eventTypeId: string;
+            triggerType: string;
+            timeOffset: number;
+            actionType: string;
+        }[];
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -56,8 +79,20 @@ export declare class EventTypesService {
         maxAdvanceDays: number | null;
         bufferBefore: number | null;
         bufferAfter: number | null;
+        isGroupEvent: boolean;
+        maxInvitees: number;
     }>;
     findBySlugAndHost(slug: string, hostId: string): Promise<{
+        workflows: {
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            eventTypeId: string;
+            triggerType: string;
+            timeOffset: number;
+            actionType: string;
+        }[];
+    } & {
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -74,6 +109,8 @@ export declare class EventTypesService {
         maxAdvanceDays: number | null;
         bufferBefore: number | null;
         bufferAfter: number | null;
+        isGroupEvent: boolean;
+        maxInvitees: number;
     }>;
     update(id: string, userId: string, dto: any): Promise<{
         id: string;
@@ -92,6 +129,8 @@ export declare class EventTypesService {
         maxAdvanceDays: number | null;
         bufferBefore: number | null;
         bufferAfter: number | null;
+        isGroupEvent: boolean;
+        maxInvitees: number;
     }>;
     remove(id: string, userId: string): Promise<{
         id: string;
@@ -110,5 +149,7 @@ export declare class EventTypesService {
         maxAdvanceDays: number | null;
         bufferBefore: number | null;
         bufferAfter: number | null;
+        isGroupEvent: boolean;
+        maxInvitees: number;
     }>;
 }

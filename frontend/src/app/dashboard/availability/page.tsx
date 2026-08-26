@@ -15,7 +15,7 @@ const DAYS = [
   'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 ];
 
-type TimeSlot = { id: string; startTime: string; endTime: string };
+type TimeSlot = { id: string; startTime: string; endTime: string; description?: string };
 type DaySchedule = { enabled: boolean; slots: TimeSlot[] };
 type WeeklySchedule = Record<number, DaySchedule>;
 type DateOverride = { id: string; date: string; isAvailable: boolean; startTime?: string; endTime?: string };
@@ -149,7 +149,7 @@ export default function AvailabilityPage() {
     });
   };
 
-  const updateSlot = (dayIndex: number, slotId: string, field: 'startTime'|'endTime', value: string) => {
+  const updateSlot = (dayIndex: number, slotId: string, field: 'startTime'|'endTime'|'description', value: string) => {
     setSchedule(prev => ({
       ...prev,
       [dayIndex]: {
@@ -209,7 +209,7 @@ export default function AvailabilityPage() {
                 <Clock className="w-5 h-5 text-primary" />
                 <CardTitle className="text-2xl">Weekly Hours</CardTitle>
               </div>
-              <CardDescription>Set your general availability for regular meetings.</CardDescription>
+              <CardDescription>Set your general availability for regular Meets.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-0 p-8 pt-0">
               {isLoading ? (
@@ -225,8 +225,8 @@ export default function AvailabilityPage() {
                     const dayAbbr = ['S', 'M', 'T', 'W', 'Th', 'F', 'S'][index];
                     
                     return (
-                      <div key={day} className="flex flex-col sm:flex-row sm:items-start gap-4 p-4 hover:bg-muted/10 transition-colors group">
-                        <div className="w-20 pt-1">
+                      <div key={day} className="flex flex-row items-center sm:items-start justify-between sm:justify-start gap-4 p-4 hover:bg-muted/10 transition-colors group">
+                        <div className="w-12 sm:w-20 pt-1 flex-shrink-0">
                           <button 
                             onClick={() => toggleDay(index, !dayData.enabled)}
                             className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
@@ -239,7 +239,7 @@ export default function AvailabilityPage() {
                           </button>
                         </div>
                         
-                        <div className="flex-1 pt-1">
+                        <div className="flex-1 flex justify-start pt-1 overflow-x-auto pb-1 -mb-1">
                           {dayData.enabled ? (
                             <div className="space-y-3">
                               {dayData.slots.map((slot, slotIndex) => (
@@ -257,6 +257,14 @@ export default function AvailabilityPage() {
                                       className="w-[120px] text-base font-medium h-10 px-3 border-0 focus-visible:ring-0 bg-transparent shadow-none" 
                                       value={slot.endTime} 
                                       onChange={(e) => updateSlot(index, slot.id, 'endTime', e.target.value)}
+                                    />
+                                    <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-800 mx-1"></div>
+                                    <Input 
+                                      type="text" 
+                                      placeholder="Note (e.g. Client Meetings)"
+                                      className="w-[180px] text-sm h-10 px-3 border-0 focus-visible:ring-0 bg-transparent shadow-none text-muted-foreground" 
+                                      value={slot.description || ''} 
+                                      onChange={(e) => updateSlot(index, slot.id, 'description', e.target.value)}
                                     />
                                   </div>
                                   
@@ -279,7 +287,7 @@ export default function AvailabilityPage() {
                         </div>
                         
                         {!dayData.enabled && (
-                          <div className="pt-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                          <div className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                             <Button variant="ghost" size="icon" onClick={() => toggleDay(index, true)} className="text-muted-foreground hover:text-primary hover:bg-primary/10 h-9 w-9">
                               <Plus className="w-5 h-5" />
                             </Button>

@@ -2,10 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { addMinutes, isBefore, isAfter, startOfDay, endOfDay } from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
+import { CalendarService } from '../integrations/calendar.service';
 
 @Injectable()
 export class PublicService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private calendarService: CalendarService
+  ) {}
 
   async getUserProfile(username: string) {
     const profile = await this.prisma.profile.findUnique({
@@ -126,16 +130,28 @@ export class PublicService {
       }
     });
 
+    // Fetch external busy periods (Two-Way Sync)
+    const externalBusyPeriods = await this.calendarService.getBusyPeriods(
+      profile.userId,
+      dayStart.toISOString(),
+      dayEnd.toISOString()
+    );
+
     const now = new Date();
 
-    // Filter out past slots and conflicting slots
-    const availableSlots = potentialSlots.filter(slot => {
+    // Filter out past slots and conflicting slots, and calculate remaining spots
+    const validSlots: { startTime: string; endTime: string; spotsRemaining: number }[] = [];
+
+    for (const slot of potentialSlots) {
       // 1. Must be in the future (considering minNotice if we had it, for now just > now)
-      if (isBefore(slot.startTime, now)) return false;
+      if (isBefore(slot.startTime, now)) continue;
 
       // 2. Check overlap with existing bookings (including buffers)
       const slotStartWithBuffer = addMinutes(slot.startTime, -bufferBefore);
       const slotEndWithBuffer = addMinutes(slot.endTime, bufferAfter);
+
+      let overlappingSameEventCount = 0;
+      let otherEventOverlap = false;
 
       for (const booking of existingBookings) {
         const bookingStart = booking.startTime;
@@ -143,18 +159,41 @@ export class PublicService {
 
         // Condition for overlap: slotStart < bookingEnd AND slotEnd > bookingStart
         if (isBefore(slotStartWithBuffer, bookingEnd) && isAfter(slotEndWithBuffer, bookingStart)) {
-          return false;
+          if (booking.eventTypeId === eventType.id && eventType.isGroupEvent) {
+            // For group events, the overlapping booking must be the exact same time slot to just increment count
+            if (bookingStart.getTime() === slot.startTime.getTime() && bookingEnd.getTime() === slot.endTime.getTime()) {
+              overlappingSameEventCount++;
+            } else {
+              otherEventOverlap = true;
+            }
+          } else {
+            otherEventOverlap = true;
+          }
         }
       }
 
-      return true;
-    });
+      if (otherEventOverlap) continue;
+      if (eventType.isGroupEvent && overlappingSameEventCount >= eventType.maxInvitees) continue;
 
-    // Return slots as ISO strings
-    return availableSlots.map(s => ({
-      startTime: s.startTime.toISOString(),
-      endTime: s.endTime.toISOString(),
-    }));
+      // 3. Check overlap with external calendars
+      let externalConflict = false;
+      for (const busy of externalBusyPeriods) {
+        if (isBefore(slotStartWithBuffer, busy.end) && isAfter(slotEndWithBuffer, busy.start)) {
+          externalConflict = true;
+          break;
+        }
+      }
+      
+      if (externalConflict) continue;
+      
+      validSlots.push({
+        startTime: slot.startTime.toISOString(),
+        endTime: slot.endTime.toISOString(),
+        spotsRemaining: eventType.isGroupEvent ? (eventType.maxInvitees - overlappingSameEventCount) : 1
+      });
+    }
+
+    return validSlots;
   }
 
   private createZonedDate(dateStr: string, timeStr: string, timeZone: string): Date {

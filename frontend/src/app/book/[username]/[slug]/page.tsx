@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { triggerHaptic } from '@/lib/haptics';
 
 export default function SchedulingPage({ params }: { params: { username: string, slug: string } }) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
@@ -21,7 +22,8 @@ export default function SchedulingPage({ params }: { params: { username: string,
   const [guestName, setGuestName] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
   const [guestNotes, setGuestNotes] = useState('');
-  const [bookingConfirmed, setBookingConfirmed] = useState(false);
+  const [bookingResult, setBookingResult] = useState<any>(null);
+  const [bookingError, setBookingError] = useState<string | null>(null);
 
   // Fetch host and event profile
   const { data: profile, isLoading: isProfileLoading, error } = useQuery({
@@ -62,11 +64,28 @@ export default function SchedulingPage({ params }: { params: { username: string,
         endTime: selectedTime.endTime,
       };
       
-      const res = await api.post('/public/bookings', payload);
-      return res.data;
+      try {
+        const res = await api.post('/public/bookings', payload);
+        return res.data;
+      } catch (err: any) {
+        if (err.response && err.response.data && err.response.data.message) {
+          throw new Error(err.response.data.message);
+        }
+        throw new Error('An error occurred while booking the meeting.');
+      }
     },
-    onSuccess: () => {
-      setBookingConfirmed(true);
+    onSuccess: (data) => {
+      triggerHaptic('success');
+      if (data && data.booking) {
+        setBookingResult(data.booking);
+      } else {
+        setBookingResult(true);
+      }
+      setBookingError(null);
+    },
+    onError: (error: any) => {
+      triggerHaptic('error');
+      setBookingError(error.message);
     }
   });
 
@@ -87,7 +106,7 @@ export default function SchedulingPage({ params }: { params: { username: string,
     return <div className="flex justify-center items-center h-screen">Event type not found</div>;
   }
 
-  if (bookingConfirmed) {
+  if (bookingResult) {
     return (
       <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
          <div className="max-w-md w-full bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 p-8 text-center">
@@ -102,6 +121,26 @@ export default function SchedulingPage({ params }: { params: { username: string,
                 <Clock className="w-4 h-4" />
                 {selectedTime && format(parseISO(selectedTime.startTime), 'EEEE, MMMM d, yyyy h:mm a')}
               </p>
+              
+              {bookingResult.meetingLink && (
+                <div className="mt-6 p-4 bg-brand-blue/5 border border-brand-blue/20 rounded-xl">
+                  <h4 className="font-bold text-sm text-brand-blue mb-1 flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    {bookingResult.meetingProvider}
+                  </h4>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400 break-all mb-3">
+                    {bookingResult.meetingLink}
+                  </p>
+                  <a 
+                    href={bookingResult.meetingLink} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center w-full bg-brand-blue text-white rounded-lg py-2 font-medium text-sm hover:bg-brand-blue/90 transition-colors"
+                  >
+                    Join Meeting
+                  </a>
+                </div>
+              )}
             </div>
          </div>
       </div>
@@ -149,7 +188,10 @@ export default function SchedulingPage({ params }: { params: { username: string,
                 <Calendar
                   mode="single"
                   selected={selectedDate}
-                  onSelect={setSelectedDate}
+                  onSelect={(date) => {
+                    triggerHaptic('light');
+                    setSelectedDate(date);
+                  }}
                   className="rounded-xl border shadow-sm p-3 w-full flex justify-center"
                   disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
                 />
@@ -171,10 +213,18 @@ export default function SchedulingPage({ params }: { params: { username: string,
                         return (
                           <button
                             key={idx}
-                            onClick={() => setSelectedTime(slot)}
-                            className="w-full py-3.5 px-4 rounded-xl border border-primary/30 text-primary font-medium hover:bg-primary hover:text-white hover:border-primary transition-all text-center block"
+                            onClick={() => {
+                              triggerHaptic('medium');
+                              setSelectedTime(slot);
+                            }}
+                            className="w-full py-3 px-4 rounded-xl border border-primary/30 text-primary font-medium hover:bg-primary hover:text-white hover:border-primary transition-all text-center block flex flex-col items-center justify-center gap-0.5"
                           >
-                            {format(localDate, 'h:mm a')}
+                            <span>{format(localDate, 'h:mm a')}</span>
+                            {slot.spotsRemaining !== undefined && eventType.isGroupEvent && (
+                              <span className="text-[10px] font-bold opacity-80 uppercase tracking-wider">
+                                {slot.spotsRemaining} spots left
+                              </span>
+                            )}
                           </button>
                         );
                       })
@@ -213,6 +263,14 @@ export default function SchedulingPage({ params }: { params: { username: string,
                 className="space-y-6"
               >
                 <div className="space-y-2">
+                  {bookingError && (
+                    <div className="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 mb-6 font-medium text-sm flex items-start gap-2">
+                      <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      {bookingError}
+                    </div>
+                  )}
                   <Label>Name *</Label>
                   <Input 
                     required 
@@ -238,7 +296,7 @@ export default function SchedulingPage({ params }: { params: { username: string,
                   <Textarea 
                     value={guestNotes} 
                     onChange={e => setGuestNotes(e.target.value)} 
-                    placeholder="Please share anything that will help prepare for our meeting." 
+                    placeholder="Please share anything that will help prepare for our Meet." 
                     className="p-4 min-h-[120px]"
                   />
                 </div>

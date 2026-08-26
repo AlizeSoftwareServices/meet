@@ -10,4 +10,8 @@ export declare class CalendarService {
     }>;
     private createMicrosoftEvent;
     private mockCreateEvent;
+    getBusyPeriods(hostId: string, startTime: string, endTime: string): Promise<{
+        start: Date;
+        end: Date;
+    }[]>;
 }

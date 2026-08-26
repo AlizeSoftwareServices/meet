@@ -20,6 +20,7 @@ export class BookingsController {
     return this.bookingsService.getHostBookings(req.user.userId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post(':id/cancel')
   cancelBooking(
     @Param('id') id: string,
@@ -29,6 +30,7 @@ export class BookingsController {
     return this.bookingsService.cancelBooking(id, req.user.userId, reason);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post(':id/reschedule')
   rescheduleBooking(
     @Param('id') id: string,

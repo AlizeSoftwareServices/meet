@@ -44,7 +44,7 @@ export default function ContactsPage() {
     if (!contacts || contacts.length === 0) return;
     
     // Simple CSV export
-    const headers = ['Name', 'Email', 'Phone', 'Company', 'Total Meetings', 'Last Meeting Date'];
+    const headers = ['Name', 'Email', 'Phone', 'Company', 'Total Meets', 'Last Meet Date'];
     const csvContent = [
       headers.join(','),
       ...contacts.map((c: any) => [
@@ -52,8 +52,8 @@ export default function ContactsPage() {
         `"${c.email || ''}"`,
         `"${c.phone || ''}"`,
         `"${c.company || ''}"`,
-        c.totalMeetings || 0,
-        c.lastMeetingDate ? `"${new Date(c.lastMeetingDate).toLocaleDateString()}"` : '""'
+        c.totalMeets || 0,
+        c.lastMeetDate ? `"${new Date(c.lastMeetDate).toLocaleDateString()}"` : '""'
       ].join(','))
     ].join('\n');
 
@@ -159,11 +159,11 @@ export default function ContactsPage() {
                         </td>
                         <td className="px-6 py-4 hidden sm:table-cell">
                           <div className="flex flex-col gap-1">
-                            <span className="font-medium text-foreground">{contact.totalMeetings} meeting{contact.totalMeetings !== 1 ? 's' : ''}</span>
-                            {contact.lastMeetingDate && (
+                            <span className="font-medium text-foreground">{contact.totalMeets} Meet{contact.totalMeets !== 1 ? 's' : ''}</span>
+                            {contact.lastMeetDate && (
                               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                 <Calendar className="w-3 h-3" />
-                                Last: {new Date(contact.lastMeetingDate).toLocaleDateString()}
+                                Last: {new Date(contact.lastMeetDate).toLocaleDateString()}
                               </div>
                             )}
                           </div>
@@ -194,7 +194,7 @@ export default function ContactsPage() {
                 <p className="text-muted-foreground max-w-sm">
                   {search 
                     ? `No contacts matching "${search}".` 
-                    : "Your contacts list is empty. People will be automatically added here when they book a meeting with you."}
+                    : "Your contacts list is empty. People will be automatically added here when they book a Meet with you."}
                 </p>
                 {search && (
                   <Button variant="outline" className="mt-4 rounded-full" onClick={() => setSearch('')}>

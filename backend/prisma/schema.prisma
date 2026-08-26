@@ -58,7 +58,10 @@ model EventType {
   maxAdvanceDays   Int?
   bufferBefore     Int?      // In minutes
   bufferAfter      Int?      // In minutes
+  isGroupEvent     Boolean   @default(false)
+  maxInvitees      Int       @default(1)
   bookings         Booking[]
+  workflows        Workflow[]
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -153,8 +156,20 @@ model Integration {
   provider     String   // e.g., 'google', 'zoom'
   accessToken  String
   refreshToken String?
+  checkConflicts Boolean @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   @@unique([userId, provider])
+}
+
+model Workflow {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  eventTypeId  String    @db.ObjectId
+  eventType    EventType @relation(fields: [eventTypeId], references: [id], onDelete: Cascade)
+  triggerType  String    // e.g., 'BEFORE_EVENT', 'AFTER_EVENT'
+  timeOffset   Int       // in minutes (e.g., 1440 for 24 hours)
+  actionType   String    // e.g., 'EMAIL'
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }

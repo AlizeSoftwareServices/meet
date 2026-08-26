@@ -63,10 +63,8 @@ export default function RegisterPage() {
         <div className="w-full max-w-md space-y-8 relative z-10">
           <div className="flex flex-col space-y-2 text-center mb-8 relative z-10">
             <Link href="/" className="flex items-center gap-2 justify-center mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-blue via-brand-purple to-brand-red flex items-center justify-center shadow-lg">
-                <Sparkles className="w-6 h-6 text-white" />
-              </div>
-              <span className="font-extrabold text-2xl tracking-tight">MeetSync</span>
+              <img src="/logo.png" alt="Meet Logo" className="w-10 h-10 rounded-xl object-contain shadow-lg" />
+              <span className="font-extrabold text-2xl tracking-tight">Meet</span>
             </Link>
             <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-foreground">Create an account</h1>
             <p className="text-muted-foreground text-sm sm:text-base font-medium">
@@ -177,12 +175,12 @@ export default function RegisterPage() {
             className="bg-white/10 backdrop-blur-xl border border-white/20 p-8 rounded-[2rem] shadow-2xl"
           >
             <h2 className="text-3xl font-black text-white mb-6 leading-tight">
-              Join millions of professionals who schedule with MeetSync.
+              Join millions of professionals who schedule with Meet.
             </h2>
             <ul className="space-y-4">
               {[
                 "Automate your scheduling workflows",
-                "Reduce meeting no-shows instantly",
+                "Reduce Meet no-shows instantly",
                 "Integrate with your favorite tools",
                 "Completely free to get started"
               ].map((item, i) => (

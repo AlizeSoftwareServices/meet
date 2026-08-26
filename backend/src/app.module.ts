@@ -12,6 +12,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { PublicModule } from './public/public.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -25,7 +26,8 @@ import { PublicModule } from './public/public.module';
     IntegrationsModule, 
     AnalyticsModule,
     ContactsModule,
-    PublicModule
+    PublicModule,
+    MailModule
   ],
   controllers: [AppController],
   providers: [AppService],

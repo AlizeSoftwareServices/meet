@@ -1,22 +1,36 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Link as LinkIcon, Clock, MoreVertical, Edit2, Trash2, CalendarX2, Settings } from 'lucide-react';
-import { motion, Variants } from 'framer-motion';
+import { Calendar, Clock, Link as LinkIcon, Plus, Trash2, Edit2, User, Users, ArrowRightLeft, CalendarDays, Link2, BarChart, Settings, Share2 } from 'lucide-react';
+import { shareMeetingLink } from '@/lib/nativeShare';
+import { triggerHaptic } from '@/lib/haptics';
+import { motion, Variants, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useRouter } from 'next/navigation';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuGroup } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
 
 export default function EventTypesPage() {
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<'event_types' | 'single_use' | 'polls'>('event_types');
 
-  const { data: events, isLoading } = useQuery({
+  const { data: events, isLoading: eventsLoading } = useQuery({
     queryKey: ['event-types'],
     queryFn: async () => {
       const res = await api.get('/event-types');
+      return res.data;
+    },
+  });
+
+  const { data: polls, isLoading: pollsLoading } = useQuery({
+    queryKey: ['polls'],
+    queryFn: async () => {
+      const res = await api.get('/polls');
       return res.data;
     },
   });
@@ -39,26 +53,22 @@ export default function EventTypesPage() {
     }
   });
 
-  const copyToClipboard = (slug: string) => {
-    // Ideally this uses the real username or host profile slug
-    const url = `${window.location.origin}/book/me/${slug}`;
-    navigator.clipboard.writeText(url);
-    alert('Link copied to clipboard!');
+  const handleShare = async (event: any) => {
+    const url = `${window.location.origin}/book/me/${event.slug}`;
+    const opened = await shareMeetingLink({
+      title: event.title || 'Schedule a Meeting',
+      text: `Book a ${event.duration || 30}-min meeting with me on Meet:`,
+      url,
+      dialogTitle: `Share ${event.title}`
+    });
+    if (!opened) {
+      alert('Link copied to clipboard!');
+    }
   };
-
-  // Mock data fallback if API fails or returns 0
-  const displayEvents = events?.length > 0 ? events : [
-    { id: '1', title: '15 Minute Meeting', duration: 15, location: 'Google Meet', slug: '15min', isActive: true, color: '#00a2ff', description: 'Quick sync.' },
-    { id: '2', title: '30 Minute Meeting', duration: 30, location: 'Zoom', slug: '30min', isActive: true, color: '#ffb300', description: 'Standard meeting.' },
-    { id: '3', title: '60 Minute Interview', duration: 60, location: 'Phone call', slug: '60min', isActive: false, color: '#ff0055', description: 'Deep dive.' }
-  ];
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1 }
-    }
+    show: { opacity: 1, transition: { staggerChildren: 0.1 } }
   };
 
   const itemVariants: Variants = {
@@ -66,126 +76,240 @@ export default function EventTypesPage() {
     show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
   };
 
-  // If literally loading and no cache
-  if (isLoading && !events) {
-    return (
-      <div className="space-y-8 pb-10">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <div className="h-10 w-48 bg-muted animate-pulse rounded-md mb-2"></div>
-            <div className="h-5 w-72 bg-muted animate-pulse rounded-md"></div>
-          </div>
-        </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-48 bg-card animate-pulse rounded-md border border-border shadow-sm" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-8 pb-10 max-w-6xl mx-auto">
-      <motion.div 
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6"
-      >
-        <div>
-          <h1 className="text-3xl font-light text-foreground">
-            Event Types
-          </h1>
-        </div>
-        <Link href="/dashboard/events/new">
-          <Button variant="outline" className="flex items-center gap-2 rounded-full border-primary text-primary hover:bg-primary/5 hover:text-primary transition-all px-6 h-10">
-            <Plus className="w-4 h-4" />
-            New Event Type
-          </Button>
-        </Link>
-      </motion.div>
+    <div className="space-y-6 pb-10 max-w-6xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h1 className="text-3xl font-light text-foreground">Scheduling</h1>
+        
+        <DropdownMenu>
+          <DropdownMenuTrigger render={
+            <Button className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 px-6 h-10 font-bold shadow-md hover:shadow-lg transition-all active:scale-95">
+              <Plus className="w-4 h-4 mr-2" />
+              Create
+            </Button>
+          } />
+          <DropdownMenuContent align="end" className="w-[340px] p-2 rounded-2xl shadow-xl border-border/50">
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-xs text-muted-foreground uppercase tracking-wider font-bold px-2 py-1.5">Event type</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => router.push('/dashboard/events/new?type=one-on-one')} className="p-3 rounded-xl cursor-pointer hover:bg-muted focus:bg-muted transition-colors group">
+                <div className="flex gap-3">
+                  <div className="mt-0.5"><User className="w-5 h-5 text-brand-blue" /></div>
+                  <div>
+                    <p className="font-bold text-foreground">One-on-one</p>
+                    <p className="text-xs text-muted-foreground font-medium mt-0.5 group-hover:text-foreground/70">1 host, 1 invitee</p>
+                    <p className="text-[11px] text-muted-foreground/70 mt-1">Good for coffee chats, 1:1 interviews, etc.</p>
+                  </div>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/dashboard/events/new?type=group')} className="p-3 rounded-xl cursor-pointer hover:bg-muted focus:bg-muted transition-colors group">
+                <div className="flex gap-3">
+                  <div className="mt-0.5"><Users className="w-5 h-5 text-brand-purple" /></div>
+                  <div>
+                    <p className="font-bold text-foreground">Group</p>
+                    <p className="text-xs text-muted-foreground font-medium mt-0.5 group-hover:text-foreground/70">1 host, Multiple invitees</p>
+                    <p className="text-[11px] text-muted-foreground/70 mt-1">Webinars, online classes, etc.</p>
+                  </div>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/dashboard/events/new?type=round-robin')} className="p-3 rounded-xl cursor-pointer hover:bg-muted focus:bg-muted transition-colors group">
+                <div className="flex gap-3">
+                  <div className="mt-0.5"><ArrowRightLeft className="w-5 h-5 text-brand-red" /></div>
+                  <div>
+                    <p className="font-bold text-foreground">Round robin</p>
+                    <p className="text-xs text-muted-foreground font-medium mt-0.5 group-hover:text-foreground/70">Rotating hosts, 1 invitee</p>
+                    <p className="text-[11px] text-muted-foreground/70 mt-1">Distribute meetings between team members</p>
+                  </div>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/dashboard/events/new?type=collective')} className="p-3 rounded-xl cursor-pointer hover:bg-muted focus:bg-muted transition-colors group">
+                <div className="flex gap-3">
+                  <div className="mt-0.5"><CalendarDays className="w-5 h-5 text-brand-green" /></div>
+                  <div>
+                    <p className="font-bold text-foreground">Collective</p>
+                    <p className="text-xs text-muted-foreground font-medium mt-0.5 group-hover:text-foreground/70">Multiple hosts, 1 invitee</p>
+                    <p className="text-[11px] text-muted-foreground/70 mt-1">Panel interviews, group sales calls, etc.</p>
+                  </div>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+            
+            <DropdownMenuSeparator className="my-2 bg-border/50" />
+            
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className="text-xs text-muted-foreground uppercase tracking-wider font-bold px-2 py-1.5">More ways to meet</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => router.push('/dashboard/events/new?type=one-off')} className="p-3 rounded-xl cursor-pointer hover:bg-muted focus:bg-muted transition-colors group">
+                <div className="flex gap-3">
+                  <div className="mt-0.5"><Link2 className="w-5 h-5 text-zinc-500" /></div>
+                  <div>
+                    <p className="font-bold text-foreground">One-off meeting</p>
+                    <p className="text-xs text-muted-foreground font-medium mt-0.5 group-hover:text-foreground/70">Offer time outside your normal schedule</p>
+                  </div>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/dashboard/events/new-poll')} className="p-3 rounded-xl cursor-pointer hover:bg-muted focus:bg-muted transition-colors group">
+                <div className="flex gap-3">
+                  <div className="mt-0.5"><BarChart className="w-5 h-5 text-zinc-500" /></div>
+                  <div>
+                    <p className="font-bold text-foreground">Meeting poll</p>
+                    <p className="text-xs text-muted-foreground font-medium mt-0.5 group-hover:text-foreground/70">Let invitees vote on a time to meet</p>
+                  </div>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
-      <motion.div 
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
-        className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
-      >
-        {displayEvents.map((event: any) => (
-          <motion.div key={event.id} variants={itemVariants} whileHover={{ y: -4 }}>
-            <Card className={`h-[220px] flex flex-col relative overflow-hidden group shadow-[0_1px_4px_rgba(0,0,0,0.08)] hover:shadow-[0_10px_25px_rgba(0,0,0,0.1)] transition-all duration-300 border-border bg-card rounded-lg ${!event.isActive && 'opacity-60 grayscale-[0.3]'}`}>
-              {/* Top Color Bar */}
-              <div 
-                className="absolute top-0 left-0 w-full h-1.5 transition-all duration-300" 
-                style={{ backgroundColor: event.color || '#00a2ff' }} 
+      <div className="flex gap-6 border-b border-border">
+        {['event_types', 'single_use', 'polls'].map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab as any)}
+            className={`pb-3 text-sm font-semibold transition-all relative ${
+              activeTab === tab 
+                ? 'text-primary' 
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {tab === 'event_types' && 'Event types'}
+            {tab === 'single_use' && 'Single-use links'}
+            {tab === 'polls' && 'Meeting polls'}
+            {activeTab === tab && (
+              <motion.div 
+                layoutId="activeTabIndicator" 
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full" 
               />
-              
-              <div className="absolute top-4 right-4">
-                <DropdownMenu>
-                  <DropdownMenuTrigger className="inline-flex items-center justify-center text-muted-foreground hover:bg-accent/50 h-8 w-8 rounded-full outline-none">
-                    <Settings className="w-4 h-4" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-lg border-border">
-                    <Link href={`/dashboard/events/${event.id}/edit`}>
-                      <DropdownMenuItem className="cursor-pointer">
-                        <Edit2 className="w-4 h-4 mr-2" /> Edit
-                      </DropdownMenuItem>
-                    </Link>
-                    <DropdownMenuItem 
-                      className="cursor-pointer text-destructive focus:text-destructive"
-                      onClick={() => {
-                        if (confirm('Are you sure you want to delete this event type?')) {
-                          deleteMutation.mutate(event.id);
-                        }
-                      }}
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" /> Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              <CardHeader className="pb-0 pt-6 px-6">
-                <div>
-                  <CardTitle className="text-xl font-medium text-foreground">{event.title}</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5">
-                    {event.duration} mins, One-on-one
-                  </p>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="flex-1 px-6 pt-4">
-                <p className="text-sm text-foreground/80 font-medium">
-                   View booking page
-                </p>
-              </CardContent>
-
-              <CardFooter className="border-t border-border px-4 py-3 flex justify-between items-center bg-card">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => copyToClipboard(event.slug)}
-                  className="text-primary hover:text-primary hover:bg-primary/5 rounded-md font-medium px-2"
-                >
-                  <LinkIcon className="w-4 h-4 mr-2" />
-                  Copy link
-                </Button>
-                
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-muted-foreground">
-                    {event.isActive ? 'On' : 'Off'}
-                  </span>
-                  <Switch 
-                    checked={event.isActive} 
-                    onCheckedChange={(checked) => toggleStatusMutation.mutate({ id: event.id, isActive: checked })}
-                  />
-                </div>
-              </CardFooter>
-            </Card>
-          </motion.div>
+            )}
+          </button>
         ))}
-      </motion.div>
+      </div>
+
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2 }}
+        >
+          {activeTab === 'event_types' && (
+            <div className="space-y-6">
+              {eventsLoading ? (
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-48 bg-card animate-pulse rounded-2xl border border-border/50 shadow-sm" />
+                  ))}
+                </div>
+              ) : (
+                <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  {events?.map((event: any) => (
+                    <motion.div key={event.id} variants={itemVariants} whileHover={{ y: -4 }}>
+                      <Card className={`h-[240px] flex flex-col relative overflow-hidden group shadow-[0_2px_10px_rgba(0,0,0,0.04)] hover:shadow-xl transition-all duration-300 border-border/50 bg-card rounded-2xl ${!event.isActive && 'opacity-60 grayscale-[0.2]'}`}>
+                        <div className="absolute top-0 left-0 w-full h-1.5 transition-all duration-300" style={{ backgroundColor: event.color || '#00a2ff' }} />
+                        
+                        <div className="absolute top-4 right-4">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger className="inline-flex items-center justify-center text-muted-foreground hover:bg-accent h-8 w-8 rounded-full outline-none">
+                              <Settings className="w-4 h-4" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-40 rounded-xl shadow-lg border-border">
+                              <DropdownMenuItem 
+                                className="cursor-pointer font-medium" 
+                                onClick={() => router.push(`/dashboard/events/${event.id}/edit`)}
+                              >
+                                <Edit2 className="w-4 h-4 mr-2 text-muted-foreground" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="cursor-pointer font-medium text-destructive focus:text-destructive" onClick={() => deleteMutation.mutate(event.id)}>
+                                <Trash2 className="w-4 h-4 mr-2" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+
+                        <CardHeader className="pb-2 pt-6 px-6 flex-1">
+                          <div>
+                            <CardTitle className="text-xl font-bold text-foreground mb-1">{event.title}</CardTitle>
+                            <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-2">
+                              {event.duration} mins • {event.location}
+                            </p>
+                            <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 text-xs font-semibold text-foreground/70">
+                              {event.type === 'ONE_ON_ONE' && <User className="w-3 h-3" />}
+                              {event.type === 'GROUP' && <Users className="w-3 h-3" />}
+                              {event.type === 'ROUND_ROBIN' && <ArrowRightLeft className="w-3 h-3" />}
+                              {event.type === 'COLLECTIVE' && <CalendarDays className="w-3 h-3" />}
+                              {event.typeLabel || 'One-on-one'}
+                            </div>
+                          </div>
+                        </CardHeader>
+                        
+                        <CardFooter className="border-t border-border/50 px-4 py-4 flex justify-between items-center bg-muted/10">
+                          <Button variant="ghost" size="sm" onClick={() => handleShare(event)} className="text-primary hover:text-primary hover:bg-primary/10 rounded-lg font-bold px-3">
+                            <Share2 className="w-4 h-4 mr-2" />
+                            Share link
+                          </Button>
+                          
+                          <div className="flex items-center gap-3">
+                            <Switch checked={event.isActive} onCheckedChange={(checked) => toggleStatusMutation.mutate({ id: event.id, isActive: checked })} />
+                          </div>
+                        </CardFooter>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'single_use' && (
+            <div className="flex flex-col items-center justify-center py-20 px-6 text-center border-2 border-dashed border-border/50 rounded-3xl bg-muted/10">
+              <div className="w-16 h-16 bg-brand-blue/10 rounded-2xl flex items-center justify-center mb-6">
+                <Link2 className="w-8 h-8 text-brand-blue" />
+              </div>
+              <h3 className="text-2xl font-bold mb-2">Share a single-use link</h3>
+              <p className="text-muted-foreground font-medium max-w-md mb-8">
+                Generate a unique link that expires after it's booked once. Perfect for offering times outside your normal schedule.
+              </p>
+              <Button onClick={() => router.push('/dashboard/events/new')} className="rounded-full px-8 h-12 font-bold shadow-md">
+                Generate New Link
+              </Button>
+            </div>
+          )}
+
+          {activeTab === 'polls' && (
+            <div className="flex flex-col items-center justify-center py-20 px-6 text-center border-2 border-dashed border-border/50 rounded-3xl bg-muted/10">
+              <div className="w-16 h-16 bg-brand-purple/10 rounded-2xl flex items-center justify-center mb-6">
+                <BarChart className="w-8 h-8 text-brand-purple" />
+              </div>
+              <h3 className="text-2xl font-bold mb-2">Find the best time for everyone</h3>
+              <p className="text-muted-foreground font-medium max-w-md mb-8">
+                Gather everyone's availability to pick the best time for the group. Track votes as they come in, and book the most popular time.
+              </p>
+              <Button onClick={() => router.push('/dashboard/events/new-poll')} className="rounded-full px-8 h-12 font-bold shadow-md bg-brand-purple hover:bg-brand-purple/90 text-white">
+                Create Meeting Poll
+              </Button>
+              
+              {polls?.length > 0 && (
+                <div className="w-full max-w-2xl mt-12 text-left">
+                  <h4 className="font-bold mb-4">Active Polls</h4>
+                  <div className="space-y-3">
+                    {polls.map((poll: any) => (
+                      <div key={poll.id} className="bg-background border border-border/50 p-4 rounded-xl flex items-center justify-between shadow-sm">
+                        <div>
+                          <p className="font-bold">{poll.title}</p>
+                          <p className="text-xs text-muted-foreground mt-1">{poll.votes} votes • {poll.status}</p>
+                        </div>
+                        <Button variant="outline" size="sm" className="rounded-full font-bold">
+                          View Results
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }

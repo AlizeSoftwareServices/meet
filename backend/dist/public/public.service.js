@@ -14,10 +14,13 @@ const common_1 = require("@nestjs/common");
 const prisma_service_1 = require("../prisma/prisma.service");
 const date_fns_1 = require("date-fns");
 const date_fns_tz_1 = require("date-fns-tz");
+const calendar_service_1 = require("../integrations/calendar.service");
 let PublicService = class PublicService {
     prisma;
-    constructor(prisma) {
+    calendarService;
+    constructor(prisma, calendarService) {
         this.prisma = prisma;
+        this.calendarService = calendarService;
     }
     async getUserProfile(username) {
         const profile = await this.prisma.profile.findUnique({
@@ -116,25 +119,53 @@ let PublicService = class PublicService {
                 endTime: { lte: dayEnd }
             }
         });
+        const externalBusyPeriods = await this.calendarService.getBusyPeriods(profile.userId, dayStart.toISOString(), dayEnd.toISOString());
         const now = new Date();
-        const availableSlots = potentialSlots.filter(slot => {
+        const validSlots = [];
+        for (const slot of potentialSlots) {
             if ((0, date_fns_1.isBefore)(slot.startTime, now))
-                return false;
+                continue;
             const slotStartWithBuffer = (0, date_fns_1.addMinutes)(slot.startTime, -bufferBefore);
             const slotEndWithBuffer = (0, date_fns_1.addMinutes)(slot.endTime, bufferAfter);
+            let overlappingSameEventCount = 0;
+            let otherEventOverlap = false;
             for (const booking of existingBookings) {
                 const bookingStart = booking.startTime;
                 const bookingEnd = booking.endTime;
                 if ((0, date_fns_1.isBefore)(slotStartWithBuffer, bookingEnd) && (0, date_fns_1.isAfter)(slotEndWithBuffer, bookingStart)) {
-                    return false;
+                    if (booking.eventTypeId === eventType.id && eventType.isGroupEvent) {
+                        if (bookingStart.getTime() === slot.startTime.getTime() && bookingEnd.getTime() === slot.endTime.getTime()) {
+                            overlappingSameEventCount++;
+                        }
+                        else {
+                            otherEventOverlap = true;
+                        }
+                    }
+                    else {
+                        otherEventOverlap = true;
+                    }
                 }
             }
-            return true;
-        });
-        return availableSlots.map(s => ({
-            startTime: s.startTime.toISOString(),
-            endTime: s.endTime.toISOString(),
-        }));
+            if (otherEventOverlap)
+                continue;
+            if (eventType.isGroupEvent && overlappingSameEventCount >= eventType.maxInvitees)
+                continue;
+            let externalConflict = false;
+            for (const busy of externalBusyPeriods) {
+                if ((0, date_fns_1.isBefore)(slotStartWithBuffer, busy.end) && (0, date_fns_1.isAfter)(slotEndWithBuffer, busy.start)) {
+                    externalConflict = true;
+                    break;
+                }
+            }
+            if (externalConflict)
+                continue;
+            validSlots.push({
+                startTime: slot.startTime.toISOString(),
+                endTime: slot.endTime.toISOString(),
+                spotsRemaining: eventType.isGroupEvent ? (eventType.maxInvitees - overlappingSameEventCount) : 1
+            });
+        }
+        return validSlots;
     }
     createZonedDate(dateStr, timeStr, timeZone) {
         const [year, month, day] = dateStr.split('-').map(Number);
@@ -146,6 +177,7 @@ let PublicService = class PublicService {
 exports.PublicService = PublicService;
 exports.PublicService = PublicService = __decorate([
     (0, common_1.Injectable)(),
-    __metadata("design:paramtypes", [prisma_service_1.PrismaService])
+    __metadata("design:paramtypes", [prisma_service_1.PrismaService,
+        calendar_service_1.CalendarService])
 ], PublicService);
 //# sourceMappingURL=public.service.js.map

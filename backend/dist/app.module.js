@@ -21,6 +21,7 @@ const analytics_module_1 = require("./analytics/analytics.module");
 const contacts_module_1 = require("./contacts/contacts.module");
 const schedule_1 = require("@nestjs/schedule");
 const public_module_1 = require("./public/public.module");
+const mail_module_1 = require("./mail/mail.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -37,7 +38,8 @@ exports.AppModule = AppModule = __decorate([
             integrations_module_1.IntegrationsModule,
             analytics_module_1.AnalyticsModule,
             contacts_module_1.ContactsModule,
-            public_module_1.PublicModule
+            public_module_1.PublicModule,
+            mail_module_1.MailModule
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

@@ -11,12 +11,13 @@ const common_1 = require("@nestjs/common");
 const public_controller_1 = require("./public.controller");
 const public_service_1 = require("./public.service");
 const bookings_module_1 = require("../bookings/bookings.module");
+const integrations_module_1 = require("../integrations/integrations.module");
 let PublicModule = class PublicModule {
 };
 exports.PublicModule = PublicModule;
 exports.PublicModule = PublicModule = __decorate([
     (0, common_1.Module)({
-        imports: [bookings_module_1.BookingsModule],
+        imports: [bookings_module_1.BookingsModule, integrations_module_1.IntegrationsModule],
         controllers: [public_controller_1.PublicController],
         providers: [public_service_1.PublicService],
     })

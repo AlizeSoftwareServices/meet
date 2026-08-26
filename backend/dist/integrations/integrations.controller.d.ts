@@ -19,5 +19,16 @@ export declare class IntegrationsController {
     getIntegrations(req: any): Promise<{
         createdAt: Date;
         provider: string;
+        checkConflicts: boolean;
     }[]>;
+    toggleConflicts(req: any, provider: string, checkConflicts: boolean): Promise<{
+        refreshToken: string | null;
+        id: string;
+        createdAt: Date;
+        updatedAt: Date;
+        userId: string;
+        provider: string;
+        accessToken: string;
+        checkConflicts: boolean;
+    }>;
 }
