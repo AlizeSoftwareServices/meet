@@ -19,12 +19,12 @@ import { Switch } from '@/components/ui/switch';
 const eventTypeSchema = z.object({
   title: z.string().min(2, 'Title is required'),
   description: z.string().optional(),
-  duration: z.coerce.number().min(1, 'Duration must be at least 1 minute'),
+  duration: z.number().min(1, 'Duration must be at least 1 minute'),
   location: z.string().optional(),
   slug: z.string().min(2, 'URL slug is required'),
   color: z.string().optional(),
   isGroupEvent: z.boolean().optional(),
-  maxInvitees: z.coerce.number().min(1).optional(),
+  maxInvitees: z.number().min(1).optional(),
   enableReminder24h: z.boolean().optional(),
 });
 
@@ -182,7 +182,7 @@ export default function EditEventTypePage({ params }: { params: { id: string } }
                       type="number"
                       min="1"
                       className="h-[50px] rounded-xl bg-background shadow-sm"
-                      {...form.register('duration')}
+                      {...form.register('duration', { valueAsNumber: true })}
                     />
                     {form.formState.errors.duration && (
                       <p className="text-sm text-destructive">{form.formState.errors.duration.message}</p>
@@ -236,7 +236,7 @@ export default function EditEventTypePage({ params }: { params: { id: string } }
                         type="number"
                         min="1"
                         className="h-[44px] mt-2 max-w-[200px] rounded-xl bg-background shadow-sm"
-                        {...form.register('maxInvitees')}
+                        {...form.register('maxInvitees', { valueAsNumber: true })}
                       />
                       <p className="text-xs text-muted-foreground mt-1.5">When this limit is reached, the time slot will automatically close.</p>
                     </motion.div>
