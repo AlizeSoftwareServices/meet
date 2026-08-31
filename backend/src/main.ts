@@ -16,16 +16,8 @@ async function bootstrap() {
     prefix: '/public/',
   });
 
-  const corsOrigins = process.env.CORS_ORIGINS 
-    ? process.env.CORS_ORIGINS.split(',').map(o => o.trim())
-    : ['http://localhost:3000', 'capacitor://localhost', 'https://localhost', 'http://localhost'];
-    
-  if (!corsOrigins.includes('capacitor://localhost')) {
-     corsOrigins.push('capacitor://localhost', 'https://localhost', 'http://localhost');
-  }
-
   app.enableCors({
-    origin: corsOrigins,
+    origin: true,
     credentials: true,
   });
 
