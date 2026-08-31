@@ -32,7 +32,8 @@ export default function IntegrationsPage() {
 
   const handleConnectGoogle = async () => {
     try {
-      const { data } = await api.get('/integrations/google/auth');
+      const redirectUri = typeof window !== 'undefined' ? window.location.origin : '';
+      const { data } = await api.get(`/integrations/google/auth?redirect_uri=${encodeURIComponent(redirectUri)}`);
       window.location.href = data.url;
     } catch (err) {
       console.error('Failed to get auth URL', err);
@@ -223,7 +224,8 @@ export default function IntegrationsPage() {
                   </div>
                   <button
                     onClick={async () => {
-                      const { data } = await api.get('/integrations/microsoft/auth');
+                      const redirectUri = typeof window !== 'undefined' ? window.location.origin : '';
+                      const { data } = await api.get(`/integrations/microsoft/auth?redirect_uri=${encodeURIComponent(redirectUri)}`);
                       window.location.href = data.url;
                     }}
                     className="text-xs font-semibold text-primary hover:underline"
@@ -252,7 +254,8 @@ export default function IntegrationsPage() {
               ) : (
                 <button
                   onClick={async () => {
-                    const { data } = await api.get('/integrations/microsoft/auth');
+                    const redirectUri = typeof window !== 'undefined' ? window.location.origin : '';
+                    const { data } = await api.get(`/integrations/microsoft/auth?redirect_uri=${encodeURIComponent(redirectUri)}`);
                     window.location.href = data.url;
                   }}
                   className="px-6 py-2.5 bg-primary text-primary-foreground font-medium rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95"
@@ -322,7 +325,8 @@ export default function IntegrationsPage() {
               ) : (
                 <button
                   onClick={async () => {
-                    const { data } = await api.get('/integrations/slack/auth');
+                    const redirectUri = typeof window !== 'undefined' ? window.location.origin : '';
+                    const { data } = await api.get(`/integrations/slack/auth?redirect_uri=${encodeURIComponent(redirectUri)}`);
                     window.location.href = data.url;
                   }}
                   className="px-6 py-2.5 bg-primary text-primary-foreground font-medium rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95"
