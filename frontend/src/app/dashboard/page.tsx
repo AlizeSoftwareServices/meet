@@ -132,19 +132,25 @@ export default function DashboardPage() {
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <div className="flex items-center gap-2">
-              <Input 
-                type="date" 
-                value={startDate} 
-                onChange={(e) => setStartDate(e.target.value)} 
-                className="w-36 h-10"
-              />
-              <span className="text-muted-foreground">to</span>
-              <Input 
-                type="date" 
-                value={endDate} 
-                onChange={(e) => setEndDate(e.target.value)} 
-                className="w-36 h-10"
-              />
+              <div className="flex flex-col">
+                <span className="text-xs text-muted-foreground ml-1 mb-1">Start Date</span>
+                <Input 
+                  type="date" 
+                  value={startDate} 
+                  onChange={(e) => setStartDate(e.target.value)} 
+                  className="w-36 h-10"
+                />
+              </div>
+              <span className="text-muted-foreground mt-5">to</span>
+              <div className="flex flex-col">
+                <span className="text-xs text-muted-foreground ml-1 mb-1">End Date</span>
+                <Input 
+                  type="date" 
+                  value={endDate} 
+                  onChange={(e) => setEndDate(e.target.value)} 
+                  className="w-36 h-10"
+                />
+              </div>
             </div>
             <Button variant="outline" className="gap-2 h-10" onClick={async () => {
               const res = await api.get(`/analytics/export${queryString}`, { responseType: 'blob' });
