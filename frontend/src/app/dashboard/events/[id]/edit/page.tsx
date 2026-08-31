@@ -11,10 +11,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Check, Save, Users, Bell } from 'lucide-react';
+import { ArrowLeft, Check, Save, Users, UsersRound, Bell, Shuffle, GitMerge } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Switch } from '@/components/ui/switch';
+import { CustomQuestionsEditor } from '@/components/dashboard/CustomQuestionsEditor';
 
 const eventTypeSchema = z.object({
   title: z.string().min(2, 'Title is required'),
@@ -26,6 +27,18 @@ const eventTypeSchema = z.object({
   isGroupEvent: z.boolean().optional(),
   maxInvitees: z.number().min(1).optional(),
   enableReminder24h: z.boolean().optional(),
+  availabilityId: z.string().nullable().optional(),
+  confirmationMessage: z.string().optional(),
+  redirectUrl: z.string().url('Must be a valid URL').or(z.literal('')).optional(),
+  customQuestions: z.array(z.object({
+    id: z.string().optional(),
+    type: z.enum(['TEXT', 'LONG_TEXT', 'PHONE', 'NUMBER', 'DROPDOWN', 'MULTIPLE_CHOICE', 'CHECKBOX']),
+    label: z.string().min(1, 'Label is required'),
+    placeholder: z.string().optional(),
+    required: z.boolean().optional(),
+    options: z.array(z.string()).optional(),
+    order: z.number()
+  })).optional(),
 });
 
 type EventTypeFormValues = z.infer<typeof eventTypeSchema>;
@@ -39,10 +52,13 @@ const PRESET_COLORS = [
   '#ec4899', // pink
 ];
 
-export default function EditEventTypePage({ params }: { params: { id: string } }) {
+export default function EditEventTypePage({ params }: any) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const [schedulingType, setSchedulingType] = useState<'PERSONAL' | 'ROUND_ROBIN' | 'COLLECTIVE'>('PERSONAL');
+  const [selectedTeamId, setSelectedTeamId] = useState<string>('');
+  const [selectedHostIds, setSelectedHostIds] = useState<string[]>([]);
 
   const { data: event, isLoading } = useQuery({
     queryKey: ['event-type', params.id],
@@ -51,6 +67,25 @@ export default function EditEventTypePage({ params }: { params: { id: string } }
       return res.data;
     }
   });
+
+  const { data: schedules } = useQuery({
+    queryKey: ['schedules'],
+    queryFn: async () => {
+      const res = await api.get('/availability/schedules');
+      return res.data;
+    },
+  });
+
+  const { data: teams } = useQuery({
+    queryKey: ['teams'],
+    queryFn: async () => {
+      const res = await api.get('/teams');
+      return res.data;
+    },
+  });
+
+  const selectedTeam = teams?.find((t: any) => t.id === selectedTeamId);
+  const teamMembers: any[] = selectedTeam?.members || [];
 
   const form = useForm<EventTypeFormValues>({
     resolver: zodResolver(eventTypeSchema),
@@ -64,6 +99,10 @@ export default function EditEventTypePage({ params }: { params: { id: string } }
       isGroupEvent: false,
       maxInvitees: 1,
       enableReminder24h: false,
+      availabilityId: '',
+      confirmationMessage: '',
+      redirectUrl: '',
+      customQuestions: [],
     },
   });
 
@@ -83,13 +122,33 @@ export default function EditEventTypePage({ params }: { params: { id: string } }
         isGroupEvent: Boolean(event.isGroupEvent),
         maxInvitees: event.maxInvitees || 1,
         enableReminder24h: Boolean(has24hReminder),
+        availabilityId: event.availabilityId || '',
+        confirmationMessage: event.confirmationMessage || '',
+        redirectUrl: event.redirectUrl || '',
+        customQuestions: event.customQuestions || [],
       });
+
+      if (event.schedulingType) {
+        setSchedulingType(event.schedulingType);
+      }
+      if (event.teamId) {
+        setSelectedTeamId(event.teamId);
+      }
+      if (event.hosts && Array.isArray(event.hosts)) {
+        setSelectedHostIds(event.hosts.map((h: any) => h.userId));
+      }
     }
   }, [event, form]);
 
   const updateMutation = useMutation({
-    mutationFn: async (data: EventTypeFormValues) => {
-      const response = await api.patch(`/event-types/${params.id}`, data);
+    mutationFn: async (data: any) => {
+      const payload = {
+        ...data,
+        schedulingType,
+        teamId: schedulingType !== 'PERSONAL' ? selectedTeamId : undefined,
+        hostIds: schedulingType !== 'PERSONAL' ? selectedHostIds : [],
+      };
+      const response = await api.put(`/event-types/${params.id}`, payload);
       return response.data;
     },
     onSuccess: () => {
@@ -104,15 +163,27 @@ export default function EditEventTypePage({ params }: { params: { id: string } }
 
   const onSubmit = (data: EventTypeFormValues) => {
     setError(null);
+    if (schedulingType !== 'PERSONAL') {
+      if (!selectedTeamId) {
+        setError('Please select a team for this team event');
+        return;
+      }
+      if (selectedHostIds.length === 0) {
+        setError('Please select at least one host for this team event');
+        return;
+      }
+    }
     updateMutation.mutate(data);
   };
 
-  if (isLoading) {
-    return (
-      <div className="max-w-3xl mx-auto p-10 flex justify-center">
-        <div className="animate-pulse w-10 h-10 rounded-full bg-primary/20" />
-      </div>
+  const toggleHost = (userId: string) => {
+    setSelectedHostIds(prev => 
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
     );
+  };
+
+  if (isLoading) {
+    return <div className="flex justify-center items-center h-[50vh]">Loading...</div>;
   }
 
   return (
@@ -131,7 +202,7 @@ export default function EditEventTypePage({ params }: { params: { id: string } }
           <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/60">
             Edit Event Type
           </h1>
-          <p className="text-muted-foreground mt-1">Update the settings for this Meet type.</p>
+          <p className="text-muted-foreground mt-1">Update settings for this meeting type.</p>
         </div>
       </motion.div>
 
@@ -191,6 +262,26 @@ export default function EditEventTypePage({ params }: { params: { id: string } }
                 </div>
 
                 <div className="space-y-3">
+                  <Label htmlFor="availabilityId" className="text-base font-semibold flex items-center gap-2">
+                    Availability Schedule
+                    <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Required</span>
+                  </Label>
+                  <p className="text-sm text-muted-foreground">Select which working hours apply to this event.</p>
+                  <select
+                    id="availabilityId"
+                    className="w-full h-12 rounded-xl bg-background border border-border px-3 text-foreground focus:ring-2 focus:ring-primary/20 outline-none"
+                    {...form.register('availabilityId')}
+                  >
+                    <option value="">Using Default Schedule</option>
+                    {schedules?.map((sch: any) => (
+                      <option key={sch.id} value={sch.id}>
+                        {sch.name} {sch.isDefault ? '(Default)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-3">
                   <Label htmlFor="location" className="text-base font-semibold">Location</Label>
                   <Input
                     id="location"
@@ -208,6 +299,29 @@ export default function EditEventTypePage({ params }: { params: { id: string } }
                     placeholder="Describe the purpose of this Meet..."
                     {...form.register('description')}
                   />
+                </div>
+
+                <div className="space-y-3">
+                  <Label htmlFor="confirmationMessage" className="text-base font-semibold">Custom Confirmation Message (Optional)</Label>
+                  <textarea
+                    id="confirmationMessage"
+                    className="flex min-h-[80px] w-full rounded-xl border border-border bg-background px-4 py-3 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 resize-none"
+                    placeholder="Thanks for booking! Please join from the Google Meet link..."
+                    {...form.register('confirmationMessage')}
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <Label htmlFor="redirectUrl" className="text-base font-semibold">Redirect After Booking (Optional)</Label>
+                  <Input
+                    id="redirectUrl"
+                    className="h-[50px] rounded-xl bg-background shadow-sm"
+                    placeholder="https://yourwebsite.com/thank-you"
+                    {...form.register('redirectUrl')}
+                  />
+                  {form.formState.errors.redirectUrl && (
+                    <p className="text-sm text-destructive">{form.formState.errors.redirectUrl.message}</p>
+                  )}
                 </div>
 
                 {/* Group Event Settings */}
@@ -243,6 +357,89 @@ export default function EditEventTypePage({ params }: { params: { id: string } }
                   )}
                 </div>
 
+                {/* Team Scheduling Type */}
+                <div className="space-y-4 border border-border/50 rounded-2xl p-5 bg-card/60">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center text-violet-500">
+                      <UsersRound className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <Label className="text-base font-semibold">Scheduling Type</Label>
+                      <p className="text-sm text-muted-foreground mt-0.5">Control how meetings are distributed across hosts.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {[
+                      { value: 'PERSONAL', label: 'Personal', description: 'Only you', icon: <Users className="w-4 h-4" /> },
+                      { value: 'ROUND_ROBIN', label: 'Round Robin', description: 'Rotate hosts', icon: <Shuffle className="w-4 h-4" /> },
+                      { value: 'COLLECTIVE', label: 'Collective', description: 'All hosts required', icon: <GitMerge className="w-4 h-4" /> },
+                    ].map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setSchedulingType(opt.value as any)}
+                        className={`flex flex-col items-start p-4 rounded-xl border-2 text-left transition-all ${schedulingType === opt.value ? 'border-primary bg-primary/5' : 'border-border hover:border-border/80'}`}
+                      >
+                        <div className={`mb-2 ${schedulingType === opt.value ? 'text-primary' : 'text-muted-foreground'}`}>
+                          {opt.icon}
+                        </div>
+                        <span className="font-semibold text-sm">{opt.label}</span>
+                        <span className="text-xs text-muted-foreground mt-0.5">{opt.description}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {schedulingType !== 'PERSONAL' && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="pt-4 border-t border-border/50 space-y-4">
+                      <div>
+                        <Label className="text-sm font-semibold">Select Team</Label>
+                        <select
+                          className="mt-1.5 w-full h-10 rounded-xl bg-background border border-border px-3 text-foreground text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                          value={selectedTeamId}
+                          onChange={e => { setSelectedTeamId(e.target.value); setSelectedHostIds([]); }}
+                        >
+                          <option value="">-- Select a team --</option>
+                          {teams?.map((t: any) => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {selectedTeamId && teamMembers.length > 0 && (
+                        <div>
+                          <Label className="text-sm font-semibold">Select Hosts</Label>
+                          <p className="text-xs text-muted-foreground mb-2">Choose which team members can host this event.</p>
+                          <div className="space-y-2">
+                            {teamMembers.map((member: any) => (
+                              <label
+                                key={member.userId}
+                                className="flex items-center gap-3 p-3 rounded-xl border border-border bg-background hover:bg-muted/50 cursor-pointer transition-colors"
+                              >
+                                <input
+                                  type="checkbox"
+                                  className="w-4 h-4 rounded text-primary focus:ring-primary/20"
+                                  checked={selectedHostIds.includes(member.userId)}
+                                  onChange={() => toggleHost(member.userId)}
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-foreground truncate">
+                                    {member.user?.profile?.name || member.user?.email}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground truncate">{member.user?.email}</p>
+                                </div>
+                                <span className="text-xs px-2 py-0.5 rounded-md bg-muted text-muted-foreground font-mono">
+                                  {member.role}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </div>
+
                 {/* Automated Workflow Reminders */}
                 <div className="space-y-4 border border-border/50 rounded-2xl p-5 bg-card/60">
                   <div className="flex items-center justify-between">
@@ -260,6 +457,11 @@ export default function EditEventTypePage({ params }: { params: { id: string } }
                       onCheckedChange={(val) => form.setValue('enableReminder24h', val)}
                     />
                   </div>
+                </div>
+
+                <div className="pt-4 border-t border-border/50">
+                  <h3 className="text-sm font-semibold text-foreground mb-4">Custom Questions</h3>
+                  <CustomQuestionsEditor control={form.control as any} />
                 </div>
 
                 <div className="space-y-4">

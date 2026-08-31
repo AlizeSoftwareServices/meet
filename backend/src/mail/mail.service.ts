@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { createEvent, EventAttributes } from 'ics';
 
@@ -35,7 +35,7 @@ export class MailService {
       });
       this.logger.log(`SMTP Mail Transporter initialized with host: ${host}`);
     } else {
-      this.logger.warn('SMTP credentials not provided in .env. Emails will be logged to console.');
+      this.logger.warn('SMTP credentials not provided in .env. Email sending will fail.');
     }
   }
 
@@ -125,7 +125,7 @@ export class MailService {
         });
         this.logger.log(`Booking confirmation email sent to ${data.guestEmail} and ${data.hostEmail}`);
       } else {
-        this.logger.log(`[Email Mock Sent] To: ${data.guestEmail}, Event: ${data.eventTitle}`);
+        throw new InternalServerErrorException('SMTP credentials are not configured. Cannot send email.');
       }
     } catch (err) {
       this.logger.error('Failed to send booking confirmation email', err);
@@ -158,7 +158,7 @@ export class MailService {
           html: htmlContent,
         });
       } else {
-        this.logger.log(`[Email Mock Cancelled] To: ${data.guestEmail}`);
+        throw new InternalServerErrorException('SMTP credentials are not configured. Cannot send email.');
       }
     } catch (err) {
       this.logger.error('Failed to send cancellation email', err);

@@ -1,20 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Check, Sparkles, Bell, Users } from 'lucide-react';
+import { ArrowLeft, Check, Sparkles, Bell, Users, UsersRound, Shuffle, GitMerge } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Switch } from '@/components/ui/switch';
+import { CustomQuestionsEditor } from '@/components/dashboard/CustomQuestionsEditor';
 
 const eventTypeSchema = z.object({
   title: z.string().min(2, 'Title is required'),
@@ -26,6 +27,18 @@ const eventTypeSchema = z.object({
   isGroupEvent: z.boolean().optional(),
   maxInvitees: z.number().min(1).optional(),
   enableReminder24h: z.boolean().optional(),
+  availabilityId: z.string().optional(),
+  confirmationMessage: z.string().optional(),
+  redirectUrl: z.string().url('Must be a valid URL').or(z.literal('')).optional(),
+  customQuestions: z.array(z.object({
+    id: z.string().optional(),
+    type: z.enum(['TEXT', 'LONG_TEXT', 'PHONE', 'NUMBER', 'DROPDOWN', 'MULTIPLE_CHOICE', 'CHECKBOX']),
+    label: z.string().min(1, 'Label is required'),
+    placeholder: z.string().optional(),
+    required: z.boolean().optional(),
+    options: z.array(z.string()).optional(),
+    order: z.number()
+  })).optional(),
 });
 
 type EventTypeFormValues = z.infer<typeof eventTypeSchema>;
@@ -41,8 +54,12 @@ const PRESET_COLORS = [
 
 export default function NewEventTypePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
+  const [schedulingType, setSchedulingType] = useState<'PERSONAL' | 'ROUND_ROBIN' | 'COLLECTIVE'>('PERSONAL');
+  const [selectedTeamId, setSelectedTeamId] = useState<string>('');
+  const [selectedHostIds, setSelectedHostIds] = useState<string[]>([]);
 
   const form = useForm<EventTypeFormValues>({
     resolver: zodResolver(eventTypeSchema),
@@ -56,8 +73,43 @@ export default function NewEventTypePage() {
       isGroupEvent: false,
       maxInvitees: 1,
       enableReminder24h: true,
+      availabilityId: '',
+      confirmationMessage: '',
+      redirectUrl: '',
+      customQuestions: [],
     },
   });
+
+  useEffect(() => {
+    const typeParam = searchParams.get('type');
+    if (typeParam === 'round-robin') {
+      setSchedulingType('ROUND_ROBIN');
+    } else if (typeParam === 'collective') {
+      setSchedulingType('COLLECTIVE');
+    } else if (typeParam === 'group') {
+      form.setValue('isGroupEvent', true);
+      form.setValue('maxInvitees', 5);
+    }
+  }, [searchParams, form]);
+
+  const { data: schedules } = useQuery({
+    queryKey: ['schedules'],
+    queryFn: async () => {
+      const res = await api.get('/availability/schedules');
+      return res.data;
+    },
+  });
+
+  const { data: teams } = useQuery({
+    queryKey: ['teams'],
+    queryFn: async () => {
+      const res = await api.get('/teams');
+      return res.data;
+    },
+  });
+
+  const selectedTeam = teams?.find((t: any) => t.id === selectedTeamId);
+  const teamMembers: any[] = selectedTeam?.members || [];
 
   const createMutation = useMutation({
     mutationFn: async (data: EventTypeFormValues) => {
@@ -75,7 +127,13 @@ export default function NewEventTypePage() {
 
   const onSubmit = (data: EventTypeFormValues) => {
     setError(null);
-    createMutation.mutate(data);
+    const payload: any = { ...data };
+    if (schedulingType !== 'PERSONAL') {
+      payload.schedulingType = schedulingType;
+      payload.teamId = selectedTeamId || undefined;
+      payload.hostIds = selectedHostIds;
+    }
+    createMutation.mutate(payload);
   };
 
   return (
@@ -154,6 +212,26 @@ export default function NewEventTypePage() {
                 </div>
 
                 <div className="space-y-3">
+                  <Label htmlFor="availabilityId" className="text-base font-semibold flex items-center gap-2">
+                    Availability Schedule
+                    <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">Required</span>
+                  </Label>
+                  <p className="text-sm text-muted-foreground">Select which working hours apply to this event.</p>
+                  <select
+                    id="availabilityId"
+                    className="w-full h-12 rounded-xl bg-background border border-border px-3 text-foreground focus:ring-2 focus:ring-primary/20 outline-none"
+                    {...form.register('availabilityId')}
+                  >
+                    <option value="">Using Default Schedule</option>
+                    {schedules?.map((sch: any) => (
+                      <option key={sch.id} value={sch.id}>
+                        {sch.name} {sch.isDefault ? '(Default)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-3">
                   <Label htmlFor="location" className="text-base font-semibold">Location</Label>
                   <Input
                     id="location"
@@ -171,6 +249,29 @@ export default function NewEventTypePage() {
                     placeholder="Describe the purpose of this Meet..."
                     {...form.register('description')}
                   />
+                </div>
+
+                <div className="space-y-3">
+                  <Label htmlFor="confirmationMessage" className="text-base font-semibold">Custom Confirmation Message (Optional)</Label>
+                  <textarea
+                    id="confirmationMessage"
+                    className="flex min-h-[80px] w-full rounded-xl border border-border bg-background px-4 py-3 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 resize-none"
+                    placeholder="Thanks for booking! Please join from the Google Meet link..."
+                    {...form.register('confirmationMessage')}
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <Label htmlFor="redirectUrl" className="text-base font-semibold">Redirect After Booking (Optional)</Label>
+                  <Input
+                    id="redirectUrl"
+                    className="h-[50px] rounded-xl bg-background shadow-sm"
+                    placeholder="https://yourwebsite.com/thank-you"
+                    {...form.register('redirectUrl')}
+                  />
+                  {form.formState.errors.redirectUrl && (
+                    <p className="text-sm text-destructive">{form.formState.errors.redirectUrl.message}</p>
+                  )}
                 </div>
 
                 {/* Group Event Settings */}
@@ -206,6 +307,90 @@ export default function NewEventTypePage() {
                   )}
                 </div>
 
+                {/* Team Scheduling Type */}
+                <div className="space-y-4 border border-border/50 rounded-2xl p-5 bg-card/60">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center text-violet-500">
+                      <UsersRound className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <Label className="text-base font-semibold">Scheduling Type</Label>
+                      <p className="text-sm text-muted-foreground mt-0.5">Control how meetings are distributed across hosts.</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {[
+                      { value: 'PERSONAL', label: 'Personal', description: 'Only you', icon: <Users className="w-4 h-4" /> },
+                      { value: 'ROUND_ROBIN', label: 'Round Robin', description: 'Rotate hosts', icon: <Shuffle className="w-4 h-4" /> },
+                      { value: 'COLLECTIVE', label: 'Collective', description: 'All hosts required', icon: <GitMerge className="w-4 h-4" /> },
+                    ].map(opt => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setSchedulingType(opt.value as any)}
+                        className={`flex flex-col items-start p-4 rounded-xl border-2 text-left transition-all ${schedulingType === opt.value ? 'border-primary bg-primary/5' : 'border-border hover:border-border/80'}`}
+                      >
+                        <div className={`mb-2 ${schedulingType === opt.value ? 'text-primary' : 'text-muted-foreground'}`}>
+                          {opt.icon}
+                        </div>
+                        <span className="font-semibold text-sm">{opt.label}</span>
+                        <span className="text-xs text-muted-foreground mt-0.5">{opt.description}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {schedulingType !== 'PERSONAL' && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="pt-4 border-t border-border/50 space-y-4">
+                      <div>
+                        <Label className="text-sm font-semibold">Select Team</Label>
+                        <select
+                          className="mt-1.5 w-full h-10 rounded-xl bg-background border border-border px-3 text-foreground text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                          value={selectedTeamId}
+                          onChange={e => { setSelectedTeamId(e.target.value); setSelectedHostIds([]); }}
+                        >
+                          <option value="">-- Select a team --</option>
+                          {teams?.map((t: any) => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {selectedTeamId && teamMembers.length > 0 && (
+                        <div>
+                          <Label className="text-sm font-semibold">Select Hosts</Label>
+                          <p className="text-xs text-muted-foreground mb-2">Choose which team members can host this event.</p>
+                          <div className="space-y-2">
+                            {teamMembers.map((m: any) => (
+                              <label key={m.id} className="flex items-center gap-3 p-3 rounded-lg border border-border/50 hover:bg-secondary/50 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedHostIds.includes(m.userId)}
+                                  onChange={e => {
+                                    if (e.target.checked) {
+                                      setSelectedHostIds(prev => [...prev, m.userId]);
+                                    } else {
+                                      setSelectedHostIds(prev => prev.filter(id => id !== m.userId));
+                                    }
+                                  }}
+                                  className="w-4 h-4 rounded accent-primary"
+                                />
+                                <div className="w-7 h-7 rounded-full bg-secondary flex items-center justify-center text-xs font-semibold shrink-0">
+                                  {(m.user?.profile?.name || m.user?.email || '?').charAt(0).toUpperCase()}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium truncate">{m.user?.profile?.name || m.user?.email}</p>
+                                  {m.user?.profile?.name && <p className="text-xs text-muted-foreground truncate">{m.user?.email}</p>}
+                                </div>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </div>
+
                 {/* Automated Workflow Reminders */}
                 <div className="space-y-4 border border-border/50 rounded-2xl p-5 bg-card/60">
                   <div className="flex items-center justify-between">
@@ -223,6 +408,11 @@ export default function NewEventTypePage() {
                       onCheckedChange={(val) => form.setValue('enableReminder24h', val)}
                     />
                   </div>
+                </div>
+
+                <div className="pt-4 border-t border-border/50">
+                  <h3 className="text-sm font-semibold text-foreground mb-4">Custom Questions</h3>
+                  <CustomQuestionsEditor control={form.control as any} />
                 </div>
 
                 <div className="space-y-4">

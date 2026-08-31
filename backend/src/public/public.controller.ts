@@ -1,9 +1,11 @@
-import { Controller, Get, Post, Body, Param, Query, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, BadRequestException, UseGuards } from '@nestjs/common';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { PublicService } from './public.service';
 import { BookingsService } from '../bookings/bookings.service';
 import { CreateBookingDto } from '../bookings/dto/create-booking.dto';
 
 @Controller('public')
+@UseGuards(ThrottlerGuard)
 export class PublicController {
   constructor(
     private readonly publicService: PublicService,

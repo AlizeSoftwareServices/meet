@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, Link as LinkIcon, Plus, Trash2, Edit2, User, Users, ArrowRightLeft, CalendarDays, Link2, BarChart, Settings, Share2 } from 'lucide-react';
+import { Calendar, Clock, Link as LinkIcon, Plus, Trash2, Edit2, User, Users, ArrowRightLeft, CalendarDays, Link2, BarChart, Settings, Share2, Copy } from 'lucide-react';
 import { shareMeetingLink } from '@/lib/nativeShare';
 import { triggerHaptic } from '@/lib/haptics';
 import { motion, Variants, AnimatePresence } from 'framer-motion';
@@ -50,6 +50,28 @@ export default function EventTypesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['event-types'] });
+    }
+  });
+
+  const duplicateMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.post(`/event-types/${id}/duplicate`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['event-types'] });
+    }
+  });
+
+  const generateLinkMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await api.post(`/event-types/${id}/single-use-link`);
+      return { id, data: res.data };
+    },
+    onSuccess: (result) => {
+      const event = events?.find((e: any) => e.id === result.id);
+      const url = `${window.location.origin}/book/me/${event?.slug}?singleUseToken=${result.data.token}`;
+      navigator.clipboard.writeText(url);
+      alert('Single-use link copied to clipboard!');
     }
   });
 
@@ -146,7 +168,7 @@ export default function EventTypesPage() {
                   </div>
                 </div>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push('/dashboard/events/new-poll')} className="p-3 rounded-xl cursor-pointer hover:bg-muted focus:bg-muted transition-colors group">
+              <DropdownMenuItem onClick={() => router.push('/dashboard/polls/new')} className="p-3 rounded-xl cursor-pointer hover:bg-muted focus:bg-muted transition-colors group">
                 <div className="flex gap-3">
                   <div className="mt-0.5"><BarChart className="w-5 h-5 text-zinc-500" /></div>
                   <div>
@@ -219,8 +241,20 @@ export default function EventTypesPage() {
                               >
                                 <Edit2 className="w-4 h-4 mr-2 text-muted-foreground" /> Edit
                               </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                className="cursor-pointer font-medium" 
+                                onClick={() => generateLinkMutation.mutate(event.id)}
+                              >
+                                <Link2 className="w-4 h-4 mr-2 text-muted-foreground" /> Single-use link
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                className="cursor-pointer font-medium" 
+                                onClick={() => duplicateMutation.mutate(event.id)}
+                              >
+                                <Copy className="w-4 h-4 mr-2 text-muted-foreground" /> Duplicate
+                              </DropdownMenuItem>
                               <DropdownMenuItem className="cursor-pointer font-medium text-destructive focus:text-destructive" onClick={() => deleteMutation.mutate(event.id)}>
-                                <Trash2 className="w-4 h-4 mr-2" /> Delete
+                                <Trash2 className="w-4 h-4 mr-2" /> Archive
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -269,9 +303,14 @@ export default function EventTypesPage() {
               <p className="text-muted-foreground font-medium max-w-md mb-8">
                 Generate a unique link that expires after it's booked once. Perfect for offering times outside your normal schedule.
               </p>
-              <Button onClick={() => router.push('/dashboard/events/new')} className="rounded-full px-8 h-12 font-bold shadow-md">
-                Generate New Link
-              </Button>
+              <div className="text-sm text-muted-foreground text-left max-w-md w-full bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-border/50">
+                <h4 className="font-bold text-foreground mb-4">How to use:</h4>
+                <ol className="list-decimal pl-5 space-y-2">
+                  <li>Go back to the <strong>Event types</strong> tab</li>
+                  <li>Click the <Settings className="w-4 h-4 inline-block mx-1" /> icon on any event</li>
+                  <li>Select <strong>Single-use link</strong> to copy a one-time link</li>
+                </ol>
+              </div>
             </div>
           )}
 

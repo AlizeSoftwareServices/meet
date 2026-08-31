@@ -15,14 +15,23 @@ model User {
   googleId      String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+  bookingVersion Int           @default(0)
   profile       Profile?
   eventTypes    EventType[]
-  availability  Availability?
+  availabilities Availability[]
   bookings      Booking[]      @relation("HostBookings")
-  sessions      Session[]
-  refreshTokens RefreshToken[]
   contacts      Contact[]      @relation("HostContacts")
   integrations  Integration[]
+  actionTokens  ActionToken[]
+  isVerified    Boolean        @default(false)
+  pushTokens    PushToken[]
+  polls         Poll[]         @relation("HostPolls")
+  routingForms  RoutingForm[]
+  webhooks      Webhook[]      @relation("UserWebhooks")
+  ownedTeams    Team[]         @relation("TeamOwner")
+  teamMemberships TeamMember[] @relation("TeamMemberships")
+  assignedEvents  EventTypeHost[]
+  assignedBookings BookingHost[]
 }
 
 model Profile {
@@ -38,6 +47,9 @@ model Profile {
   phone     String?
   company   String?
   website   String?
+  brandColor String?
+  bookingPageTitle String?
+  bookingPageDescription String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -60,20 +72,59 @@ model EventType {
   bufferAfter      Int?      // In minutes
   isGroupEvent     Boolean   @default(false)
   maxInvitees      Int       @default(1)
+  allowRecurring   Boolean   @default(false)
+  recurringMaxOccurrences Int? @default(10)
+  confirmationMessage String?
+  redirectUrl      String?
   bookings         Booking[]
   workflows        Workflow[]
+  customQuestions  CustomQuestion[]
+  singleUseLinks   SingleUseLink[]
+  availabilityId   String?   @db.ObjectId
+  availability     Availability? @relation(fields: [availabilityId], references: [id], onDelete: SetNull)
+  teamId           String?   @db.ObjectId
+  team             Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  schedulingType   String    @default("PERSONAL") // 'PERSONAL', 'ROUND_ROBIN', 'COLLECTIVE'
+  hosts            EventTypeHost[]
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
   @@unique([userId, slug])
 }
 
+model CustomQuestion {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  eventTypeId String    @db.ObjectId
+  eventType   EventType @relation(fields: [eventTypeId], references: [id], onDelete: Cascade)
+  type        String    // 'TEXT', 'LONG_TEXT', 'PHONE', 'NUMBER', 'DROPDOWN', 'MULTIPLE_CHOICE', 'CHECKBOX'
+  label       String
+  placeholder String?
+  required    Boolean   @default(false)
+  options     String[]  // Array of options for Dropdown or Multiple Choice
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model QuestionAnswer {
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  bookingId        String    @db.ObjectId
+  booking          Booking   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  customQuestionId String    @db.ObjectId // Reference to original question (could be deleted, so don't enforce strict DB relation if Prisma throws, but we'll use NoAction if we can, or just store the ID as string. Actually, storing it as String is safer for "host deletes question" so we don't cascade delete the answer).
+  questionLabel    String    // Snapshot label
+  value            String    // Stringified answer
+}
+
 model Availability {
   id        String                 @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String                 @unique @db.ObjectId
+  userId    String                 @db.ObjectId
   user      User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String                 @default("Working Hours")
+  isDefault Boolean                @default(false)
+  timezone  String                 @default("UTC")
   slots     AvailabilitySlot[]
   overrides AvailabilityOverride[]
+  eventTypes EventType[]
 }
 
 model AvailabilityOverride {
@@ -111,26 +162,34 @@ model Booking {
   status       String        @default("CONFIRMED")
   cancelReason String?
   meetLink     String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  externalEventId String?    // Stores Google/Microsoft Calendar event ID
+  answers      QuestionAnswer[]
+  bookingSeriesId String?    @db.ObjectId
+  bookingSeries   BookingSeries? @relation(fields: [bookingSeriesId], references: [id])
+  seriesOccurrenceNumber Int? 
+  teamId          String?    @db.ObjectId
+  team            Team?      @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  assignedHosts   BookingHost[]
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  actionTokens    ActionToken[]
+  workflowExecutions WorkflowExecution[]
+
+  @@index([hostId, startTime])
+  @@index([hostId, status])
 }
 
-model Session {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String   @db.ObjectId
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token     String   @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-}
-
-model RefreshToken {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  token     String   @unique
-  userId    String   @db.ObjectId
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+model BookingSeries {
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  hostId           String    @db.ObjectId
+  eventTypeId      String    @db.ObjectId
+  frequency        String    // "DAILY", "WEEKLY", "MONTHLY"
+  interval         Int       @default(1)
+  count            Int
+  timezone         String    @default("UTC")
+  bookings         Booking[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
 
 model Contact {
@@ -172,4 +231,230 @@ model Workflow {
   actionType   String    // e.g., 'EMAIL'
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+  executions   WorkflowExecution[]
 }
+
+model ActionToken {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  tokenHash String   @unique
+  type      String   // 'PASSWORD_RESET', 'EMAIL_VERIFICATION', 'GUEST_CANCEL', 'GUEST_RESCHEDULE'
+  userId    String?  @db.ObjectId
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookingId String?  @db.ObjectId
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId, type])
+  @@index([bookingId, type])
+}
+
+model WorkflowExecution {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  bookingId    String   @db.ObjectId
+  workflowId   String   @db.ObjectId
+  executedAt   DateTime @default(now())
+
+  booking      Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  workflow     Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@unique([bookingId, workflowId])
+}
+
+model PushToken {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  token     String   @unique
+  userId    String   @db.ObjectId
+  platform  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model SingleUseLink {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  eventTypeId String    @db.ObjectId
+  eventType   EventType @relation(fields: [eventTypeId], references: [id], onDelete: Cascade)
+  tokenHash   String    @unique
+  used        Boolean   @default(false)
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([eventTypeId, used])
+}
+
+model Poll {
+  id          String      @id @default(auto()) @map("_id") @db.ObjectId
+  hostId      String      @db.ObjectId
+  host        User        @relation("HostPolls", fields: [hostId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  duration    Int
+  status      String      @default("OPEN")
+  slots       PollSlot[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([hostId])
+}
+
+model PollSlot {
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  pollId    String     @db.ObjectId
+  poll      Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  startTime DateTime
+  endTime   DateTime
+  votes     PollVote[]
+}
+
+model PollVote {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  pollSlotId String   @db.ObjectId
+  pollSlot   PollSlot @relation(fields: [pollSlotId], references: [id], onDelete: Cascade)
+  guestName  String
+  guestEmail String
+  status     String   // "YES", "NO", "IF_NEED_BE"
+  createdAt  DateTime @default(now())
+
+  @@unique([pollSlotId, guestEmail])
+}
+
+model RoutingForm {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  slug        String
+  isActive    Boolean  @default(true)
+  questions   RoutingQuestion[]
+  rules       RoutingRule[]
+  fallbackDestination String? // URL or event-type slug
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, slug])
+}
+
+model RoutingQuestion {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  formId      String   @db.ObjectId
+  form        RoutingForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  label       String
+  type        String   // 'TEXT', 'DROPDOWN', 'RADIO'
+  options     String[]
+  order       Int      @default(0)
+  required    Boolean  @default(true)
+}
+
+model RoutingRule {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  formId        String   @db.ObjectId
+  form          RoutingForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  questionId    String   @db.ObjectId // The question to evaluate
+  operator      String   // 'EQUALS', 'CONTAINS'
+  value         String   // The answer value to match
+  destination   String   // The slug of the event-type or external URL to route to
+}
+
+model Team {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String?
+  slug        String       @unique
+  ownerId     String       @db.ObjectId
+  owner       User         @relation("TeamOwner", fields: [ownerId], references: [id])
+  isActive    Boolean      @default(true)
+  members     TeamMember[]
+  invitations TeamInvitation[]
+  eventTypes  EventType[]
+  bookings    Booking[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model TeamMember {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  teamId    String   @db.ObjectId
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId    String   @db.ObjectId
+  user      User     @relation("TeamMemberships", fields: [userId], references: [id], onDelete: Cascade)
+  role      String   // 'OWNER', 'ADMIN', 'MEMBER'
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teamId, userId])
+}
+
+model TeamInvitation {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  teamId      String   @db.ObjectId
+  team        Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  email       String
+  role        String   // 'ADMIN', 'MEMBER'
+  tokenHash   String   @unique
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model EventTypeHost {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  eventTypeId String    @db.ObjectId
+  eventType   EventType @relation(fields: [eventTypeId], references: [id], onDelete: Cascade)
+  userId      String    @db.ObjectId
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@unique([eventTypeId, userId])
+}
+
+model BookingHost {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  bookingId String   @db.ObjectId
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("HOST") // Can be 'ORGANIZER' or 'HOST'
+  createdAt DateTime @default(now())
+
+  @@unique([bookingId, userId])
+}
+
+model Webhook {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @db.ObjectId
+  user        User     @relation("UserWebhooks", fields: [userId], references: [id], onDelete: Cascade)
+  url         String
+  secret      String
+  isActive    Boolean  @default(true)
+  events      String[] // 'booking.created', 'booking.canceled', 'booking.rescheduled', 'booking.confirmed', etc.
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  deliveries  WebhookDelivery[]
+}
+
+model WebhookDelivery {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  webhookId     String   @db.ObjectId
+  webhook       Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  event         String
+  bookingId     String?
+  payload       String
+  statusCode    Int?
+  response      String?
+  success       Boolean  @default(false)
+  attempts      Int      @default(0)
+  deliveredAt   DateTime?
+  nextAttemptAt DateTime?
+  createdAt     DateTime @default(now())
+
+  @@index([webhookId, createdAt])
+  @@index([bookingId, event])
+}
+
+

@@ -1,0 +1,36 @@
+# Phase 5C Task Tracker — Webhooks, Routing Forms UI & Production Integration
+
+- `[ ]` 1. **Prisma Schema & Database Architecture:**
+  - `[ ]` Inspect existing `prisma/schema.prisma` for Webhook, RoutingForm, RoutingQuestion, RoutingRule models.
+  - `[ ]` Add/update `Webhook` and `WebhookDelivery` models with proper relations and indexes.
+  - `[ ]` Run `npx prisma generate` and `npx prisma db push`.
+- `[ ]` 2. **Backend Webhooks Module:**
+  - `[ ]` Create `backend/src/webhooks/` (module, controller, service, webhook-delivery.service, DTOs).
+  - `[ ]` Implement endpoints: `POST /webhooks`, `GET /webhooks`, `GET /webhooks/:id`, `PATCH /webhooks/:id`, `DELETE /webhooks/:id`, `POST /webhooks/:id/test`, `GET /webhooks/:id/deliveries`.
+  - `[ ]` Implement strict IDOR protections and ownership validation.
+  - `[ ]` Implement HMAC-SHA256 signature generation (`X-Webhook-Signature`, `X-Webhook-Event`, `X-Webhook-Delivery`).
+  - `[ ]` Implement asynchronous, non-blocking delivery and retry mechanism with timeout.
+- `[ ]` 3. **Connect Webhooks to Booking Lifecycle:**
+  - `[ ]` Update `backend/src/bookings/bookings.service.ts` to trigger `booking.created`, `booking.canceled`, `booking.rescheduled` for Personal, Round Robin, and Collective bookings after transactions commit.
+- `[ ]` 4. **Backend Routing Forms Inspection & Enhancements:**
+  - `[ ]` Inspect `backend/src/routing/` APIs and ensure complete CRUD, rule evaluation, and public submission endpoints exist.
+- `[ ]` 5. **Routing Forms Dashboard UI:**
+  - `[ ]` Build `/dashboard/routing/page.tsx` (Form list, metrics, actions: create, edit, duplicate, activate/deactivate, delete).
+  - `[ ]` Build `/dashboard/routing/new/page.tsx` and `/dashboard/routing/[id]/edit/page.tsx` (Form builder with question editor, rule builder, destination picker, fallback destination).
+  - `[ ]` Add `generateStaticParams` for dynamic route `/dashboard/routing/[id]/edit/layout.tsx`.
+- `[ ]` 6. **Public Routing Form Page:**
+  - `[ ]` Build `/forms/[slug]/page.tsx` with dynamic form rendering, client validation, backend evaluation, and booking page redirection.
+  - `[ ]` Add `generateStaticParams` for dynamic route `/forms/[slug]/layout.tsx`.
+- `[ ]` 7. **Webhooks Management Dashboard UI:**
+  - `[ ]` Build `/dashboard/integrations/webhooks/page.tsx` (Webhook list, create/edit modal, event selector, test trigger, delivery logs modal with payload and response viewer).
+- `[ ]` 8. **Automated Verification:**
+  - `[ ]` Create `backend/src/verify_phase5c.ts` covering 34+ comprehensive test cases for webhooks, routing forms, security, and full regression.
+  - `[ ]` Run `npx ts-node src/verify_phase5c.ts` and verify all tests pass.
+- `[ ]` 9. **Production Builds & Capacitor Sync:**
+  - `[ ]` Backend: `npx tsc --noEmit` and `npm run build`.
+  - `[ ]` Frontend: `npm run build` (Next.js static export).
+  - `[ ]` Capacitor: `npx cap sync`.
+- `[ ]` 10. **Documentation:**
+  - `[ ]` Create `backend/scratch/phase5c_verification.md`.
+  - `[ ]` Update `backend/scratch/walkthrough.md`.
+  - `[ ]` Finalize `backend/src/task.md`.

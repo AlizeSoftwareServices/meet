@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { api, getApiBaseUrl } from '@/lib/api';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,13 +22,30 @@ const profileSchema = z.object({
   phone: z.string().optional(),
   company: z.string().optional(),
   website: z.string().optional(),
+  brandColor: z.string().optional(),
+  bookingPageTitle: z.string().optional(),
+  bookingPageDescription: z.string().optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
 export default function SettingsPage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [success, setSuccess] = useState(false);
+  
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+
+  // Delete account state
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['profile'],
@@ -49,6 +67,9 @@ export default function SettingsPage() {
       phone: '',
       company: '',
       website: '',
+      brandColor: '',
+      bookingPageTitle: '',
+      bookingPageDescription: '',
     },
   });
 
@@ -64,6 +85,9 @@ export default function SettingsPage() {
         phone: profile.phone || '',
         company: profile.company || '',
         website: profile.website || '',
+        brandColor: profile.brandColor || '#2563eb',
+        bookingPageTitle: profile.bookingPageTitle || '',
+        bookingPageDescription: profile.bookingPageDescription || '',
       });
     }
   }, [profile, form]);
@@ -83,6 +107,71 @@ export default function SettingsPage() {
   const onSubmit = (data: ProfileFormValues) => {
     setSuccess(false);
     updateMutation.mutate(data);
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      const res = await api.post('/profile/avatar', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      // Invalidate to fetch new avatar
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+    } catch (err) {
+      console.error('Avatar upload failed', err);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New passwords do not match');
+      return;
+    }
+    setPasswordLoading(true);
+    setPasswordError('');
+    setPasswordSuccess(false);
+
+    try {
+      const res = await api.post('/auth/change-password', {
+        currentPassword,
+        newPassword
+      });
+      setPasswordSuccess(true);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => setPasswordSuccess(false), 3000);
+    } catch (err: any) {
+      setPasswordError(err.response?.data?.message || 'Failed to change password');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmation !== 'DELETE MY ACCOUNT') {
+      setDeleteError('Please type DELETE MY ACCOUNT exactly to confirm.');
+      return;
+    }
+    setDeleteLoading(true);
+    setDeleteError('');
+
+    try {
+      await api.delete('/users/account');
+      localStorage.removeItem('token');
+      router.push('/login');
+    } catch (err: any) {
+      setDeleteError(err.response?.data?.message || 'Failed to delete account');
+      setDeleteLoading(false);
+    }
   };
 
   if (isLoading) {
@@ -109,6 +198,26 @@ export default function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-8 pt-0">
+          <div className="mb-8 flex items-center gap-6">
+            <div className="h-24 w-24 rounded-full bg-zinc-200 border-2 border-zinc-300 overflow-hidden flex items-center justify-center relative group">
+              {profile?.avatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={`${getApiBaseUrl()}${profile.avatar}`} alt="Avatar" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-zinc-400 text-3xl font-semibold">
+                  {profile?.name ? profile.name.charAt(0).toUpperCase() : '?'}
+                </span>
+              )}
+              <label className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity text-xs font-medium">
+                Upload
+                <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
+              </label>
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">{profile?.name || 'Your Avatar'}</h3>
+              <p className="text-sm text-zinc-500">Click the avatar to upload a new image. Max size 5MB.</p>
+            </div>
+          </div>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-3 min-w-0">
@@ -181,6 +290,35 @@ export default function SettingsPage() {
               </div>
             </div>
 
+            <div className="space-y-6 pt-6 border-t border-border/50">
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Booking Page Branding</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-3 min-w-0">
+                  <Label htmlFor="bookingPageTitle" className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 ml-1">Page Title</Label>
+                  <Input id="bookingPageTitle" className="h-12 px-4 rounded-xl" placeholder="John's Calendar" {...form.register('bookingPageTitle')} />
+                </div>
+                
+                <div className="space-y-3 min-w-0 flex flex-col">
+                  <Label htmlFor="brandColor" className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 ml-1">Brand Color</Label>
+                  <div className="flex items-center gap-3 mt-1">
+                    <input type="color" id="brandColor" className="h-12 w-12 rounded cursor-pointer border-0 p-0" {...form.register('brandColor')} />
+                    <span className="text-sm text-zinc-500">{form.watch('brandColor')}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 min-w-0">
+                <Label htmlFor="bookingPageDescription" className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 ml-1">Page Description</Label>
+                <textarea
+                  id="bookingPageDescription"
+                  className="flex min-h-[100px] w-full rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900 px-4 py-3 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/30 focus-visible:border-brand-blue/50 transition-all resize-y"
+                  placeholder="Welcome to my scheduling page..."
+                  {...form.register('bookingPageDescription')}
+                />
+              </div>
+            </div>
+
             {success && (
               <div className="p-3 text-sm text-green-700 bg-green-50 rounded-md">
                 Profile updated successfully!
@@ -193,6 +331,75 @@ export default function SettingsPage() {
               </Button>
             </div>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="p-8 pb-6">
+          <CardTitle>Change Password</CardTitle>
+          <CardDescription>
+            Update your account password.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-8 pt-0">
+          <form onSubmit={handleChangePassword} className="space-y-6 max-w-md">
+            <div className="space-y-3">
+              <Label>Current Password</Label>
+              <Input type="password" required value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} />
+            </div>
+            <div className="space-y-3">
+              <Label>New Password (min 8 chars)</Label>
+              <Input type="password" required minLength={8} value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+            </div>
+            <div className="space-y-3">
+              <Label>Confirm New Password</Label>
+              <Input type="password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} />
+            </div>
+
+            {passwordError && <p className="text-red-500 text-sm">{passwordError}</p>}
+            {passwordSuccess && <p className="text-green-600 text-sm">Password changed successfully!</p>}
+
+            <Button type="submit" disabled={passwordLoading}>
+              {passwordLoading ? 'Changing...' : 'Change Password'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card className="border-red-200">
+        <CardHeader className="p-8 pb-6 bg-red-50 rounded-t-xl">
+          <CardTitle className="text-red-700">Danger Zone</CardTitle>
+          <CardDescription className="text-red-600">
+            Permanently delete your account and all associated data.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-8">
+          <div className="space-y-4 max-w-md">
+            <p className="text-sm text-gray-600">
+              This action cannot be undone. This will permanently delete your profile, event types, contacts, and cancel all future bookings.
+            </p>
+            <div className="space-y-3">
+              <Label className="text-red-600">Type DELETE MY ACCOUNT to confirm</Label>
+              <Input 
+                value={deleteConfirmation} 
+                onChange={e => setDeleteConfirmation(e.target.value)}
+                placeholder="DELETE MY ACCOUNT"
+                className="border-red-300 focus-visible:ring-red-500"
+              />
+            </div>
+            
+            {deleteError && <p className="text-red-500 text-sm">{deleteError}</p>}
+
+            <Button 
+              type="button" 
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={deleteLoading || deleteConfirmation !== 'DELETE MY ACCOUNT'}
+              className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto"
+            >
+              {deleteLoading ? 'Deleting...' : 'Delete Account'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

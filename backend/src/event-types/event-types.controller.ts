@@ -39,8 +39,19 @@ export class EventTypesController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post(':id/duplicate')
+  duplicate(@Request() req, @Param('id') id: string) {
+    return this.eventTypesService.duplicate(id, req.user.userId);
+  }
+
   @Delete(':id')
   remove(@Request() req, @Param('id') id: string) {
     return this.eventTypesService.remove(id, req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/single-use-link')
+  generateSingleUseLink(@Request() req, @Param('id') id: string) {
+    return this.eventTypesService.generateSingleUseLink(id, req.user.userId);
   }
 }

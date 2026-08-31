@@ -37,9 +37,28 @@ export default function BookingsManagementPage() {
     onError: () => setCancellingId(null),
   });
 
+  const cancelSeriesMutation = useMutation({
+    mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
+      const res = await api.post(`/bookings/series/${id}/cancel`, { reason });
+      return res.data;
+    },
+    onMutate: ({ id }) => setCancellingId(`series-${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      setCancellingId(null);
+    },
+    onError: () => setCancellingId(null),
+  });
+
   const handleCancel = (id: string) => {
     if (confirm('Are you sure you want to cancel this booking? An email will be sent to the guest.')) {
       cancelMutation.mutate({ id, reason: 'Host cancelled via dashboard.' });
+    }
+  };
+
+  const handleCancelSeries = (seriesId: string) => {
+    if (confirm('Cancel entire series?\n\nThis will cancel all remaining future meetings in this recurring series.\nPast meetings will remain unchanged.')) {
+      cancelSeriesMutation.mutate({ id: seriesId, reason: 'Host cancelled series via dashboard.' });
     }
   };
 
@@ -145,6 +164,11 @@ export default function BookingsManagementPage() {
                           <div className="flex flex-wrap items-center gap-3">
                             <h3 className="font-bold text-xl">{booking.guestName}</h3>
                             {getStatusBadge(booking.status)}
+                            {booking.bookingSeriesId && (
+                              <Badge variant="outline" className="border-purple-200 bg-purple-50 text-purple-700">
+                                Recurring
+                              </Badge>
+                            )}
                           </div>
                           
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-foreground/80">
@@ -191,8 +215,19 @@ export default function BookingsManagementPage() {
                               disabled={cancelMutation.isPending && cancellingId === booking.id}
                             >
                               <XCircle className="w-4 h-4 mr-2" />
-                              {cancelMutation.isPending && cancellingId === booking.id ? 'Cancelling...' : 'Cancel'}
+                              {cancelMutation.isPending && cancellingId === booking.id ? 'Cancelling...' : 'Cancel Occurrence'}
                             </Button>
+                            {booking.bookingSeriesId && (
+                              <Button 
+                                variant="outline" 
+                                className="w-full text-destructive border-destructive/20 hover:text-destructive hover:bg-destructive/10 rounded-full"
+                                onClick={() => handleCancelSeries(booking.bookingSeriesId)}
+                                disabled={cancelSeriesMutation.isPending && cancellingId === `series-${booking.bookingSeriesId}`}
+                              >
+                                <XCircle className="w-4 h-4 mr-2" />
+                                {cancelSeriesMutation.isPending && cancellingId === `series-${booking.bookingSeriesId}` ? 'Cancelling...' : 'Cancel Series'}
+                              </Button>
+                            )}
                             <Button variant="secondary" className="w-full rounded-full bg-secondary hover:bg-secondary/80">
                               Reschedule
                             </Button>

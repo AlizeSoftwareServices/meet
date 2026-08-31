@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Calendar, Clock, LayoutDashboard, LogOut, Settings, Users, Menu, X, Sparkles, Plug } from 'lucide-react';
+import { Calendar, Clock, LayoutDashboard, LogOut, Settings, Users, Menu, X, Sparkles, Plug, UsersRound, Split } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const sidebarLinks = [
@@ -11,6 +11,10 @@ const sidebarLinks = [
   { href: '/dashboard/events', label: 'Event Types', icon: Calendar },
   { href: '/dashboard/bookings', label: 'Bookings', icon: Users },
   { href: '/dashboard/availability', label: 'Availability', icon: Clock },
+  { href: '/dashboard/teams', label: 'Teams', icon: UsersRound },
+  { href: '/dashboard/routing', label: 'Routing Forms', icon: Split },
+  { href: '/dashboard/polls', label: 'Meeting Polls', icon: Users },
+  { href: '/dashboard/workflows', label: 'Workflows', icon: Sparkles },
   { href: '/dashboard/integrations', label: 'Integrations', icon: Plug },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];

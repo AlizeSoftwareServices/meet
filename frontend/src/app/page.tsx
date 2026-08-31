@@ -30,12 +30,16 @@ export default function LandingPage() {
 
     if (native) {
       // In Mobile APK: Immediately redirect to dashboard if authenticated/demo, or login
-      const token = localStorage.getItem('token');
-      const isDemo = localStorage.getItem('demoMode') === 'true';
-      if (token || isDemo) {
-        router.replace('/dashboard');
-      } else {
-        router.replace('/login');
+      try {
+        const token = localStorage.getItem('token');
+        const isDemo = localStorage.getItem('demoMode') === 'true';
+        if (token || isDemo) {
+          router.replace('/dashboard');
+        } else {
+          router.replace('/login');
+        }
+      } catch (e) {
+        window.location.replace('/login/');
       }
     } else {
       // On Web Browser: Auto-redirect if logged in

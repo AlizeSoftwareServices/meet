@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { google } from 'googleapis';
 import { PrismaService } from '../prisma/prisma.service';
 import axios from 'axios';
@@ -10,29 +10,122 @@ export class CalendarService {
   constructor(private prisma: PrismaService) {}
 
   private getOAuth2Client() {
+    if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REDIRECT_URI) {
+      throw new InternalServerErrorException('Google OAuth credentials are not configured.');
+    }
     return new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID || 'mock_client_id',
-      process.env.GOOGLE_CLIENT_SECRET || 'mock_client_secret',
-      process.env.GOOGLE_REDIRECT_URI || 'http://localhost:3001/api/integrations/google/callback'
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI
     );
+  }
+
+  private async getGoogleCalendarClient(hostId: string) {
+    const googleIntegration = await this.prisma.integration.findUnique({
+      where: { userId_provider: { userId: hostId, provider: 'google' } }
+    });
+
+    if (!googleIntegration) return null;
+
+    const oauth2Client = this.getOAuth2Client();
+
+    oauth2Client.on('tokens', async (tokens) => {
+      if (tokens.access_token) {
+          await this.prisma.integration.update({
+            where: { userId_provider: { userId: hostId, provider: 'google' } },
+            data: {
+              accessToken: tokens.access_token,
+              ...(tokens.refresh_token && { refreshToken: tokens.refresh_token }),
+            }
+          }).catch(err => this.logger.error(`Failed to save refreshed Google tokens: ${err.message}`));
+      }
+    });
+
+    oauth2Client.setCredentials({
+      access_token: googleIntegration.accessToken,
+      refresh_token: googleIntegration.refreshToken,
+    });
+
+    return google.calendar({ version: 'v3', auth: oauth2Client });
+  }
+
+  // Helper for Microsoft to auto-refresh tokens
+  private async microsoftGraphRequest(hostId: string, method: string, url: string, data?: any): Promise<any> {
+    let integration = await this.prisma.integration.findUnique({
+      where: { userId_provider: { userId: hostId, provider: 'microsoft' } }
+    });
+
+    if (!integration) return null;
+
+    try {
+      const response = await axios({
+        method,
+        url,
+        data,
+        headers: {
+          Authorization: `Bearer ${integration.accessToken}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      return response.data !== "" ? response.data : true;
+    } catch (error: any) {
+      if (error.response?.status === 401 && integration.refreshToken) {
+        // Try refresh
+        try {
+          const clientId = process.env.MICROSOFT_CLIENT_ID;
+          const clientSecret = process.env.MICROSOFT_CLIENT_SECRET;
+          
+          if (!clientId || !clientSecret) throw new Error('Missing Microsoft credentials');
+
+          const tokenResponse = await axios.post('https://login.microsoftonline.com/common/oauth2/v2.0/token', 
+            new URLSearchParams({
+              client_id: clientId,
+              scope: 'offline_access Calendars.ReadWrite',
+              refresh_token: integration.refreshToken,
+              grant_type: 'refresh_token',
+              client_secret: clientSecret
+            }).toString(),
+            { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+          );
+          
+          const newAccessToken = tokenResponse.data.access_token;
+          const newRefreshToken = tokenResponse.data.refresh_token || integration.refreshToken;
+          
+          await this.prisma.integration.update({
+            where: { userId_provider: { userId: hostId, provider: 'microsoft' } },
+            data: { accessToken: newAccessToken, refreshToken: newRefreshToken }
+          });
+
+          // Retry request with new token
+          const retryResponse = await axios({
+            method,
+            url,
+            data,
+            headers: {
+              Authorization: `Bearer ${newAccessToken}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          return retryResponse.data !== "" ? retryResponse.data : true;
+        } catch (refreshErr: any) {
+          this.logger.error(`Failed to refresh Microsoft token: ${refreshErr.message}`);
+          await this.prisma.integration.update({
+            where: { userId_provider: { userId: hostId, provider: 'microsoft' } },
+            data: { accessToken: 'EXPIRED' }
+          }).catch(() => {});
+          throw new BadRequestException('Microsoft calendar token expired and refresh failed. Please reconnect.');
+        }
+      }
+      this.logger.error(`Microsoft Graph API error [${method} ${url}]: ${error.message}`);
+      throw error;
+    }
   }
 
   async createCalendarEvent(hostId: string, hostEmail: string, guestEmail: string, startTime: string, endTime: string, title: string) {
     // 1. Try Google Integration First
     try {
-      const googleIntegration = await this.prisma.integration.findUnique({
-        where: { userId_provider: { userId: hostId, provider: 'google' } }
-      });
-
-      if (googleIntegration) {
-        const oauth2Client = this.getOAuth2Client();
-        oauth2Client.setCredentials({
-          access_token: googleIntegration.accessToken,
-          refresh_token: googleIntegration.refreshToken,
-        });
-
-        const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
-
+      const calendar = await this.getGoogleCalendarClient(hostId);
+      if (calendar) {
         const event = {
           summary: title,
           start: { dateTime: startTime },
@@ -54,34 +147,30 @@ export class CalendarService {
 
         this.logger.log(`[GOOGLE CALENDAR EVENT] Created for ${hostEmail} and ${guestEmail}`);
         
+        const meetLink = response.data.hangoutLink;
+        const externalEventId = response.data.id;
+        
+        if (!meetLink || !externalEventId) {
+           throw new BadRequestException('Google Calendar created the event but failed to generate a Meet link or Event ID.');
+        }
+
         return { 
-          meetLink: response.data.hangoutLink || 'https://meet.google.com/mock-link-xyz',
-          eventId: response.data.id || 'mock-event-id-123'
+          meetLink: meetLink,
+          eventId: externalEventId
         };
       }
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to create Google Calendar event: ${error.message}`);
+      if (error.code === 401 || error.message?.includes('invalid_grant')) {
+         await this.prisma.integration.update({
+            where: { userId_provider: { userId: hostId, provider: 'google' } },
+            data: { accessToken: 'EXPIRED' }
+         }).catch(() => {});
+      }
+      throw new BadRequestException('Failed to create external Google Calendar event. Token may be expired or revoked. Please reconnect.');
     }
 
     // 2. Try Microsoft Integration if Google fails or doesn't exist
-    try {
-      const microsoftIntegration = await this.prisma.integration.findUnique({
-        where: { userId_provider: { userId: hostId, provider: 'microsoft' } }
-      });
-
-      if (microsoftIntegration) {
-        return await this.createMicrosoftEvent(microsoftIntegration.accessToken, hostEmail, guestEmail, startTime, endTime, title);
-      }
-    } catch (error) {
-      this.logger.error(`Failed to find Microsoft integration: ${error.message}`);
-    }
-
-    // 3. Fallback to mock
-    this.logger.warn(`No active integrations found for host ${hostEmail}. Falling back to mock.`);
-    return this.mockCreateEvent(hostEmail, guestEmail, startTime, endTime, title);
-  }
-
-  private async createMicrosoftEvent(accessToken: string, hostEmail: string, guestEmail: string, startTime: string, endTime: string, title: string) {
     try {
       const event = {
         subject: title,
@@ -95,31 +184,117 @@ export class CalendarService {
         onlineMeetingProvider: "teamsForBusiness"
       };
 
-      const response = await axios.post('https://graph.microsoft.com/v1.0/me/events', event, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await this.microsoftGraphRequest(hostId, 'POST', 'https://graph.microsoft.com/v1.0/me/events', event);
+      if (response) {
+        this.logger.log(`[MICROSOFT EVENT] Created for ${hostEmail} and ${guestEmail}`);
+        const meetLink = response.onlineMeeting?.joinUrl;
+        const externalEventId = response.id;
 
-      this.logger.log(`[MICROSOFT EVENT] Created for ${hostEmail} and ${guestEmail}`);
-      
-      return { 
-        meetLink: response.data.onlineMeeting?.joinUrl || 'https://teams.microsoft.com/mock-link-abc',
-        eventId: response.data.id || 'mock-event-id-abc'
+        if (!meetLink || !externalEventId) {
+           throw new BadRequestException('Microsoft Graph API created the event but failed to generate a Teams link or Event ID.');
+        }
+
+        return { 
+          meetLink: meetLink,
+          eventId: externalEventId
+        };
+      }
+    } catch (error: any) {
+      if (error instanceof BadRequestException) throw error;
+      throw new BadRequestException('Failed to create external Microsoft Calendar event.');
+    }
+
+    // 3. Fallback to nulls if NO integrations exist
+    return { meetLink: null, eventId: null };
+  }
+
+  async updateCalendarEvent(hostId: string, eventId: string, startTime: string, endTime: string) {
+    if (!eventId) return;
+
+    // 1. Try Google Integration First
+    try {
+      const calendar = await this.getGoogleCalendarClient(hostId);
+      if (calendar) {
+        await calendar.events.patch({
+          calendarId: 'primary',
+          eventId: eventId,
+          requestBody: {
+            start: { dateTime: startTime },
+            end: { dateTime: endTime },
+          },
+        });
+        this.logger.log(`[GOOGLE CALENDAR EVENT] Updated event ${eventId}`);
+        return;
+      }
+    } catch (error: any) {
+      this.logger.error(`Failed to update Google calendar event: ${error.message}`);
+      if (error.code === 401 || error.message?.includes('invalid_grant')) {
+         await this.prisma.integration.update({
+            where: { userId_provider: { userId: hostId, provider: 'google' } },
+            data: { accessToken: 'EXPIRED' }
+         }).catch(() => {});
+      }
+      throw new BadRequestException('Failed to update external calendar event. Token may be expired or revoked.');
+    }
+
+    // 2. Try Microsoft Integration
+    try {
+      const event = {
+        start: { dateTime: startTime, timeZone: "UTC" },
+        end: { dateTime: endTime, timeZone: "UTC" }
       };
-    } catch (error) {
-      this.logger.error(`Failed to create Microsoft event via Graph API: ${error.message}`);
-      return this.mockCreateEvent(hostEmail, guestEmail, startTime, endTime, title);
+      
+      const response = await this.microsoftGraphRequest(hostId, 'PATCH', `https://graph.microsoft.com/v1.0/me/events/${eventId}`, event);
+      if (response) {
+        this.logger.log(`[MICROSOFT EVENT] Updated event ${eventId}`);
+        return;
+      }
+    } catch (error: any) {
+      if (error instanceof BadRequestException) throw error;
+      this.logger.error(`Failed to update Microsoft event via Graph API: ${error.message}`);
+      throw new BadRequestException('Failed to update external Microsoft Calendar event.');
     }
   }
 
-  private mockCreateEvent(hostEmail: string, guestEmail: string, startTime: string, endTime: string, title: string) {
-    this.logger.log(`[MOCK CALENDAR EVENT] Created for ${hostEmail} and ${guestEmail}`);
-    return { 
-      meetLink: 'https://meet.google.com/mock-link-xyz',
-      eventId: 'mock-event-id-123'
-    };
+  async deleteCalendarEvent(hostId: string, eventId: string) {
+    if (!eventId) return;
+
+    // 1. Try Google
+    try {
+      const calendar = await this.getGoogleCalendarClient(hostId);
+      if (calendar) {
+        await calendar.events.delete({
+          calendarId: 'primary',
+          eventId: eventId,
+        });
+        this.logger.log(`[GOOGLE CALENDAR EVENT] Deleted event ${eventId}`);
+        return;
+      }
+    } catch (error: any) {
+      // 410 Gone or 404 Not Found is fine, means already deleted.
+      if (error.code !== 404 && error.code !== 410) {
+        this.logger.error(`Failed to delete Google calendar event: ${error.message}`);
+      }
+      if (error.code === 401 || error.message?.includes('invalid_grant')) {
+         await this.prisma.integration.update({
+            where: { userId_provider: { userId: hostId, provider: 'google' } },
+            data: { accessToken: 'EXPIRED' }
+         }).catch(() => {});
+      }
+    }
+
+    // 2. Try Microsoft
+    try {
+      const response = await this.microsoftGraphRequest(hostId, 'DELETE', `https://graph.microsoft.com/v1.0/me/events/${eventId}`);
+      if (response !== null) {
+         this.logger.log(`[MICROSOFT EVENT] Deleted event ${eventId}`);
+      }
+    } catch (error: any) {
+      // Ignore 404 for deletion
+      if (error.response?.status !== 404) {
+        this.logger.error(`Failed to delete Microsoft calendar event: ${error.message}`);
+      }
+    }
   }
 
   async getBusyPeriods(hostId: string, startTime: string, endTime: string): Promise<{start: Date, end: Date}[]> {
@@ -132,33 +307,34 @@ export class CalendarService {
       });
 
       if (googleIntegration && googleIntegration.checkConflicts) {
-        const oauth2Client = this.getOAuth2Client();
-        oauth2Client.setCredentials({
-          access_token: googleIntegration.accessToken,
-          refresh_token: googleIntegration.refreshToken,
-        });
+        const calendar = await this.getGoogleCalendarClient(hostId);
+        if (calendar) {
+          const response = await calendar.freebusy.query({
+            requestBody: {
+              timeMin: startTime,
+              timeMax: endTime,
+              items: [{ id: 'primary' }],
+            }
+          });
 
-        const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
-        
-        const response = await calendar.freebusy.query({
-          requestBody: {
-            timeMin: startTime,
-            timeMax: endTime,
-            items: [{ id: 'primary' }],
-          }
-        });
-
-        const calendars = response.data.calendars;
-        if (calendars && calendars.primary && calendars.primary.busy) {
-          for (const busy of calendars.primary.busy) {
-             if (busy.start && busy.end) {
-                busyPeriods.push({ start: new Date(busy.start), end: new Date(busy.end) });
-             }
+          const calendars = response.data.calendars;
+          if (calendars && calendars.primary && calendars.primary.busy) {
+            for (const busy of calendars.primary.busy) {
+               if (busy.start && busy.end) {
+                  busyPeriods.push({ start: new Date(busy.start), end: new Date(busy.end) });
+               }
+            }
           }
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`Failed to fetch Google busy periods: ${error.message}`);
+      if (error.code === 401 || error.message?.includes('invalid_grant')) {
+         await this.prisma.integration.update({
+            where: { userId_provider: { userId: hostId, provider: 'google' } },
+            data: { accessToken: 'EXPIRED' }
+         }).catch(() => {});
+      }
     }
 
     // 2. Check Microsoft Integration
@@ -168,10 +344,27 @@ export class CalendarService {
       });
 
       if (microsoftIntegration && microsoftIntegration.checkConflicts) {
-        // Mocking MS Graph API for freebusy
-        this.logger.log('Microsoft two-way sync would fetch free/busy here.');
+        let nextLink: string | null = `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${encodeURIComponent(startTime)}&endDateTime=${encodeURIComponent(endTime)}&$select=start,end,showAs`;
+        
+        while (nextLink) {
+          const response = await this.microsoftGraphRequest(hostId, 'GET', nextLink);
+          if (response && response.value) {
+            for (const item of response.value) {
+              if (item.showAs === 'busy' || item.showAs === 'tentative' || item.showAs === 'oof') {
+                if (item.start?.dateTime && item.end?.dateTime) {
+                  const tzStart = item.start.timeZone === 'UTC' && !item.start.dateTime.endsWith('Z') ? item.start.dateTime + 'Z' : item.start.dateTime;
+                  const tzEnd = item.end.timeZone === 'UTC' && !item.end.dateTime.endsWith('Z') ? item.end.dateTime + 'Z' : item.end.dateTime;
+                  busyPeriods.push({ start: new Date(tzStart), end: new Date(tzEnd) });
+                }
+              }
+            }
+            nextLink = response['@odata.nextLink'] || null;
+          } else {
+            nextLink = null;
+          }
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
        this.logger.error(`Failed to fetch Microsoft busy periods: ${error.message}`);
     }
 

@@ -1,10 +1,34 @@
-import { IsString, IsEmail, IsOptional, IsDateString, IsUUID } from 'class-validator';
+import { IsString, IsEmail, IsOptional, IsDateString, IsArray, ValidateNested, IsInt, Min, IsIn } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class AnswerDto {
+  @IsString()
+  questionId: string;
+
+  @IsString()
+  value: string;
+}
+
+export class RecurrenceDto {
+  @IsString()
+  @IsIn(['DAILY', 'WEEKLY', 'MONTHLY'])
+  frequency: string;
+
+  @IsInt()
+  @Min(1)
+  interval: number;
+
+  @IsInt()
+  @Min(2)
+  count: number;
+}
 
 export class CreateBookingDto {
-  @IsUUID()
-  hostId: string;
+  @IsOptional()
+  @IsString()
+  hostId?: string;
 
-  @IsUUID()
+  @IsString()
   eventTypeId: string;
 
   @IsString()
@@ -30,4 +54,19 @@ export class CreateBookingDto {
 
   @IsDateString()
   endTime: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => AnswerDto)
+  answers?: AnswerDto[];
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RecurrenceDto)
+  recurrence?: RecurrenceDto;
+
+  @IsOptional()
+  @IsString()
+  singleUseToken?: string;
 }

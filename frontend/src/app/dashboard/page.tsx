@@ -1,18 +1,44 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Calendar as CalendarIcon, Clock, Link as LinkIcon, Users, CalendarX2, ArrowRight, Activity } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { 
+  Calendar as CalendarIcon, 
+  Users, 
+  Clock, 
+  Link as LinkIcon, 
+  Download, 
+  Activity 
+} from 'lucide-react';
+import { 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer 
+} from 'recharts';
 import { motion, Variants } from 'framer-motion';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import Link from 'next/link';
 
 export default function DashboardPage() {
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  const queryParams = new URLSearchParams();
+  if (startDate) queryParams.append('startDate', startDate);
+  if (endDate) queryParams.append('endDate', endDate);
+  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+
   const { data: analytics, isLoading: isAnalyticsLoading } = useQuery({
-    queryKey: ['analytics', 'dashboard'],
+    queryKey: ['analytics', startDate, endDate],
     queryFn: async () => {
-      const res = await api.get('/analytics/dashboard');
+      const res = await api.get(`/analytics/dashboard${queryString}`);
       return res.data;
     },
   });
@@ -25,33 +51,26 @@ export default function DashboardPage() {
     },
   });
 
-  const mockAnalytics = {
+  const defaultAnalytics = {
     stats: [
-      { title: 'Upcoming Meets', value: '12' },
-      { title: 'Completed Meets', value: '148' },
-      { title: 'Total Contacts', value: '89' },
-      { title: 'Total Hours Booked', value: '42.5' },
+      { title: 'Upcoming Meets', value: '0' },
+      { title: 'Completed Meets', value: '0' },
+      { title: 'Total Contacts', value: '0' },
+      { title: 'Total Hours Booked', value: '0' },
     ],
     chartData: [
-      { name: 'Mon', bookings: 4 },
-      { name: 'Tue', bookings: 7 },
-      { name: 'Wed', bookings: 2 },
-      { name: 'Thu', bookings: 9 },
-      { name: 'Fri', bookings: 5 },
+      { name: 'Mon', bookings: 0 },
+      { name: 'Tue', bookings: 0 },
+      { name: 'Wed', bookings: 0 },
+      { name: 'Thu', bookings: 0 },
+      { name: 'Fri', bookings: 0 },
       { name: 'Sat', bookings: 0 },
-      { name: 'Sun', bookings: 1 },
+      { name: 'Sun', bookings: 0 },
     ]
   };
 
-  const mockBookings = [
-    { id: '1', guestName: 'Alice Johnson', eventType: { title: '30 Minute Meet' }, startTime: new Date(Date.now() + 86400000).toISOString() },
-    { id: '2', guestName: 'Bob Smith', eventType: { title: '15 Minute Sync' }, startTime: new Date(Date.now() + 172800000).toISOString() },
-    { id: '3', guestName: 'Charlie Brown', eventType: { title: '60 Min Interview' }, startTime: new Date(Date.now() + 259200000).toISOString() },
-  ];
-
-  // If loading and no cache, wait a tiny bit or just show mock if it fails
-  const displayAnalytics = analytics || mockAnalytics;
-  const displayBookings = bookings || mockBookings;
+  const displayAnalytics = analytics || defaultAnalytics;
+  const displayBookings = Array.isArray(bookings) ? bookings : [];
 
   const statIcons: Record<string, any> = {
     'Upcoming Meets': CalendarIcon,
@@ -82,10 +101,9 @@ export default function DashboardPage() {
     show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
   };
 
-  // Only show skeletons if literally the first millisecond, otherwise show mock so the UI looks good
   if (isAnalyticsLoading && !analytics) {
     return (
-      <div className="space-y-8 pb-10">
+      <div className="space-y-8 pb-10 max-w-7xl mx-auto">
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-32 bg-muted/50 rounded-2xl animate-pulse border border-border/50" />
@@ -103,12 +121,45 @@ export default function DashboardPage() {
         transition={{ duration: 0.4 }}
         className="border-b border-border/50 pb-6"
       >
-        <h1 className="text-3xl font-light text-foreground">
-          Dashboard
-        </h1>
-        <p className="text-muted-foreground mt-2 text-sm max-w-2xl">
-          Welcome back to Meet. Here is a beautiful overview of your scheduling activity.
-        </p>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-light text-foreground">
+              Dashboard
+            </h1>
+            <p className="text-muted-foreground mt-2 text-sm max-w-2xl">
+              Welcome back to Meet. Here is an overview of your scheduling activity.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Input 
+                type="date" 
+                value={startDate} 
+                onChange={(e) => setStartDate(e.target.value)} 
+                className="w-36 h-10"
+              />
+              <span className="text-muted-foreground">to</span>
+              <Input 
+                type="date" 
+                value={endDate} 
+                onChange={(e) => setEndDate(e.target.value)} 
+                className="w-36 h-10"
+              />
+            </div>
+            <Button variant="outline" className="gap-2 h-10" onClick={async () => {
+              const res = await api.get(`/analytics/export${queryString}`, { responseType: 'blob' });
+              const url = window.URL.createObjectURL(new Blob([res.data]));
+              const link = document.createElement('a');
+              link.href = url;
+              link.setAttribute('download', 'bookings-export.csv');
+              document.body.appendChild(link);
+              link.click();
+            }}>
+              <Download className="w-4 h-4" />
+              Export CSV
+            </Button>
+          </div>
+        </div>
       </motion.div>
 
       <motion.div 
@@ -213,36 +264,51 @@ export default function DashboardPage() {
               <p className="text-sm text-muted-foreground mt-1">Your upcoming schedule</p>
             </CardHeader>
             <CardContent className="flex-1 p-0 overflow-hidden relative">
-              <div className="divide-y divide-border/50 overflow-auto max-h-[350px] p-4">
-                {displayBookings.map((booking: any) => (
-                  <motion.div 
-                    key={booking.id} 
-                    whileHover={{ scale: 1.01, backgroundColor: 'hsl(var(--muted))' }}
-                    className="p-4 rounded-xl flex justify-between items-center transition-colors cursor-default my-2 border border-border/50 shadow-sm"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
-                        {booking.guestName.charAt(0).toUpperCase()}
+              {displayBookings.length === 0 ? (
+                <div className="flex flex-col items-center justify-center p-8 text-center h-[280px]">
+                  <CalendarIcon className="w-10 h-10 text-muted-foreground/40 mb-3" />
+                  <p className="font-medium text-sm text-foreground">No upcoming meetings</p>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">
+                    Share your booking links to start receiving meeting reservations.
+                  </p>
+                  <Link href="/dashboard/events">
+                    <Button variant="outline" size="sm" className="mt-4 text-xs">
+                      View Event Types
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="divide-y divide-border/50 overflow-auto max-h-[350px] p-4">
+                  {displayBookings.map((booking: any) => (
+                    <motion.div 
+                      key={booking.id} 
+                      whileHover={{ scale: 1.01, backgroundColor: 'hsl(var(--muted))' }}
+                      className="p-4 rounded-xl flex justify-between items-center transition-colors cursor-default my-2 border border-border/50 shadow-sm"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
+                          {booking.guestName ? booking.guestName.charAt(0).toUpperCase() : 'G'}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-sm text-foreground">{booking.guestName}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                            <span className={`w-2 h-2 rounded-full ${booking.status === 'CANCELLED' ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
+                            {booking.eventType?.title || 'Meet'}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-semibold text-sm text-foreground">{booking.guestName}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                          {booking.eventType?.title || 'Meet'}
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-foreground">
+                          {new Date(booking.startTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5 bg-muted px-2 py-0.5 rounded-md inline-block">
+                          {new Date(booking.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-foreground">
-                        {new Date(booking.startTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5 bg-muted px-2 py-0.5 rounded-md inline-block">
-                        {new Date(booking.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>

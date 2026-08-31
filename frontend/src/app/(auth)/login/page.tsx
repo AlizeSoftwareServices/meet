@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { Capacitor } from '@capacitor/core';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +26,11 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [isNative, setIsNative] = useState(false);
+
+  useEffect(() => {
+    setIsNative(Capacitor.isNativePlatform());
+  }, []);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -136,24 +142,28 @@ export default function LoginPage() {
                   </span>
                 )}
               </Button>
-              <div className="relative flex py-2 items-center">
-                <div className="flex-grow border-t border-border/50"></div>
-                <span className="flex-shrink mx-4 text-xs font-bold text-muted-foreground uppercase tracking-widest">Or</span>
-                <div className="flex-grow border-t border-border/50"></div>
-              </div>
+              {!isNative && (
+                <>
+                  <div className="relative flex py-2 items-center">
+                    <div className="flex-grow border-t border-border/50"></div>
+                    <span className="flex-shrink mx-4 text-xs font-bold text-muted-foreground uppercase tracking-widest">Or</span>
+                    <div className="flex-grow border-t border-border/50"></div>
+                  </div>
 
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  localStorage.setItem('demoMode', 'true');
-                  router.push('/dashboard');
-                }}
-                className="w-full h-13 text-base font-bold rounded-xl border-2 border-border/60 hover:bg-muted/80 text-foreground transition-all duration-300"
-              >
-                <Sparkles className="w-4 h-4 mr-2 text-primary" />
-                Explore Demo Mode (No Login Required)
-              </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      localStorage.setItem('demoMode', 'true');
+                      router.push('/dashboard');
+                    }}
+                    className="w-full h-13 text-base font-bold rounded-xl border-2 border-border/60 hover:bg-muted/80 text-foreground transition-all duration-300"
+                  >
+                    <Sparkles className="w-4 h-4 mr-2 text-primary" />
+                    Explore Demo Mode (No Login Required)
+                  </Button>
+                </>
+              )}
             </form>
           </motion.div>
 

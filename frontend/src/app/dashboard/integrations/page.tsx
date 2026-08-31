@@ -56,6 +56,18 @@ export default function IntegrationsPage() {
     }
   };
 
+  const handleDisconnectGoogle = async () => {
+    if (confirm('Are you sure you want to disconnect Google Calendar?')) {
+      try {
+        await api.patch('/integrations/google/disconnect');
+        setIntegrations(prev => prev.filter(i => i.provider !== 'google'));
+      } catch (err) {
+        console.error('Failed to disconnect', err);
+        alert('Failed to disconnect Google Calendar.');
+      }
+    }
+  };
+
   const googleIntegration = integrations.find(i => i.provider === 'google');
   const microsoftIntegration = integrations.find(i => i.provider === 'microsoft');
   const slackIntegration = integrations.find(i => i.provider === 'slack');
@@ -118,10 +130,25 @@ export default function IntegrationsPage() {
             <div>
               {loading ? (
                 <div className="w-24 h-10 bg-muted animate-pulse rounded-xl" />
+              ) : googleIntegration?.status === 'EXPIRED' ? (
+                <div className="flex flex-col gap-2 items-center">
+                  <div className="px-4 py-2 bg-destructive/10 text-destructive font-medium rounded-xl flex items-center gap-2 border border-destructive/20">
+                    <AlertCircle className="w-4 h-4" />
+                    Expired
+                  </div>
+                  <button onClick={handleConnectGoogle} className="text-xs font-semibold text-primary hover:underline">
+                    Reconnect
+                  </button>
+                </div>
               ) : googleIntegration ? (
-                <div className="px-4 py-2 bg-green-500/10 text-green-600 font-medium rounded-xl flex items-center gap-2 border border-green-500/20">
-                  <CheckCircle2 className="w-4 h-4" />
-                  Connected
+                <div className="flex flex-col gap-2 items-center">
+                  <div className="px-4 py-2 bg-green-500/10 text-green-600 font-medium rounded-xl flex items-center gap-2 border border-green-500/20">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Connected
+                  </div>
+                  <button onClick={handleDisconnectGoogle} className="text-xs font-semibold text-destructive hover:underline">
+                    Disconnect
+                  </button>
                 </div>
               ) : (
                 <button
@@ -188,10 +215,39 @@ export default function IntegrationsPage() {
             <div>
               {loading ? (
                 <div className="w-24 h-10 bg-muted animate-pulse rounded-xl" />
+              ) : microsoftIntegration?.status === 'EXPIRED' ? (
+                <div className="flex flex-col gap-2 items-center">
+                  <div className="px-4 py-2 bg-destructive/10 text-destructive font-medium rounded-xl flex items-center gap-2 border border-destructive/20">
+                    <AlertCircle className="w-4 h-4" />
+                    Expired
+                  </div>
+                  <button
+                    onClick={async () => {
+                      const { data } = await api.get('/integrations/microsoft/auth');
+                      window.location.href = data.url;
+                    }}
+                    className="text-xs font-semibold text-primary hover:underline"
+                  >
+                    Reconnect
+                  </button>
+                </div>
               ) : microsoftIntegration ? (
-                <div className="px-4 py-2 bg-green-500/10 text-green-600 font-medium rounded-xl flex items-center gap-2 border border-green-500/20">
-                  <CheckCircle2 className="w-4 h-4" />
-                  Connected
+                <div className="flex flex-col gap-2 items-center">
+                  <div className="px-4 py-2 bg-green-500/10 text-green-600 font-medium rounded-xl flex items-center gap-2 border border-green-500/20">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Connected
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (confirm('Are you sure you want to disconnect Microsoft?')) {
+                        await api.patch('/integrations/microsoft/disconnect');
+                        setIntegrations(prev => prev.filter(i => i.provider !== 'microsoft'));
+                      }
+                    }}
+                    className="text-xs font-semibold text-destructive hover:underline"
+                  >
+                    Disconnect
+                  </button>
                 </div>
               ) : (
                 <button
@@ -274,6 +330,46 @@ export default function IntegrationsPage() {
                   Connect
                 </button>
               )}
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Developer Webhooks */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-card border border-border p-6 rounded-3xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
+        >
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4">
+            <div className="flex gap-4">
+              <div className="w-16 h-16 bg-violet-600/10 text-violet-600 dark:text-violet-400 rounded-2xl flex items-center justify-center shadow-sm flex-shrink-0">
+                <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2"/>
+                  <path d="m6 17 3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06l1.97 3.65"/>
+                  <circle cx="12" cy="12" r="2"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold mb-1">Developer Webhooks</h3>
+                <p className="text-muted-foreground text-sm max-w-lg">
+                  Send real-time HMAC-SHA256 signed event payloads directly to your HTTP endpoints whenever meetings are created, canceled, or rescheduled.
+                </p>
+                <div className="flex gap-4 mt-4">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-violet-700 bg-violet-50 dark:bg-violet-900/30 px-2 py-1 rounded-md">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    HMAC-SHA256 Signed
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <a
+                href="/dashboard/integrations/webhooks"
+                className="inline-flex items-center px-6 py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 text-sm"
+              >
+                Manage Webhooks
+              </a>
             </div>
           </div>
         </motion.div>

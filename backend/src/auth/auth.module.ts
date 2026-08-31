@@ -5,18 +5,20 @@ import { UsersModule } from '../users/users.module';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtStrategy } from './jwt.strategy';
+import { getJwtSecret } from './jwt.config';
+import { SecureTokenService } from './secure-token.service';
 
 @Module({
   imports: [
     UsersModule,
     PassportModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'super-secret-key-change-in-production',
+      secret: getJwtSecret(),
       signOptions: { expiresIn: '1d' },
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService],
+  providers: [AuthService, JwtStrategy, SecureTokenService],
+  exports: [AuthService, SecureTokenService],
 })
 export class AuthModule {}

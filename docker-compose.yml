@@ -2,16 +2,15 @@ version: '3.8'
 
 services:
   db:
-    image: postgres:15-alpine
+    image: mongo:latest
     container_name: meetsync_db
     environment:
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: meetsync
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: password
     ports:
-      - "5432:5432"
+      - "27017:27017"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - mongodata:/data/db
     restart: unless-stopped
 
   redis:
@@ -27,7 +26,7 @@ services:
       dockerfile: Dockerfile
     container_name: meetsync_backend
     environment:
-      - DATABASE_URL=postgresql://root:password@db:5432/meetsync?schema=public
+      - DATABASE_URL=mongodb://root:password@db:27017/meetsync?authSource=admin
       - JWT_SECRET=super-secret-key-change-in-production
     depends_on:
       - db
@@ -58,4 +57,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  pgdata:
+  mongodata:

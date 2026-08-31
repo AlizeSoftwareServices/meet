@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "878933628941",
+    "project_id": "meet-2k26",
+    "storage_bucket": "meet-2k26.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:878933628941:android:7d2a884e1b5c92f0",
+        "android_client_info": {
+          "package_name": "com.alizesoftwareservices.meet"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBv9_WQtUGNhQtenGr2b_ojgL5_epVZdk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { createEvent, EventAttributes } from 'ics';
 
@@ -26,7 +26,7 @@ export class EmailService {
       });
       this.logger.log(`[EmailService] Initialized SMTP transporter with host: ${host}`);
     } else {
-      this.logger.log(`[EmailService] No SMTP credentials provided. Running in dev mock mode.`);
+      this.logger.warn(`[EmailService] No SMTP credentials provided. Email sending will fail.`);
     }
   }
 
@@ -35,32 +35,24 @@ export class EmailService {
   }
 
   private async sendMail(to: string, subject: string, htmlContent: string, attachments?: any[]) {
-    if (this.transporter) {
-      try {
-        const info = await this.transporter.sendMail({
-          from: this.getFromAddress(),
-          to,
-          subject,
-          html: htmlContent,
-          attachments,
-        });
-        this.logger.log(`[EmailService] Email sent successfully to ${to}. MessageId: ${info.messageId}`);
-        return { success: true, messageId: info.messageId };
-      } catch (error) {
-        this.logger.error(`[EmailService] Failed to send email via SMTP: ${error.message}`);
-      }
+    if (!this.transporter) {
+       throw new InternalServerErrorException('SMTP credentials are not configured. Cannot send email.');
     }
 
-    // Dev fallback log
-    this.logger.log(`---------------- [MOCK EMAIL] ----------------`);
-    this.logger.log(`To: ${to}`);
-    this.logger.log(`Subject: ${subject}`);
-    this.logger.log(`Content:\n${htmlContent.replace(/<[^>]*>?/gm, ' ').trim().slice(0, 300)}...`);
-    if (attachments && attachments.length > 0) {
-      this.logger.log(`Attachments: ${attachments.map(a => a.filename).join(', ')}`);
+    try {
+      const info = await this.transporter.sendMail({
+        from: this.getFromAddress(),
+        to,
+        subject,
+        html: htmlContent,
+        attachments,
+      });
+      this.logger.log(`[EmailService] Email sent successfully to ${to}. MessageId: ${info.messageId}`);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      this.logger.error(`[EmailService] Failed to send email via SMTP: ${error.message}`);
+      throw new InternalServerErrorException('Failed to send email via SMTP');
     }
-    this.logger.log(`-----------------------------------------------`);
-    return { success: true, mock: true };
   }
 
   private getBaseTemplate(title: string, contentHtml: string): string {
@@ -104,7 +96,7 @@ export class EmailService {
     `;
   }
 
-  async sendBookingConfirmation(email: string, guestName: string, eventTitle: string, startTime: string, meetLink?: string, duration: number = 30, hostName: string = 'Host', hostEmail?: string) {
+  async sendBookingConfirmation(email: string, guestName: string, eventTitle: string, startTime: string, meetLink?: string, duration: number = 30, hostName: string = 'Host', hostEmail?: string, cancelToken?: string, rescheduleToken?: string) {
     const start = new Date(startTime);
     const end = new Date(start.getTime() + duration * 60000);
     const formattedDate = start.toLocaleString('en-US', {
@@ -133,7 +125,17 @@ export class EmailService {
         ` : ''}
       </div>
 
+      </div>
+
       ${meetLink ? `<a href="${meetLink}" class="button" target="_blank">Join Meeting</a>` : ''}
+
+      ${cancelToken || rescheduleToken ? `
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 13px;">
+          <p style="margin-bottom: 8px;">Need to make changes?</p>
+          ${rescheduleToken ? `<a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/guest/reschedule?token=${rescheduleToken}" style="color: #64748b; text-decoration: underline; margin-right: 12px;">Reschedule</a>` : ''}
+          ${cancelToken ? `<a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/guest/cancel?token=${cancelToken}" style="color: #64748b; text-decoration: underline;">Cancel</a>` : ''}
+        </div>
+      ` : ''}
     `;
 
     // Generate .ics attachment
@@ -184,7 +186,7 @@ export class EmailService {
     return this.sendMail(email, `Cancelled: ${eventTitle}`, this.getBaseTemplate('Meeting Cancelled', content));
   }
 
-  async sendRescheduleEmail(email: string, guestName: string, eventTitle: string, newStartTime: string, meetLink?: string) {
+  async sendRescheduleEmail(email: string, guestName: string, eventTitle: string, newStartTime: string, meetLink?: string, cancelToken?: string, rescheduleToken?: string) {
     const formattedDate = new Date(newStartTime).toLocaleString('en-US', {
       dateStyle: 'full',
       timeStyle: 'short',
@@ -211,7 +213,17 @@ export class EmailService {
         ` : ''}
       </div>
 
+      </div>
+
       ${meetLink ? `<a href="${meetLink}" class="button" target="_blank">Join Meeting</a>` : ''}
+
+      ${cancelToken || rescheduleToken ? `
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 13px;">
+          <p style="margin-bottom: 8px;">Need to make changes?</p>
+          ${rescheduleToken ? `<a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/guest/reschedule?token=${rescheduleToken}" style="color: #64748b; text-decoration: underline; margin-right: 12px;">Reschedule</a>` : ''}
+          ${cancelToken ? `<a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/guest/cancel?token=${cancelToken}" style="color: #64748b; text-decoration: underline;">Cancel</a>` : ''}
+        </div>
+      ` : ''}
     `;
 
     return this.sendMail(email, `Rescheduled: ${eventTitle}`, this.getBaseTemplate('Meeting Rescheduled', content));
@@ -248,5 +260,85 @@ export class EmailService {
     `;
 
     return this.sendMail(email, `Reminder: ${eventTitle} coming up soon`, this.getBaseTemplate('Meeting Reminder', content));
+  }
+
+  async sendFollowUpEmail(email: string, guestName: string, eventTitle: string) {
+    const content = `
+      <p>Hello <strong>${guestName}</strong>,</p>
+      <p>Thank you for attending the <strong>${eventTitle}</strong> meeting.</p>
+      <p>We hope it was productive. If you have any follow-up questions, feel free to reply or book another session.</p>
+    `;
+
+    return this.sendMail(email, `Follow-up: ${eventTitle}`, this.getBaseTemplate('Thank You for Attending', content));
+  }
+
+  async sendPasswordResetEmail(email: string, name: string, tokenUrl: string) {
+    const content = `
+      <p>Hello <strong>${name}</strong>,</p>
+      <p>We received a request to reset your password. If you didn't make this request, you can safely ignore this email.</p>
+      
+      <p>Click the button below to set a new password. This link will expire in 1 hour.</p>
+      
+      <a href="${tokenUrl}" class="button" target="_blank">Reset Password</a>
+    `;
+    return this.sendMail(email, `Reset Your Password`, this.getBaseTemplate('Password Reset', content));
+  }
+
+  async sendVerificationEmail(email: string, name: string, tokenUrl: string) {
+    const content = `
+      <p>Hello <strong>${name}</strong>,</p>
+      <p>Welcome to Meet! Please verify your email address to secure your account.</p>
+      
+      <p>Click the button below to verify your email. This link will expire in 24 hours.</p>
+      
+      <a href="${tokenUrl}" class="button" target="_blank">Verify Email</a>
+    `;
+    return this.sendMail(email, `Verify Your Email`, this.getBaseTemplate('Email Verification', content));
+  }
+
+  async sendHostNotificationEmail(hostEmail: string, guestName: string, eventTitle: string, status: string, startTime?: string) {
+    let subject = '';
+    let message = '';
+    
+    switch (status) {
+      case 'CANCELLED':
+        subject = `Canceled: ${eventTitle} with ${guestName}`;
+        message = `The booking for ${eventTitle} with ${guestName} has been canceled by the guest.`;
+        break;
+      case 'RESCHEDULED':
+        subject = `Rescheduled: ${eventTitle} with ${guestName}`;
+        message = `The booking for ${eventTitle} with ${guestName} has been rescheduled to ${new Date(startTime!).toLocaleString()}.`;
+        break;
+      default:
+        return;
+    }
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>${subject}</h2>
+        <p>${message}</p>
+      </div>
+    `;
+
+    return this.sendMail(hostEmail, subject, htmlContent);
+  }
+
+  async sendTeamInvitationEmail(email: string, teamName: string, token: string) {
+    const subject = `You've been invited to join ${teamName} on Meet`;
+    const acceptUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/guest/invitation?token=${token}`;
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+        <h2>Join ${teamName}</h2>
+        <p>You have been invited to join the team <strong>${teamName}</strong>.</p>
+        <p>Click the button below to accept your invitation:</p>
+        <div style="margin: 30px 0;">
+          <a href="${acceptUrl}" style="background-color: #006bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Accept Invitation</a>
+        </div>
+        <p style="color: #666; font-size: 14px;">If you didn't expect this invitation, you can safely ignore this email.</p>
+      </div>
+    `;
+
+    return this.sendMail(email, subject, htmlContent);
   }
 }

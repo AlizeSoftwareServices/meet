@@ -1,12 +1,12 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { api, getApiBaseUrl } from '@/lib/api';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Clock, MapPin, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 
-export default function PublicProfilePage({ params }: { params: { username: string } }) {
+export default function UserProfilePage({ params }: any) {
   const { data: profile, isLoading, error } = useQuery({
     queryKey: ['public-profile', params.username],
     queryFn: async () => {
@@ -34,13 +34,13 @@ export default function PublicProfilePage({ params }: { params: { username: stri
       <div className="max-w-3xl w-full space-y-8">
         {/* Profile Header */}
         <div className="text-center">
-          <Avatar className="w-24 h-24 mx-auto shadow-md">
-            <AvatarImage src={profile.avatar || ''} alt={profile.name} />
+          <Avatar className="w-24 h-24 mx-auto shadow-md border-2" style={{ borderColor: profile.brandColor || '#e5e7eb' }}>
+            <AvatarImage src={profile.avatar ? `${getApiBaseUrl()}${profile.avatar}` : ''} alt={profile.name} />
             <AvatarFallback className="text-2xl">{profile.name?.charAt(0).toUpperCase()}</AvatarFallback>
           </Avatar>
-          <h1 className="mt-4 text-3xl font-bold text-zinc-900 dark:text-white">{profile.name}</h1>
+          <h1 className="mt-4 text-3xl font-bold text-zinc-900 dark:text-white">{profile.bookingPageTitle || profile.name}</h1>
           <p className="text-zinc-500 dark:text-zinc-400 mt-1 max-w-lg mx-auto">
-            {profile.bio || 'Welcome to my scheduling page. Please follow the instructions to add an event to my calendar.'}
+            {profile.bookingPageDescription || profile.bio || 'Welcome to my scheduling page. Please follow the instructions to add an event to my calendar.'}
           </p>
         </div>
 

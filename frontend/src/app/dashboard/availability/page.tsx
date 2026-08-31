@@ -7,80 +7,119 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Save, Plus, Trash2, CalendarDays, Clock, Settings2 } from 'lucide-react';
+import { Save, Plus, Trash2, CalendarDays, Clock, Settings2, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Switch } from '@/components/ui/switch';
 
-const DAYS = [
-  'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
-];
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-type TimeSlot = { id: string; startTime: string; endTime: string; description?: string };
+type TimeSlot = { id: string; startTime: string; endTime: string };
 type DaySchedule = { enabled: boolean; slots: TimeSlot[] };
 type WeeklySchedule = Record<number, DaySchedule>;
 type DateOverride = { id: string; date: string; isAvailable: boolean; startTime?: string; endTime?: string };
 
-const defaultSchedule: WeeklySchedule = DAYS.reduce((acc, _, index) => {
-  acc[index] = {
-    enabled: index >= 1 && index <= 5, // Mon-Fri default enabled
-    slots: index >= 1 && index <= 5 ? [{ id: Math.random().toString(), startTime: '09:00', endTime: '17:00' }] : [],
-  };
-  return acc;
-}, {} as WeeklySchedule);
+const createEmptySchedule = (): WeeklySchedule => {
+  return DAYS.reduce((acc, _, index) => {
+    acc[index] = {
+      enabled: index >= 1 && index <= 5,
+      slots: index >= 1 && index <= 5 ? [{ id: Math.random().toString(), startTime: '09:00', endTime: '17:00' }] : [],
+    };
+    return acc;
+  }, {} as WeeklySchedule);
+};
 
 export default function AvailabilityPage() {
   const queryClient = useQueryClient();
-  const [schedule, setSchedule] = useState<WeeklySchedule>(defaultSchedule);
+  const [activeScheduleId, setActiveScheduleId] = useState<string | null>(null);
+  
+  // Local editor state
+  const [name, setName] = useState('');
+  const [isDefault, setIsDefault] = useState(false);
+  const [timezone, setTimezone] = useState('UTC');
+  const [schedule, setSchedule] = useState<WeeklySchedule>(createEmptySchedule());
   const [overrides, setOverrides] = useState<DateOverride[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [originalTimezone, setOriginalTimezone] = useState('UTC');
+  
+  const timezones = typeof Intl !== 'undefined' && Intl.supportedValuesOf 
+    ? Intl.supportedValuesOf('timeZone') 
+    : ['UTC', 'America/New_York', 'America/Los_Angeles', 'Europe/London', 'Europe/Paris', 'Asia/Tokyo'];
 
-  const { data: availability, isLoading } = useQuery({
-    queryKey: ['availability'],
+  const { data: schedules, isLoading } = useQuery({
+    queryKey: ['schedules'],
     queryFn: async () => {
-      const res = await api.get('/availability');
+      const res = await api.get('/availability/schedules');
       return res.data;
     },
   });
 
   useEffect(() => {
-    if (availability) {
-      const newSchedule = { ...defaultSchedule };
-      Object.keys(newSchedule).forEach((k) => {
-        newSchedule[Number(k)].enabled = false;
-        newSchedule[Number(k)].slots = [];
-      });
+    if (schedules && schedules.length > 0 && !activeScheduleId) {
+      const defaultSch = schedules.find((s: any) => s.isDefault) || schedules[0];
+      setActiveScheduleId(defaultSch.id);
+    }
+  }, [schedules, activeScheduleId]);
 
-      if (availability.slots) {
-        availability.slots.forEach((slot: any) => {
-          newSchedule[slot.dayOfWeek].enabled = true;
-          newSchedule[slot.dayOfWeek].slots.push({
-            id: slot.id || Math.random().toString(),
-            startTime: slot.startTime,
-            endTime: slot.endTime,
-          });
+  useEffect(() => {
+    if (schedules && activeScheduleId) {
+      const active = schedules.find((s: any) => s.id === activeScheduleId);
+      if (active) {
+        setName(active.name);
+        setIsDefault(active.isDefault);
+        setTimezone(active.timezone || 'UTC');
+        setOriginalTimezone(active.timezone || 'UTC');
+
+        const newSchedule = createEmptySchedule();
+        Object.keys(newSchedule).forEach((k) => {
+          newSchedule[Number(k)].enabled = false;
+          newSchedule[Number(k)].slots = [];
         });
-      }
-      setSchedule(newSchedule);
 
-      if (availability.overrides) {
-        setOverrides(availability.overrides.map((o: any) => ({
-          ...o,
-          id: o.id || Math.random().toString()
-        })));
+        if (active.slots) {
+          active.slots.forEach((slot: any) => {
+            newSchedule[slot.dayOfWeek].enabled = true;
+            newSchedule[slot.dayOfWeek].slots.push({
+              id: slot.id || Math.random().toString(),
+              startTime: slot.startTime,
+              endTime: slot.endTime,
+            });
+          });
+        }
+        setSchedule(newSchedule);
+
+        if (active.overrides) {
+          setOverrides(active.overrides.map((o: any) => ({
+            ...o,
+            id: o.id || Math.random().toString()
+          })));
+        } else {
+          setOverrides([]);
+        }
       }
     }
-  }, [availability]);
+  }, [schedules, activeScheduleId]);
+
+  const createMutation = useMutation({
+    mutationFn: async (newName: string) => {
+      const res = await api.post('/availability/schedules', { name: newName });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      setActiveScheduleId(data.id);
+    }
+  });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ slots, overridesData }: { slots: any[], overridesData: any[] }) => {
-      const response = await api.put('/availability', { slots, overrides: overridesData });
+    mutationFn: async ({ id, data }: { id: string, data: any }) => {
+      const response = await api.put(`/availability/schedules/${id}`, data);
       return response.data;
     },
     onMutate: () => setIsSaving(true),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['availability'] });
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
       setIsSaving(false);
-      alert('Availability schedule saved successfully!');
+      alert('Schedule saved successfully!');
     },
     onError: () => {
       setIsSaving(false);
@@ -88,7 +127,18 @@ export default function AvailabilityPage() {
     }
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/availability/schedules/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
+      setActiveScheduleId(null);
+    }
+  });
+
   const handleSave = () => {
+    if (!activeScheduleId) return;
     const flatSlots: any[] = [];
     Object.entries(schedule).forEach(([dayStr, data]) => {
       if (data.enabled) {
@@ -102,286 +152,288 @@ export default function AvailabilityPage() {
       }
     });
 
-    const mappedOverrides = overrides.map(o => ({
-      date: o.date,
-      isAvailable: o.isAvailable,
-      startTime: o.isAvailable ? o.startTime : null,
-      endTime: o.isAvailable ? o.endTime : null,
-    }));
-
-    updateMutation.mutate({ slots: flatSlots, overridesData: mappedOverrides });
+    updateMutation.mutate({
+      id: activeScheduleId,
+      data: {
+        name,
+        isDefault,
+        timezone,
+        slots: flatSlots,
+        overrides: overrides.map(o => ({
+          date: o.date,
+          isAvailable: o.isAvailable,
+          startTime: o.isAvailable ? o.startTime : null,
+          endTime: o.isAvailable ? o.endTime : null
+        }))
+      }
+    });
   };
 
-  const toggleDay = (dayIndex: number, checked: boolean) => {
+  const handleCreate = () => {
+    const newName = prompt('Enter new schedule name:');
+    if (newName) {
+      createMutation.mutate(newName);
+    }
+  };
+
+  const handleDelete = () => {
+    if (!activeScheduleId || isDefault) return;
+    if (confirm('Are you sure you want to delete this schedule? Event Types using this schedule will fallback to your default.')) {
+      deleteMutation.mutate(activeScheduleId);
+    }
+  };
+
+  const addSlot = (dayIndex: number) => {
+    setSchedule(prev => {
+      const day = prev[dayIndex];
+      return {
+        ...prev,
+        [dayIndex]: {
+          ...day,
+          slots: [...day.slots, { id: Math.random().toString(), startTime: '09:00', endTime: '17:00' }]
+        }
+      };
+    });
+  };
+
+  const removeSlot = (dayIndex: number, slotId: string) => {
+    setSchedule(prev => {
+      const day = prev[dayIndex];
+      return {
+        ...prev,
+        [dayIndex]: {
+          ...day,
+          slots: day.slots.filter(s => s.id !== slotId)
+        }
+      };
+    });
+  };
+
+  const updateSlot = (dayIndex: number, slotId: string, field: 'startTime' | 'endTime', value: string) => {
+    setSchedule(prev => {
+      const day = prev[dayIndex];
+      return {
+        ...prev,
+        [dayIndex]: {
+          ...day,
+          slots: day.slots.map(s => s.id === slotId ? { ...s, [field]: value } : s)
+        }
+      };
+    });
+  };
+
+  const toggleDay = (dayIndex: number) => {
     setSchedule(prev => ({
       ...prev,
       [dayIndex]: {
         ...prev[dayIndex],
-        enabled: checked,
-        slots: checked && prev[dayIndex].slots.length === 0 
+        enabled: !prev[dayIndex].enabled,
+        slots: prev[dayIndex].slots.length === 0 && !prev[dayIndex].enabled 
           ? [{ id: Math.random().toString(), startTime: '09:00', endTime: '17:00' }] 
           : prev[dayIndex].slots
       }
     }));
   };
 
-  const addSlot = (dayIndex: number) => {
-    setSchedule(prev => ({
-      ...prev,
-      [dayIndex]: {
-        ...prev[dayIndex],
-        slots: [...prev[dayIndex].slots, { id: Math.random().toString(), startTime: '09:00', endTime: '17:00' }]
-      }
-    }));
-  };
-
-  const removeSlot = (dayIndex: number, slotId: string) => {
-    setSchedule(prev => {
-      const newSlots = prev[dayIndex].slots.filter(s => s.id !== slotId);
-      return {
-        ...prev,
-        [dayIndex]: {
-          ...prev[dayIndex],
-          enabled: newSlots.length > 0,
-          slots: newSlots,
-        }
-      };
-    });
-  };
-
-  const updateSlot = (dayIndex: number, slotId: string, field: 'startTime'|'endTime'|'description', value: string) => {
-    setSchedule(prev => ({
-      ...prev,
-      [dayIndex]: {
-        ...prev[dayIndex],
-        slots: prev[dayIndex].slots.map(s => s.id === slotId ? { ...s, [field]: value } : s)
-      }
-    }));
-  };
-
   const addOverride = () => {
-    setOverrides([...overrides, { 
-      id: Math.random().toString(), 
-      date: new Date().toISOString().split('T')[0], 
-      isAvailable: false,
-      startTime: '09:00',
-      endTime: '17:00'
+    setOverrides(prev => [...prev, {
+      id: Math.random().toString(),
+      date: new Date().toISOString().split('T')[0],
+      isAvailable: false
     }]);
-  };
-
-  const updateOverride = (id: string, field: keyof DateOverride, value: any) => {
-    setOverrides(prev => prev.map(o => o.id === id ? { ...o, [field]: value } : o));
   };
 
   const removeOverride = (id: string) => {
     setOverrides(prev => prev.filter(o => o.id !== id));
   };
 
+  const updateOverride = (id: string, field: keyof DateOverride, value: any) => {
+    setOverrides(prev => prev.map(o => o.id === id ? { ...o, [field]: value } : o));
+  };
+
+  if (isLoading) return <div>Loading schedules...</div>;
+
   return (
-    <div className="space-y-8 max-w-5xl mx-auto pb-10">
-      <motion.div 
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
-      >
+    <div className="space-y-8 max-w-6xl mx-auto pb-10">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/60">
             Availability
           </h1>
-          <p className="text-muted-foreground mt-2 text-lg">Configure your weekly working hours and date-specific exceptions.</p>
+          <p className="text-muted-foreground mt-2 text-lg">Manage your working hours and schedules.</p>
         </div>
-        <Button onClick={handleSave} disabled={isSaving} size="lg" className="rounded-full px-8 shadow-lg shadow-primary/25 hover:shadow-primary/40">
-          <Save className="w-5 h-5 mr-2" />
-          {isSaving ? 'Saving...' : 'Save Changes'}
-        </Button>
-      </motion.div>
+      </div>
 
-      <div className="grid lg:grid-cols-3 gap-8">
-        <motion.div 
-          className="lg:col-span-2 space-y-6"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <Card className="border-border/50 bg-background/50 backdrop-blur-xl shadow-lg border-l-4 border-l-primary">
-            <CardHeader className="p-8 pb-6">
-              <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-primary" />
-                <CardTitle className="text-2xl">Weekly Hours</CardTitle>
-              </div>
-              <CardDescription>Set your general availability for regular Meets.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-0 p-8 pt-0">
-              {isLoading ? (
-                <div className="p-6 space-y-4 animate-pulse">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="h-16 bg-muted/50 rounded-xl" />
-                  ))}
+      <div className="flex flex-col md:flex-row gap-6">
+        {/* Sidebar */}
+        <div className="w-full md:w-64 shrink-0 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-lg">Schedules</h3>
+            <Button variant="ghost" size="icon" onClick={handleCreate}><Plus className="w-4 h-4" /></Button>
+          </div>
+          <div className="flex flex-col gap-2">
+            {schedules?.map((s: any) => (
+              <button
+                key={s.id}
+                onClick={() => setActiveScheduleId(s.id)}
+                className={`flex items-center justify-between p-3 rounded-lg text-left transition-colors ${activeScheduleId === s.id ? 'bg-primary text-primary-foreground font-medium shadow-md' : 'bg-card hover:bg-muted border border-border/50'}`}
+              >
+                <span className="truncate">{s.name}</span>
+                {s.isDefault && <CheckCircle2 className="w-4 h-4 shrink-0 opacity-70" />}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Main Editor */}
+        <div className="flex-1 space-y-6">
+          <Card className="border-border/50 shadow-sm overflow-hidden">
+            <div className="h-2 bg-gradient-to-r from-brand-blue to-brand-blue/50 w-full" />
+            <CardHeader className="bg-muted/20 border-b border-border/50 pb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1 w-full max-w-xs">
+                  <Label>Schedule Name</Label>
+                  <Input value={name} onChange={e => setName(e.target.value)} className="font-bold text-lg" />
                 </div>
-              ) : (
-                <div className="divide-y divide-border/50">
+                <div className="flex items-center gap-3">
+                  {!isDefault && (
+                    <Button variant="outline" size="sm" onClick={() => setIsDefault(true)}>Set as Default</Button>
+                  )}
+                  {!isDefault && (
+                    <Button variant="destructive" size="icon" onClick={handleDelete}><Trash2 className="w-4 h-4" /></Button>
+                  )}
+                  <Button onClick={handleSave} disabled={isSaving} className="shadow-md">
+                    <Save className="w-4 h-4 mr-2" />
+                    {isSaving ? 'Saving...' : 'Save Schedule'}
+                  </Button>
+                </div>
+              </div>
+              
+              {timezone !== originalTimezone && (
+                <div className="mt-4 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-start gap-3">
+                  <Settings2 className="w-5 h-5 text-amber-500 mt-0.5" />
+                  <div>
+                    <h4 className="text-amber-600 dark:text-amber-400 font-medium">Timezone Change Detected</h4>
+                    <p className="text-sm text-amber-600/80 dark:text-amber-400/80 mt-1">
+                      You are changing the schedule timezone from {originalTimezone} to {timezone}. 
+                      This changes how your existing available hours are interpreted for future bookings.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardHeader>
+            <CardContent className="pt-6 space-y-8">
+              
+              <div className="space-y-4">
+                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                   <h3 className="text-lg font-semibold flex items-center"><Settings2 className="w-5 h-5 mr-2 text-brand-blue" /> Schedule Settings</h3>
+                   <div className="flex items-center gap-3">
+                     <Label>Timezone</Label>
+                     <select 
+                       className="flex h-10 w-full md:w-64 items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                       value={timezone} 
+                       onChange={e => setTimezone(e.target.value)}
+                     >
+                       {timezones.map(tz => (
+                         <option key={tz} value={tz}>{tz}</option>
+                       ))}
+                     </select>
+                   </div>
+                 </div>
+              </div>
+              
+              {/* Weekly Grid */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold flex items-center"><Clock className="w-5 h-5 mr-2 text-brand-blue" /> Weekly hours</h3>
+                <div className="divide-y divide-border/50 border border-border/50 rounded-xl overflow-hidden bg-card">
                   {DAYS.map((day, index) => {
                     const dayData = schedule[index];
-                    const dayAbbr = ['S', 'M', 'T', 'W', 'Th', 'F', 'S'][index];
-                    
                     return (
-                      <div key={day} className="flex flex-row items-center sm:items-start justify-between sm:justify-start gap-4 p-4 hover:bg-muted/10 transition-colors group">
-                        <div className="w-12 sm:w-20 pt-1 flex-shrink-0">
-                          <button 
-                            onClick={() => toggleDay(index, !dayData.enabled)}
-                            className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                              dayData.enabled 
-                                ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20' 
-                                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                            }`}
-                          >
-                            {dayAbbr}
-                          </button>
+                      <div key={day} className={`p-4 sm:p-5 flex flex-col sm:flex-row sm:items-start gap-4 transition-colors ${dayData.enabled ? 'bg-card' : 'bg-muted/30'}`}>
+                        <div className="w-full sm:w-36 flex items-center gap-3 shrink-0 pt-1">
+                          <Switch checked={dayData.enabled} onCheckedChange={() => toggleDay(index)} />
+                          <Label className={`font-medium text-base cursor-pointer ${dayData.enabled ? 'text-foreground' : 'text-muted-foreground'}`} onClick={() => toggleDay(index)}>
+                            {day}
+                          </Label>
                         </div>
                         
-                        <div className="flex-1 flex justify-start pt-1 overflow-x-auto pb-1 -mb-1">
+                        <div className="flex-1 flex flex-col gap-3">
                           {dayData.enabled ? (
-                            <div className="space-y-3">
-                              {dayData.slots.map((slot, slotIndex) => (
-                                <div key={slot.id} className="flex flex-wrap items-center gap-3">
-                                  <div className="flex items-center bg-zinc-50/50 dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm rounded-xl p-2 w-fit transition-all focus-within:ring-2 focus-within:ring-brand-blue/30 focus-within:border-brand-blue/50">
-                                    <Input 
-                                      type="time" 
-                                      className="w-[120px] text-base font-medium h-10 px-3 border-0 focus-visible:ring-0 bg-transparent shadow-none" 
-                                      value={slot.startTime} 
-                                      onChange={(e) => updateSlot(index, slot.id, 'startTime', e.target.value)}
-                                    />
-                                    <span className="text-muted-foreground font-semibold px-2">-</span>
-                                    <Input 
-                                      type="time" 
-                                      className="w-[120px] text-base font-medium h-10 px-3 border-0 focus-visible:ring-0 bg-transparent shadow-none" 
-                                      value={slot.endTime} 
-                                      onChange={(e) => updateSlot(index, slot.id, 'endTime', e.target.value)}
-                                    />
-                                    <div className="h-6 w-px bg-zinc-200 dark:bg-zinc-800 mx-1"></div>
-                                    <Input 
-                                      type="text" 
-                                      placeholder="Note (e.g. Client Meetings)"
-                                      className="w-[180px] text-sm h-10 px-3 border-0 focus-visible:ring-0 bg-transparent shadow-none text-muted-foreground" 
-                                      value={slot.description || ''} 
-                                      onChange={(e) => updateSlot(index, slot.id, 'description', e.target.value)}
-                                    />
-                                  </div>
+                            <>
+                              {dayData.slots.map((slot, slotIdx) => (
+                                <motion.div 
+                                  initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                                  key={slot.id} className="flex flex-wrap items-center gap-2 sm:gap-3"
+                                >
+                                  <Input type="time" value={slot.startTime} onChange={(e) => updateSlot(index, slot.id, 'startTime', e.target.value)} className="w-[110px] bg-background shadow-sm" />
+                                  <span className="text-muted-foreground font-medium">-</span>
+                                  <Input type="time" value={slot.endTime} onChange={(e) => updateSlot(index, slot.id, 'endTime', e.target.value)} className="w-[110px] bg-background shadow-sm" />
                                   
-                                  <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                                    <Button variant="ghost" size="icon" onClick={() => removeSlot(index, slot.id)} className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-9 w-9">
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                    {slotIndex === dayData.slots.length - 1 && (
-                                      <Button variant="ghost" size="icon" onClick={() => addSlot(index)} className="text-muted-foreground hover:text-primary hover:bg-primary/10 h-9 w-9">
-                                        <Plus className="w-5 h-5" />
-                                      </Button>
+                                  <div className="flex items-center gap-1 ml-auto sm:ml-2">
+                                    <Button variant="ghost" size="icon" onClick={() => removeSlot(index, slot.id)} className="h-9 w-9 text-muted-foreground hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                                    {slotIdx === dayData.slots.length - 1 && (
+                                      <Button variant="ghost" size="icon" onClick={() => addSlot(index)} className="h-9 w-9 text-muted-foreground hover:text-primary"><Plus className="w-4 h-4" /></Button>
                                     )}
                                   </div>
-                                </div>
+                                </motion.div>
                               ))}
-                            </div>
+                              {dayData.slots.length === 0 && (
+                                <Button variant="outline" size="sm" onClick={() => addSlot(index)} className="w-fit self-start"><Plus className="w-4 h-4 mr-2" /> Add slot</Button>
+                              )}
+                            </>
                           ) : (
-                            <div className="text-muted-foreground text-sm font-medium py-2.5">Unavailable</div>
+                            <div className="text-muted-foreground text-sm pt-1">Unavailable</div>
                           )}
                         </div>
-                        
-                        {!dayData.enabled && (
-                          <div className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                            <Button variant="ghost" size="icon" onClick={() => toggleDay(index, true)} className="text-muted-foreground hover:text-primary hover:bg-primary/10 h-9 w-9">
-                              <Plus className="w-5 h-5" />
-                            </Button>
-                          </div>
-                        )}
                       </div>
                     );
                   })}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div 
-          className="space-y-6"
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <Card className="border-border/50 bg-background/50 backdrop-blur-xl shadow-lg border-t-4 border-t-amber-500">
-            <CardHeader className="p-8 pb-6">
-              <div className="flex items-center gap-2">
-                <CalendarDays className="w-5 h-5 text-amber-500" />
-                <CardTitle className="text-xl">Date Overrides</CardTitle>
               </div>
-              <CardDescription>Add specific dates when your availability changes from the weekly schedule.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 p-8 pt-0">
-              {overrides.length === 0 ? (
-                <div className="text-center py-8 border-2 border-dashed border-border/50 rounded-xl bg-muted/20">
-                  <Settings2 className="w-8 h-8 text-muted-foreground mx-auto mb-3 opacity-50" />
-                  <p className="text-sm text-muted-foreground">No date overrides added yet.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {overrides.map((override) => (
-                    <div key={override.id} className="p-4 bg-muted/30 border border-border/50 rounded-xl space-y-3 relative group">
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => removeOverride(override.id)} 
-                        className="absolute -top-2 -right-2 w-7 h-7 bg-background border border-border shadow-sm text-muted-foreground hover:text-destructive hover:border-destructive transition-opacity opacity-0 group-hover:opacity-100 rounded-full"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
-                      
-                      <div>
-                        <Label className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2 block ml-1">Select Date</Label>
-                        <Input 
-                          type="date" 
-                          value={override.date} 
-                          onChange={(e) => updateOverride(override.id, 'date', e.target.value)}
-                          className="bg-zinc-50/50 dark:bg-zinc-900 h-12 px-4 rounded-xl border-zinc-200/80 dark:border-zinc-800 shadow-sm focus-visible:ring-2 focus-visible:ring-brand-blue/30 focus-visible:border-brand-blue/50"
-                        />
-                      </div>
-                      
-                      <div className="flex items-center justify-between pt-2">
-                        <span className="text-sm font-medium">Available?</span>
-                        <Switch 
-                          checked={override.isAvailable} 
-                          onCheckedChange={(checked) => updateOverride(override.id, 'isAvailable', checked)}
-                        />
-                      </div>
 
-                      {override.isAvailable && (
-                        <div className="flex items-center gap-3 pt-3">
-                          <Input 
-                            type="time" 
-                            className="bg-zinc-50/50 dark:bg-zinc-900 h-12 px-4 rounded-xl border-zinc-200/80 dark:border-zinc-800 shadow-sm focus-visible:ring-2 focus-visible:ring-brand-blue/30 focus-visible:border-brand-blue/50 flex-1 text-center font-medium" 
-                            value={override.startTime} 
-                            onChange={(e) => updateOverride(override.id, 'startTime', e.target.value)}
-                          />
-                          <span className="text-muted-foreground font-semibold">-</span>
-                          <Input 
-                            type="time" 
-                            className="bg-zinc-50/50 dark:bg-zinc-900 h-12 px-4 rounded-xl border-zinc-200/80 dark:border-zinc-800 shadow-sm focus-visible:ring-2 focus-visible:ring-brand-blue/30 focus-visible:border-brand-blue/50 flex-1 text-center font-medium" 
-                            value={override.endTime} 
-                            onChange={(e) => updateOverride(override.id, 'endTime', e.target.value)}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ))}
+              {/* Date Overrides */}
+              <div className="space-y-4 pt-6 border-t border-border/50">
+                <div className="flex items-center justify-between">
+                  <div className="flex flex-col">
+                    <h3 className="text-lg font-semibold flex items-center"><CalendarDays className="w-5 h-5 mr-2 text-brand-blue" /> Date overrides</h3>
+                    <p className="text-sm text-muted-foreground">Add specific dates where your availability differs from the regular weekly schedule.</p>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={addOverride}><Plus className="w-4 h-4 mr-2" /> Add Override</Button>
                 </div>
-              )}
-              
-              <Button variant="outline" className="w-full border-dashed border-2 hover:bg-primary/5 hover:text-primary hover:border-primary/50" onClick={addOverride}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Date Override
-              </Button>
+
+                {overrides.length > 0 ? (
+                  <div className="space-y-3">
+                    {overrides.map(override => (
+                      <Card key={override.id} className="p-4 border-border/50 shadow-sm flex flex-col sm:flex-row sm:items-center gap-4">
+                        <Input type="date" value={override.date} onChange={e => updateOverride(override.id, 'date', e.target.value)} className="w-fit bg-background" />
+                        
+                        <div className="flex items-center gap-2">
+                          <Switch checked={override.isAvailable} onCheckedChange={c => updateOverride(override.id, 'isAvailable', c)} />
+                          <Label className="text-sm whitespace-nowrap">{override.isAvailable ? 'Available' : 'Unavailable'}</Label>
+                        </div>
+
+                        {override.isAvailable && (
+                          <div className="flex items-center gap-2 flex-1">
+                            <Input type="time" value={override.startTime || '09:00'} onChange={e => updateOverride(override.id, 'startTime', e.target.value)} className="w-[110px]" />
+                            <span className="text-muted-foreground">-</span>
+                            <Input type="time" value={override.endTime || '17:00'} onChange={e => updateOverride(override.id, 'endTime', e.target.value)} className="w-[110px]" />
+                          </div>
+                        )}
+                        
+                        <Button variant="ghost" size="icon" onClick={() => removeOverride(override.id)} className="ml-auto text-muted-foreground hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-muted/30 border border-border/50 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center text-muted-foreground">
+                    <CalendarDays className="w-10 h-10 mb-3 opacity-20" />
+                    <p className="text-sm max-w-sm">No overrides configured. Your regular weekly hours will be applied every day.</p>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

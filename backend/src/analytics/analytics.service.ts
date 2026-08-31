@@ -5,14 +5,21 @@ import { PrismaService } from '../prisma/prisma.service';
 export class AnalyticsService {
   constructor(private prisma: PrismaService) {}
 
-  async getDashboardAnalytics(hostId: string) {
+  async getDashboardAnalytics(hostId: string, startDate?: string, endDate?: string) {
     const now = new Date();
+    const dateFilter = {
+      ...(startDate && { gte: new Date(startDate) }),
+      ...(endDate && { lte: new Date(endDate) })
+    };
 
     const upcomingMeetings = await this.prisma.booking.count({
       where: {
         hostId,
         status: 'CONFIRMED',
-        startTime: { gte: now },
+        startTime: { 
+          gte: startDate ? new Date(startDate) : now,
+          ...(endDate && { lte: new Date(endDate) })
+        },
       },
     });
 
@@ -20,7 +27,11 @@ export class AnalyticsService {
       where: {
         hostId,
         status: 'CONFIRMED',
-        endTime: { lt: now },
+        endTime: { 
+          lt: now,
+          ...(startDate && { gte: new Date(startDate) }),
+          ...(endDate && { lte: new Date(endDate) })
+        },
       },
     });
 
@@ -36,6 +47,7 @@ export class AnalyticsService {
       where: {
         hostId,
         status: 'CONFIRMED',
+        ...(Object.keys(dateFilter).length > 0 && { startTime: dateFilter })
       },
       select: {
         startTime: true,
@@ -48,15 +60,27 @@ export class AnalyticsService {
       return total + (durationMs / (1000 * 60 * 60));
     }, 0);
 
-    // Get bookings per day for the last 7 days (for chart)
-    const last7Days = Array.from({ length: 7 }).map((_, i) => {
-      const d = new Date();
+    // Get bookings per day (for chart)
+    let daysToChart = 7;
+    let endChartDate = new Date();
+    if (endDate) {
+      endChartDate = new Date(endDate);
+    }
+    if (startDate && endDate) {
+      const diffTime = Math.abs(new Date(endDate).getTime() - new Date(startDate).getTime());
+      daysToChart = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      // Cap at 30 days for performance/display
+      daysToChart = Math.min(daysToChart, 30);
+    }
+
+    const chartDates = Array.from({ length: daysToChart }).map((_, i) => {
+      const d = new Date(endChartDate);
       d.setDate(d.getDate() - i);
       d.setHours(0, 0, 0, 0);
       return d;
     }).reverse();
 
-    const chartData = await Promise.all(last7Days.map(async (date) => {
+    const chartData = await Promise.all(chartDates.map(async (date) => {
       const nextDay = new Date(date);
       nextDay.setDate(date.getDate() + 1);
 
@@ -71,7 +95,7 @@ export class AnalyticsService {
       });
 
       return {
-        name: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        name: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         bookings: count,
       };
     }));
@@ -89,5 +113,44 @@ export class AnalyticsService {
       ],
       chartData,
     };
+  }
+
+  async exportBookingsCsv(hostId: string, startDate?: string, endDate?: string): Promise<string> {
+    const dateFilter = {
+      ...(startDate && { gte: new Date(startDate) }),
+      ...(endDate && { lte: new Date(endDate) })
+    };
+
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        hostId,
+        ...(Object.keys(dateFilter).length > 0 && { startTime: dateFilter })
+      },
+      include: {
+        eventType: true
+      },
+      orderBy: {
+        startTime: 'desc'
+      }
+    });
+
+    const headers = ['Booking ID', 'Event Type', 'Guest Name', 'Guest Email', 'Status', 'Start Time', 'End Time', 'Created At'];
+    const rows = bookings.map(b => [
+      b.id,
+      b.eventType.title,
+      b.guestName,
+      b.guestEmail,
+      b.status,
+      b.startTime.toISOString(),
+      b.endTime.toISOString(),
+      b.createdAt.toISOString()
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    return csvContent;
   }
 }
