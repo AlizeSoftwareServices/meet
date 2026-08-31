@@ -13,7 +13,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Sparkles, ArrowRight, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 
 const registerSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
@@ -28,6 +28,7 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [successEmail, setSuccessEmail] = useState<string | null>(null);
   const [resendStatus, setResendStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle');
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -152,13 +153,22 @@ export default function RegisterPage() {
                 
                 <div className="space-y-2">
                   <Label htmlFor="password" className="text-sm font-semibold text-foreground">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    placeholder="••••••••"
-                    className="h-14 bg-white/50 dark:bg-zinc-950/50 border-border/50 focus:border-brand-red focus:ring-brand-red/20 transition-all rounded-xl text-base"
-                    {...form.register('password')}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      className="h-14 bg-white/50 dark:bg-zinc-950/50 border-border/50 focus:border-brand-red focus:ring-brand-red/20 transition-all rounded-xl text-base pr-12"
+                      {...form.register('password')}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
                   {form.formState.errors.password && (
                     <p className="text-xs text-brand-red font-bold flex items-center gap-1 mt-1">
                       {form.formState.errors.password.message}

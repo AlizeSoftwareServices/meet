@@ -14,7 +14,7 @@ import { Capacitor } from '@capacitor/core';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Sparkles, ArrowRight, Calendar, Users, Zap } from 'lucide-react';
+import { Sparkles, ArrowRight, Calendar, Users, Zap, Eye, EyeOff } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address' }),
@@ -27,6 +27,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isNative, setIsNative] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     setIsNative(Capacitor.isNativePlatform());
@@ -107,13 +108,22 @@ export default function LoginPage() {
                     Forgot password?
                   </Link>
                 </div>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  className="h-14 bg-white/50 dark:bg-zinc-950/50 border-border/50 focus:border-brand-red focus:ring-brand-red/20 transition-all rounded-xl text-base"
-                  {...form.register('password')}
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    className="h-14 bg-white/50 dark:bg-zinc-950/50 border-border/50 focus:border-brand-red focus:ring-brand-red/20 transition-all rounded-xl text-base pr-12"
+                    {...form.register('password')}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
                 {form.formState.errors.password && (
                   <p className="text-xs text-brand-red font-bold flex items-center gap-1 mt-1">
                     {form.formState.errors.password.message}
@@ -142,28 +152,7 @@ export default function LoginPage() {
                   </span>
                 )}
               </Button>
-              {!isNative && (
-                <>
-                  <div className="relative flex py-2 items-center">
-                    <div className="flex-grow border-t border-border/50"></div>
-                    <span className="flex-shrink mx-4 text-xs font-bold text-muted-foreground uppercase tracking-widest">Or</span>
-                    <div className="flex-grow border-t border-border/50"></div>
-                  </div>
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      localStorage.setItem('demoMode', 'true');
-                      router.push('/dashboard');
-                    }}
-                    className="w-full h-13 text-base font-bold rounded-xl border-2 border-border/60 hover:bg-muted/80 text-foreground transition-all duration-300"
-                  >
-                    <Sparkles className="w-4 h-4 mr-2 text-primary" />
-                    Explore Demo Mode (No Login Required)
-                  </Button>
-                </>
-              )}
             </form>
           </motion.div>
 
