@@ -122,6 +122,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
               <div className="p-4 flex flex-col gap-1.5 mt-2 flex-1 overflow-y-auto scrollbar-hide">
                 {sidebarLinks.map((link) => {
+                  const Icon = link.icon;
                   const normalizedPathname = pathname.replace(/\/$/, '') || '/';
                   const isActive = normalizedPathname === link.href;
                   return (
@@ -227,7 +228,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto relative">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden relative w-full max-w-full">
         {/* Subtle decorative background blob */}
         <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl -z-10 pointer-events-none" />
         
