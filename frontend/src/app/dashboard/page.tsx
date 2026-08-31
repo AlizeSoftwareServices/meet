@@ -130,31 +130,32 @@ export default function DashboardPage() {
               Welcome back to Meet. Here is an overview of your scheduling activity.
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="flex flex-col">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 w-full sm:w-auto mt-4 md:mt-0">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="flex flex-col flex-1 sm:flex-none">
                 <span className="text-xs text-muted-foreground ml-1 mb-1">Start Date</span>
                 <Input 
                   type="date" 
                   value={startDate} 
                   onChange={(e) => setStartDate(e.target.value)} 
-                  className="w-36 h-10"
+                  className="w-full sm:w-36 h-10"
                 />
               </div>
-              <span className="text-muted-foreground mt-5">to</span>
-              <div className="flex flex-col">
+              <span className="text-muted-foreground mt-5 hidden sm:block">to</span>
+              <span className="text-muted-foreground mt-5 sm:hidden">-</span>
+              <div className="flex flex-col flex-1 sm:flex-none">
                 <span className="text-xs text-muted-foreground ml-1 mb-1">End Date</span>
                 <Input 
                   type="date" 
                   value={endDate} 
                   onChange={(e) => setEndDate(e.target.value)} 
-                  className="w-36 h-10"
+                  className="w-full sm:w-36 h-10"
                 />
               </div>
             </div>
-            <div className="flex flex-col justify-end">
-              <span className="text-xs invisible mb-1">Export</span>
-              <Button variant="outline" className="gap-2 h-10" onClick={async () => {
+            <div className="flex flex-col justify-end w-full sm:w-auto">
+              <span className="text-xs invisible mb-1 hidden sm:block">Export</span>
+              <Button variant="outline" className="gap-2 h-10 w-full sm:w-auto" onClick={async () => {
                 const res = await api.get(`/analytics/export${queryString}`, { responseType: 'blob' });
                 const url = window.URL.createObjectURL(new Blob([res.data]));
                 const link = document.createElement('a');
