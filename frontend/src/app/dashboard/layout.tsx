@@ -49,10 +49,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setClickedLink(null);
   }, [pathname]);
 
-  const handleNavigation = (href: string) => {
-    if (pathname !== href) {
+  const handleNavigation = (e: React.MouseEvent, href: string) => {
+    const normalizedPathname = pathname.replace(/\/$/, '') || '/';
+    if (normalizedPathname !== href) {
       setIsNavigating(true);
       setClickedLink(href);
+    } else {
+      e.preventDefault();
     }
     setIsMobileMenuOpen(false);
   };
@@ -119,20 +122,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
               <div className="p-4 flex flex-col gap-1.5 mt-2 flex-1 overflow-y-auto scrollbar-hide">
                 {sidebarLinks.map((link) => {
-                  const Icon = link.icon;
-                  const isActive = pathname === link.href;
+                  const normalizedPathname = pathname.replace(/\/$/, '') || '/';
+                  const isActive = normalizedPathname === link.href;
                   return (
                     <Link
                       key={link.href}
                       href={link.href}
-                      onClick={() => setIsMobileMenuOpen(false)}
+                      onClick={(e) => handleNavigation(e, link.href)}
                       className={`group flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                         isActive 
-                          ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20' 
+                          ? 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400' 
                           : 'text-foreground/70 hover:bg-muted hover:text-foreground'
                       }`}
                     >
-                      <Icon className={`w-6 h-6 ${isActive ? 'text-primary-foreground' : 'text-foreground/50 group-hover:text-foreground'} transition-colors`} />
+                      <Icon className={`w-6 h-6 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-foreground/50 group-hover:text-foreground'} transition-colors`} />
                       <span className="text-base">{link.label}</span>
                     </Link>
                   );
@@ -167,31 +170,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-4">Menu</div>
           {sidebarLinks.map((link) => {
             const Icon = link.icon;
-            const isActive = pathname === link.href;
+            const normalizedPathname = pathname.replace(/\/$/, '') || '/';
+            const isActive = normalizedPathname === link.href;
             const isPending = isNavigating && clickedLink === link.href;
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                onClick={() => handleNavigation(link.href)}
+                onClick={(e) => handleNavigation(e, link.href)}
               >
                 <motion.div
                   whileHover={{ scale: isActive ? 1 : 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   className={`group relative flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                     isActive 
-                      ? 'text-primary-foreground shadow-md shadow-primary/25' 
+                      ? 'text-blue-700 dark:text-blue-400' 
                       : 'text-foreground/70 hover:bg-muted/80 hover:text-foreground'
                   }`}
                 >
                   <div className="flex items-center gap-3 relative z-10">
-                    <Icon className={`w-5 h-5 ${isActive ? 'text-primary-foreground' : 'text-foreground/50 group-hover:text-primary'} transition-colors`} />
+                    <Icon className={`w-5 h-5 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-foreground/50 group-hover:text-blue-500'} transition-colors`} />
                     <span>{link.label}</span>
                   </div>
                   
                   {isPending && (
                     <div className="relative z-10">
-                      <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                     </div>
                   )}
 
@@ -199,7 +203,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   {isActive && (
                     <motion.div
                       layoutId="activeSidebar"
-                      className="absolute inset-0 bg-gradient-to-r from-primary to-primary/90 rounded-xl -z-10"
+                      className="absolute inset-0 bg-blue-50 dark:bg-blue-500/10 rounded-xl -z-10"
                       transition={{ type: "spring", stiffness: 300, damping: 30 }}
                     />
                   )}

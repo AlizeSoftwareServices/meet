@@ -152,18 +152,21 @@ export default function DashboardPage() {
                 />
               </div>
             </div>
-            <Button variant="outline" className="gap-2 h-10" onClick={async () => {
-              const res = await api.get(`/analytics/export${queryString}`, { responseType: 'blob' });
-              const url = window.URL.createObjectURL(new Blob([res.data]));
-              const link = document.createElement('a');
-              link.href = url;
-              link.setAttribute('download', 'bookings-export.csv');
-              document.body.appendChild(link);
-              link.click();
-            }}>
-              <Download className="w-4 h-4" />
-              Export CSV
-            </Button>
+            <div className="flex flex-col justify-end">
+              <span className="text-xs invisible mb-1">Export</span>
+              <Button variant="outline" className="gap-2 h-10" onClick={async () => {
+                const res = await api.get(`/analytics/export${queryString}`, { responseType: 'blob' });
+                const url = window.URL.createObjectURL(new Blob([res.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', 'bookings-export.csv');
+                document.body.appendChild(link);
+                link.click();
+              }}>
+                <Download className="w-4 h-4" />
+                Export CSV
+              </Button>
+            </div>
           </div>
         </div>
       </motion.div>
