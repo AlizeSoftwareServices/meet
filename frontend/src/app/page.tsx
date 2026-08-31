@@ -133,15 +133,7 @@ export default function LandingPage() {
   ];
 
   if (!mounted || isNative) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 space-y-4">
-        <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-xl shadow-primary/20">
-          <Calendar className="w-8 h-8 text-primary" />
-        </div>
-        <h1 className="text-2xl font-black tracking-tight text-foreground">Meet</h1>
-        <div className="w-6 h-6 border-3 border-primary border-t-transparent rounded-full animate-spin mt-2" />
-      </div>
-    );
+    return <div className="min-h-screen bg-white" />;
   }
 
   return (
