@@ -3,7 +3,7 @@
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">#FFFFFF</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/meet_splash_icon_v3</item>
-        <item name="android:windowSplashScreenBrandingImage">@drawable/alize_branding_v3</item>
+        <item name="android:windowSplashScreenBrandingImage">@drawable/alize_branding_v4</item>
         <item name="android:windowSplashScreenIconBackgroundColor">@android:color/transparent</item>
         <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
     </style>
