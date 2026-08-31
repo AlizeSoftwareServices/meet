@@ -58,10 +58,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('demoMode');
-    localStorage.removeItem('demo_integrations');
-    router.push('/');
+    if (window.confirm("Are you sure you want to log out?")) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('demoMode');
+      localStorage.removeItem('demo_integrations');
+      router.push('/');
+    }
   };
 
   if (!isAuthenticated) {
@@ -130,8 +132,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           : 'text-foreground/70 hover:bg-muted hover:text-foreground'
                       }`}
                     >
-                      <Icon className={`w-5 h-5 ${isActive ? 'text-primary-foreground' : 'text-foreground/50 group-hover:text-foreground'} transition-colors`} />
-                      {link.label}
+                      <Icon className={`w-6 h-6 ${isActive ? 'text-primary-foreground' : 'text-foreground/50 group-hover:text-foreground'} transition-colors`} />
+                      <span className="text-base">{link.label}</span>
                     </Link>
                   );
                 })}
@@ -142,7 +144,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-sm font-medium text-destructive/80 hover:text-destructive hover:bg-destructive/10 transition-colors"
                 >
                   <LogOut className="w-5 h-5" />
-                  Exit demo
+                  Logout
                 </button>
               </div>
             </motion.div>
@@ -215,7 +217,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             className="flex items-center gap-3 px-4 py-3 w-full rounded-xl text-sm font-medium text-destructive/80 hover:text-destructive hover:bg-destructive/10 transition-colors"
           >
             <LogOut className="w-5 h-5" />
-            Exit demo
+            Logout
           </motion.button>
         </div>
       </aside>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Capacitor } from '@capacitor/core';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -46,6 +47,11 @@ export default function SettingsPage() {
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [isNative, setIsNative] = useState(false);
+
+  useEffect(() => {
+    setIsNative(Capacitor.isNativePlatform());
+  }, []);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['profile'],
@@ -190,14 +196,14 @@ export default function SettingsPage() {
         <p className="text-zinc-500">Manage your public profile and preferences.</p>
       </div>
 
-      <Card>
-        <CardHeader className="p-8 pb-6">
+      <Card className="shadow-sm sm:shadow-md border-border/50">
+        <CardHeader className="p-5 sm:p-8 sm:pb-6">
           <CardTitle>Public Profile</CardTitle>
           <CardDescription>
             This information will be displayed publicly on your booking page.
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-8 pt-0">
+        <CardContent className="p-5 pt-0 sm:p-8 sm:pt-0">
           <div className="mb-8 flex items-center gap-6">
             <div className="h-24 w-24 rounded-full bg-zinc-200 border-2 border-zinc-300 overflow-hidden flex items-center justify-center relative group">
               {profile?.avatar ? (
@@ -334,14 +340,14 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="p-8 pb-6">
+      <Card className="shadow-sm sm:shadow-md border-border/50">
+        <CardHeader className="p-5 sm:p-8 sm:pb-6">
           <CardTitle>Change Password</CardTitle>
           <CardDescription>
             Update your account password.
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-8 pt-0">
+        <CardContent className="p-5 pt-0 sm:p-8 sm:pt-0">
           <form onSubmit={handleChangePassword} className="space-y-6 max-w-md">
             <div className="space-y-3">
               <Label>Current Password</Label>
@@ -366,42 +372,44 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card className="border-red-200">
-        <CardHeader className="p-8 pb-6 bg-red-50 rounded-t-xl">
-          <CardTitle className="text-red-700">Danger Zone</CardTitle>
-          <CardDescription className="text-red-600">
-            Permanently delete your account and all associated data.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-8">
-          <div className="space-y-4 max-w-md">
-            <p className="text-sm text-gray-600">
-              This action cannot be undone. This will permanently delete your profile, event types, contacts, and cancel all future bookings.
-            </p>
-            <div className="space-y-3">
-              <Label className="text-red-600">Type DELETE MY ACCOUNT to confirm</Label>
-              <Input 
-                value={deleteConfirmation} 
-                onChange={e => setDeleteConfirmation(e.target.value)}
-                placeholder="DELETE MY ACCOUNT"
-                className="border-red-300 focus-visible:ring-red-500"
-              />
-            </div>
-            
-            {deleteError && <p className="text-red-500 text-sm">{deleteError}</p>}
+      {!isNative && (
+        <Card className="border-red-200 shadow-sm sm:shadow-md">
+          <CardHeader className="p-5 sm:p-8 sm:pb-6 bg-red-50 rounded-t-xl">
+            <CardTitle className="text-red-700">Danger Zone</CardTitle>
+            <CardDescription className="text-red-600">
+              Permanently delete your account and all associated data.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-5 sm:p-8">
+            <div className="space-y-4 max-w-md">
+              <p className="text-sm text-gray-600">
+                This action cannot be undone. This will permanently delete your profile, event types, contacts, and cancel all future bookings.
+              </p>
+              <div className="space-y-3">
+                <Label className="text-red-600">Type DELETE MY ACCOUNT to confirm</Label>
+                <Input 
+                  value={deleteConfirmation} 
+                  onChange={e => setDeleteConfirmation(e.target.value)}
+                  placeholder="DELETE MY ACCOUNT"
+                  className="border-red-300 focus-visible:ring-red-500"
+                />
+              </div>
+              
+              {deleteError && <p className="text-red-500 text-sm">{deleteError}</p>}
 
-            <Button 
-              type="button" 
-              variant="destructive"
-              onClick={handleDeleteAccount}
-              disabled={deleteLoading || deleteConfirmation !== 'DELETE MY ACCOUNT'}
-              className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto"
-            >
-              {deleteLoading ? 'Deleting...' : 'Delete Account'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+              <Button 
+                type="button" 
+                variant="destructive"
+                onClick={handleDeleteAccount}
+                disabled={deleteLoading || deleteConfirmation !== 'DELETE MY ACCOUNT'}
+                className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto"
+              >
+                {deleteLoading ? 'Deleting...' : 'Delete Account'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
