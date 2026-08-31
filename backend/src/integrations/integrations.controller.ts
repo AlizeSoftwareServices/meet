@@ -57,9 +57,20 @@ export class IntegrationsController {
 
   private getFrontendRedirect(customRedirect?: string, queryParam: string = ''): string {
     let baseUrl = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+    
     if (customRedirect && (customRedirect.startsWith('http://') || customRedirect.startsWith('https://') || customRedirect.startsWith('capacitor://') || customRedirect.startsWith('meet://'))) {
       baseUrl = customRedirect.replace(/\/$/, '');
     }
+
+    // Ensure baseUrl has a protocol so Express doesn't treat it as a relative path
+    if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://') && !baseUrl.startsWith('capacitor://') && !baseUrl.startsWith('meet://')) {
+      if (baseUrl.includes('localhost')) {
+        baseUrl = 'http://' + baseUrl;
+      } else {
+        baseUrl = 'https://' + baseUrl;
+      }
+    }
+
     const separator = baseUrl.includes('?') ? '&' : '?';
     if (baseUrl.includes('/dashboard/integrations')) {
       return queryParam ? `${baseUrl}${separator}${queryParam}` : baseUrl;
