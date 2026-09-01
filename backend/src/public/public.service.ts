@@ -33,28 +33,6 @@ export class PublicService {
       throw new NotFoundException('User not found');
     }
 
-    let activeEventTypes = profile.user.eventTypes;
-
-    // Auto-create default 30 Min Meeting if user has 0 event types
-    if (activeEventTypes.length === 0) {
-      try {
-        const defaultEvent = await this.prisma.eventType.create({
-          data: {
-            userId: profile.userId,
-            title: '30 Min Meeting',
-            slug: '30min',
-            duration: 30,
-            description: '30 minute 1-on-1 meeting. Pick a date and time to book an event on my calendar.',
-            locationType: 'GOOGLE_MEET',
-            isActive: true,
-          }
-        });
-        activeEventTypes = [defaultEvent as any];
-      } catch {
-        // Skip if slug collision occurs
-      }
-    }
-
     return {
       id: profile.userId,
       name: profile.name,
@@ -66,7 +44,7 @@ export class PublicService {
       brandColor: profile.brandColor,
       bookingPageTitle: profile.bookingPageTitle,
       bookingPageDescription: profile.bookingPageDescription,
-      eventTypes: activeEventTypes
+      eventTypes: profile.user.eventTypes
     };
   }
 
