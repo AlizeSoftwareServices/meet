@@ -235,6 +235,22 @@ export default function AvailabilityPage() {
     }));
   };
 
+  const copyToAll = (sourceDayIndex: number) => {
+    setSchedule(prev => {
+      const sourceSlots = prev[sourceDayIndex].slots.map(s => ({ ...s, id: Math.random().toString() }));
+      const newSchedule = { ...prev };
+      
+      [1, 2, 3, 4, 5].forEach(day => {
+        newSchedule[day] = {
+          enabled: true,
+          slots: sourceSlots.map(s => ({ ...s, id: Math.random().toString() }))
+        };
+      });
+      return newSchedule;
+    });
+    alert('Copied to Monday - Friday');
+  };
+
   const addOverride = () => {
     setOverrides(prev => [...prev, {
       id: Math.random().toString(),
@@ -344,20 +360,28 @@ export default function AvailabilityPage() {
               
               {/* Weekly Grid */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold flex items-center"><Clock className="w-5 h-5 mr-2 text-brand-blue" /> Weekly hours</h3>
-                <div className="divide-y divide-border/50 border border-border/50 rounded-xl overflow-hidden bg-card">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold flex items-center"><Clock className="w-5 h-5 mr-2 text-brand-blue" /> Weekly hours</h3>
+                  <p className="text-sm text-muted-foreground">Check the box to enable a day.</p>
+                </div>
+                <div className="divide-y divide-border/50 border border-border/50 rounded-xl overflow-hidden bg-card shadow-sm">
                   {DAYS.map((day, index) => {
                     const dayData = schedule[index];
                     return (
-                      <div key={day} className={`p-4 sm:p-5 flex flex-col sm:flex-row sm:items-start gap-4 transition-colors ${dayData.enabled ? 'bg-card' : 'bg-muted/30'}`}>
-                        <div className="w-full sm:w-36 flex items-center gap-3 shrink-0 pt-1">
-                          <Switch checked={dayData.enabled} onCheckedChange={() => toggleDay(index)} />
-                          <Label className={`font-medium text-base cursor-pointer ${dayData.enabled ? 'text-foreground' : 'text-muted-foreground'}`} onClick={() => toggleDay(index)}>
+                      <div key={day} className={`p-4 sm:p-5 flex flex-col xl:flex-row xl:items-start gap-4 transition-colors hover:bg-muted/10 ${dayData.enabled ? 'bg-card' : 'bg-muted/20 opacity-80'}`}>
+                        <div className="w-full xl:w-40 flex items-center gap-3 shrink-0 pt-1">
+                          <input 
+                            type="checkbox" 
+                            checked={dayData.enabled} 
+                            onChange={() => toggleDay(index)} 
+                            className="w-5 h-5 rounded border-gray-300 text-brand-blue focus:ring-brand-blue cursor-pointer"
+                          />
+                          <Label className={`font-semibold text-base cursor-pointer ${dayData.enabled ? 'text-foreground' : 'text-muted-foreground line-through'}`} onClick={() => toggleDay(index)}>
                             {day}
                           </Label>
                         </div>
                         
-                        <div className="flex-1 flex flex-col gap-3">
+                        <div className="flex-1 flex flex-col gap-3 min-w-0">
                           {dayData.enabled ? (
                             <>
                               {dayData.slots.map((slot, slotIdx) => (
@@ -365,14 +389,14 @@ export default function AvailabilityPage() {
                                   initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
                                   key={slot.id} className="flex flex-wrap items-center gap-2 sm:gap-3"
                                 >
-                                  <Input type="time" value={slot.startTime} onChange={(e) => updateSlot(index, slot.id, 'startTime', e.target.value)} className="w-[110px] bg-background shadow-sm" />
+                                  <Input type="time" value={slot.startTime} onChange={(e) => updateSlot(index, slot.id, 'startTime', e.target.value)} className="w-[120px] bg-background shadow-sm border-gray-300 focus:border-brand-blue focus:ring-brand-blue" />
                                   <span className="text-muted-foreground font-medium">-</span>
-                                  <Input type="time" value={slot.endTime} onChange={(e) => updateSlot(index, slot.id, 'endTime', e.target.value)} className="w-[110px] bg-background shadow-sm" />
+                                  <Input type="time" value={slot.endTime} onChange={(e) => updateSlot(index, slot.id, 'endTime', e.target.value)} className="w-[120px] bg-background shadow-sm border-gray-300 focus:border-brand-blue focus:ring-brand-blue" />
                                   
                                   <div className="flex items-center gap-1 ml-auto sm:ml-2">
-                                    <Button variant="ghost" size="icon" onClick={() => removeSlot(index, slot.id)} className="h-9 w-9 text-muted-foreground hover:text-destructive"><Trash2 className="w-4 h-4" /></Button>
+                                    <Button variant="ghost" size="icon" onClick={() => removeSlot(index, slot.id)} className="h-10 w-10 text-muted-foreground hover:bg-red-50 hover:text-red-600 rounded-full transition-colors"><Trash2 className="w-5 h-5" /></Button>
                                     {slotIdx === dayData.slots.length - 1 && (
-                                      <Button variant="ghost" size="icon" onClick={() => addSlot(index)} className="h-9 w-9 text-muted-foreground hover:text-primary"><Plus className="w-4 h-4" /></Button>
+                                      <Button variant="ghost" size="icon" onClick={() => addSlot(index)} className="h-10 w-10 text-brand-blue hover:bg-brand-blue/10 rounded-full transition-colors"><Plus className="w-5 h-5" /></Button>
                                     )}
                                   </div>
                                 </motion.div>
@@ -382,9 +406,16 @@ export default function AvailabilityPage() {
                               )}
                             </>
                           ) : (
-                            <div className="text-muted-foreground text-sm pt-1">Unavailable</div>
+                            <div className="text-muted-foreground text-sm pt-1.5 font-medium">Unavailable</div>
                           )}
                         </div>
+                        {dayData.enabled && index >= 1 && index <= 5 && (
+                          <div className="pt-2 xl:pt-0">
+                            <Button variant="link" size="sm" onClick={() => copyToAll(index)} className="text-brand-blue p-0 h-auto hover:no-underline hover:text-brand-purple text-xs">
+                              Copy to Mon-Fri
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

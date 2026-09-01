@@ -13,9 +13,21 @@ export class AvailabilityService {
     if (schedules.length === 0) {
       const created = await this.prisma.availability.create({
         data: { userId, name: 'Working Hours', isDefault: true },
+      });
+      // Add default slots for Mon-Fri
+      const defaultSlots = [1, 2, 3, 4, 5].map(day => ({
+        availabilityId: created.id,
+        dayOfWeek: day,
+        startTime: '09:00',
+        endTime: '17:00'
+      }));
+      await this.prisma.availabilitySlot.createMany({ data: defaultSlots });
+      
+      const fullCreated = await this.prisma.availability.findUnique({
+        where: { id: created.id },
         include: { slots: true, overrides: true }
       });
-      schedules = [created];
+      schedules = [fullCreated as any];
     }
     return schedules;
   }
