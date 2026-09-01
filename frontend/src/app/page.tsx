@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Calendar, Clock, Users, ArrowRight, ShieldCheck, Zap, Globe, Video, LinkIcon, CheckCircle2, ChevronDown, BarChart3, Plug } from 'lucide-react';
+import { Sparkles, Calendar, Clock, Users, ArrowRight, ShieldCheck, Zap, Globe, Video, LinkIcon, CheckCircle2, ChevronDown, BarChart3, Plug, Target, Shield } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { ContactModal } from '@/components/ContactModal';
 
@@ -17,11 +17,6 @@ export default function LandingPage() {
   const [mounted, setMounted] = useState(false);
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [activeFeatureIndex, setActiveFeatureIndex] = useState(0);
-  
-  const handleStartDemo = () => {
-    localStorage.setItem('demoMode', 'true');
-    window.location.href = '/dashboard';
-  };
 
   useEffect(() => {
     setMounted(true);
@@ -137,7 +132,7 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-blue/5 via-background to-brand-purple/5 selection:bg-brand-blue/20 overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-brand-blue/5 via-background to-brand-purple/5 selection:bg-brand-blue/20">
       {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/60 backdrop-blur-xl border-b border-white/10 dark:border-white/5">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between relative">
@@ -148,18 +143,18 @@ export default function LandingPage() {
 
           {/* Center Navigation Menu */}
           <div className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2 h-full">
-            <Link href="/" className="text-sm font-bold text-foreground hover:text-brand-blue transition-colors">
+            <a href="#home" className="text-sm font-bold text-foreground hover:text-brand-blue transition-colors">
               Home
-            </Link>
+            </a>
             <a href="#features" className="text-sm font-bold text-foreground hover:text-brand-blue transition-colors">
               Features
             </a>
             <a href="#integrations" className="text-sm font-bold text-foreground hover:text-brand-blue transition-colors">
               Integrations
             </a>
-            <Link href="/about" className="text-sm font-bold text-foreground hover:text-brand-blue transition-colors">
+            <a href="#about" className="text-sm font-bold text-foreground hover:text-brand-blue transition-colors">
               About
-            </Link>
+            </a>
           </div>
 
           <div className="flex items-center gap-3">
@@ -178,7 +173,7 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <main className="pt-32 pb-20 px-6 max-w-7xl mx-auto relative min-h-[85vh]">
+      <main id="home" className="pt-32 pb-20 px-6 max-w-7xl mx-auto relative min-h-[85vh]">
         {/* Huge Moving Background Elements */}
         <motion.div 
           animate={{ 
@@ -188,7 +183,7 @@ export default function LandingPage() {
             borderRadius: ['40% 60% 70% 30% / 40% 50% 60% 50%', '50% 50% 50% 50% / 50% 50% 50% 50%', '30% 70% 50% 50% / 50% 30% 70% 50%', '40% 60% 70% 30% / 40% 50% 60% 50%']
           }}
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-[0%] right-[-10%] w-[500px] h-[600px] bg-brand-blue opacity-80 -z-10 mix-blend-multiply dark:mix-blend-screen filter blur-[2px]" 
+          className="absolute top-[0%] right-[-10%] w-[500px] h-[600px] bg-brand-blue opacity-80 -z-10 mix-blend-multiply dark:mix-blend-screen filter blur-[2px] pointer-events-none select-none" 
         />
         <motion.div 
           animate={{ 
@@ -198,7 +193,7 @@ export default function LandingPage() {
             borderRadius: ['60% 40% 30% 70% / 60% 30% 70% 40%', '40% 60% 50% 50% / 40% 50% 60% 50%', '70% 30% 50% 50% / 30% 70% 50% 50%', '60% 40% 30% 70% / 60% 30% 70% 40%']
           }}
           transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute bottom-[-15%] right-[15%] w-[600px] h-[500px] bg-brand-purple opacity-80 -z-10 mix-blend-multiply dark:mix-blend-screen filter blur-[2px]" 
+          className="absolute bottom-[-15%] right-[15%] w-[600px] h-[500px] bg-brand-purple opacity-80 -z-10 mix-blend-multiply dark:mix-blend-screen filter blur-[2px] pointer-events-none select-none" 
         />
         <motion.div 
           animate={{ 
@@ -208,7 +203,7 @@ export default function LandingPage() {
             borderRadius: ['30% 70% 70% 30% / 30% 30% 70% 70%', '50% 50% 30% 70% / 50% 50% 70% 30%', '70% 30% 50% 50% / 70% 30% 50% 50%', '30% 70% 70% 30% / 30% 30% 70% 70%']
           }}
           transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-[20%] left-[-15%] w-[400px] h-[400px] bg-brand-yellow opacity-40 -z-10 mix-blend-multiply dark:mix-blend-screen filter blur-[2px]" 
+          className="absolute top-[20%] left-[-15%] w-[400px] h-[400px] bg-brand-yellow opacity-40 -z-10 mix-blend-multiply dark:mix-blend-screen filter blur-[2px] pointer-events-none select-none" 
         />
 
         <div className="flex flex-col lg:flex-row items-center justify-between gap-16 lg:gap-8 pt-8">
@@ -558,14 +553,63 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* About Us Section */}
+      <section id="about" className="py-32 px-6 relative overflow-hidden bg-background/50 border-t border-border/50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center max-w-3xl mx-auto mb-20">
+            <span className="text-xs font-black text-brand-purple uppercase tracking-widest px-4 py-1.5 rounded-full bg-brand-purple/10 border border-brand-purple/20 inline-block mb-4">
+              About Meet
+            </span>
+            <h2 className="text-4xl sm:text-5xl font-black text-foreground tracking-tight mb-6">
+              Empowering seamless connections & calendar efficiency
+            </h2>
+            <p className="text-xl text-muted-foreground font-medium leading-relaxed">
+              Meet was built to eliminate the tedious back-and-forth of scheduling meetings. Designed for modern professionals, teams, and enterprises to connect with zero friction.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="bg-white dark:bg-zinc-950 p-8 rounded-[2rem] border border-border shadow-sm space-y-4 hover:shadow-lg transition-all">
+              <div className="w-12 h-12 rounded-2xl bg-brand-blue/10 flex items-center justify-center text-brand-blue">
+                <Target className="w-6 h-6" />
+              </div>
+              <h3 className="text-2xl font-bold text-foreground">Our Mission</h3>
+              <p className="text-muted-foreground font-medium leading-relaxed">
+                To simplify scheduling so you can focus on high-impact conversations, collaboration, and driving business growth.
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-zinc-950 p-8 rounded-[2rem] border border-border shadow-sm space-y-4 hover:shadow-lg transition-all">
+              <div className="w-12 h-12 rounded-2xl bg-brand-purple/10 flex items-center justify-center text-brand-purple">
+                <Shield className="w-6 h-6" />
+              </div>
+              <h3 className="text-2xl font-bold text-foreground">Privacy & Reliability</h3>
+              <p className="text-muted-foreground font-medium leading-relaxed">
+                Enterprise-grade security ensuring your availability, calendar events, and invitee details are protected with strict access controls.
+              </p>
+            </div>
+
+            <div className="bg-white dark:bg-zinc-950 p-8 rounded-[2rem] border border-border shadow-sm space-y-4 hover:shadow-lg transition-all">
+              <div className="w-12 h-12 rounded-2xl bg-brand-green/10 flex items-center justify-center text-brand-green">
+                <Zap className="w-6 h-6" />
+              </div>
+              <h3 className="text-2xl font-bold text-foreground">Real-Time Sync</h3>
+              <p className="text-muted-foreground font-medium leading-relaxed">
+                Instant bidirectional sync with Google Calendar, Google Meet, Microsoft Teams, and Outlook so double-booking never happens.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA Section */}
       <section className="py-40 px-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-brand-purple to-brand-red opacity-10" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-brand-yellow/20 rounded-full blur-[120px] -z-10 animate-pulse" />
+        <div className="absolute inset-0 bg-gradient-to-r from-brand-purple to-brand-red opacity-10 pointer-events-none select-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-brand-yellow/20 rounded-full blur-[120px] -z-10 animate-pulse pointer-events-none select-none" />
         
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <h2 className="text-5xl sm:text-6xl font-black text-foreground mb-8 tracking-tight">Ready to streamline your calendar?</h2>
-          <p className="text-2xl text-muted-foreground mb-12 font-medium font-medium">Join Meet today and automate your scheduling workflows.</p>
+          <p className="text-2xl text-muted-foreground mb-12 font-medium">Join Meet today and automate your scheduling workflows.</p>
           <div className="flex flex-col sm:flex-row justify-center gap-6">
             <Link href="/register" passHref>
               <Button size="lg" className="rounded-full text-xl px-12 h-20 bg-foreground text-background hover:bg-brand-blue hover:text-white shadow-2xl hover:shadow-brand-blue/40 transition-all hover:scale-105 group font-bold">
@@ -599,10 +643,10 @@ export default function LandingPage() {
             <div>
               <h4 className="font-bold text-foreground mb-4">Navigation</h4>
               <ul className="space-y-3 text-sm text-muted-foreground font-medium">
-                <li><Link href="/" className="hover:text-brand-blue transition-colors">Home</Link></li>
+                <li><a href="#home" className="hover:text-brand-blue transition-colors">Home</a></li>
                 <li><a href="#features" className="hover:text-brand-blue transition-colors">Features</a></li>
                 <li><a href="#integrations" className="hover:text-brand-blue transition-colors">Integrations</a></li>
-                <li><Link href="/about" className="hover:text-brand-blue transition-colors">About Us</Link></li>
+                <li><a href="#about" className="hover:text-brand-blue transition-colors">About Us</a></li>
               </ul>
             </div>
 
