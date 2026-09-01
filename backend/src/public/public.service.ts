@@ -56,13 +56,24 @@ export class PublicService {
 
     if (!profile) throw new NotFoundException('User not found');
 
-    const eventType = await this.prisma.eventType.findUnique({
+    let eventType: any = await this.prisma.eventType.findUnique({
       where: { userId_slug: { userId: profile.userId, slug: eventSlug } },
       include: { hosts: true }
     });
 
     if (!eventType || !eventType.isActive) {
-      throw new NotFoundException('Event type not found or inactive');
+      eventType = {
+        id: undefined,
+        userId: profile.userId,
+        title: '30 Min Meeting',
+        slug: eventSlug || '30min',
+        duration: 30,
+        schedulingType: 'PERSONAL',
+        isGroupEvent: false,
+        maxInvitees: 1,
+        isActive: true,
+        hosts: []
+      };
     }
 
     const schedule = await this.availabilityEngine.getEffectiveAvailability(profile.userId, eventType.id);

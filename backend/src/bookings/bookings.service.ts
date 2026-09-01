@@ -94,13 +94,32 @@ export class BookingsService {
 
   async createBooking(dto: CreateBookingDto) {
     // 1. Fetch Event Type
-    const eventType = await this.prisma.eventType.findUnique({
+    let eventType: any = dto.eventTypeId ? await this.prisma.eventType.findUnique({
       where: { id: dto.eventTypeId },
       include: { customQuestions: true, hosts: true }
-    });
+    }) : null;
 
-    if (!eventType || !eventType.isActive) {
-      throw new BadRequestException('Event type not found or is no longer active');
+    if (!eventType) {
+      let defaultEvent: any = await this.prisma.eventType.findFirst({
+        where: { userId: dto.hostId, slug: '30min' },
+        include: { customQuestions: true, hosts: true }
+      });
+      if (!defaultEvent) {
+        defaultEvent = await this.prisma.eventType.create({
+          data: {
+            userId: dto.hostId,
+            title: '30 Min Meeting',
+            slug: '30min',
+            duration: 30,
+            description: '30 minute 1-on-1 meeting',
+            location: 'Google Meet',
+            isActive: true,
+          },
+          include: { customQuestions: true, hosts: true }
+        });
+      }
+      eventType = defaultEvent;
+      dto.eventTypeId = eventType.id;
     }
 
     if (dto.singleUseToken) {
