@@ -46,8 +46,12 @@ export default function UserProfilePage() {
   useEffect(() => {
     if (isOwner) {
       router.replace('/dashboard/events');
-    } else if (profile && profile.eventTypes && profile.eventTypes.length === 1) {
-      router.replace(`/book/${profile.username}/${profile.eventTypes[0].slug}`);
+    } else if (profile) {
+      if (profile.eventTypes && profile.eventTypes.length >= 1) {
+        router.replace(`/book/${profile.username}/${profile.eventTypes[0].slug}`);
+      } else {
+        router.replace(`/book/${profile.username}/30min`);
+      }
     }
   }, [isOwner, profile, router]);
 
