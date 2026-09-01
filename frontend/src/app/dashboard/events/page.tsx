@@ -212,6 +212,20 @@ export default function EventTypesPage() {
                     <div key={i} className="h-48 bg-card animate-pulse rounded-2xl border border-border/50 shadow-sm" />
                   ))}
                 </div>
+              ) : events?.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24 px-6 text-center bg-card border border-border/60 rounded-3xl shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1.5 bg-brand-blue/80" />
+                  <div className="w-20 h-20 bg-brand-blue/10 rounded-full flex items-center justify-center mb-6">
+                    <Calendar className="w-10 h-10 text-brand-blue" />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-2">No event types yet</h3>
+                  <p className="text-muted-foreground font-medium max-w-md mb-8">
+                    Create your first event type to allow people to schedule meetings with you.
+                  </p>
+                  <Button onClick={() => router.push('/dashboard/events/new?type=one-on-one')} className="rounded-full px-8 h-12 font-bold shadow-md bg-brand-blue hover:bg-brand-blue/90 text-white transition-all hover:scale-105 active:scale-95">
+                    <Plus className="w-4 h-4 mr-2" /> Create Event Type
+                  </Button>
+                </div>
               ) : (
                 <motion.div variants={containerVariants} initial="hidden" animate="show" className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                   {events?.map((event: any) => (
@@ -285,21 +299,31 @@ export default function EventTypesPage() {
           )}
 
           {activeTab === 'single_use' && (
-            <div className="flex flex-col items-center justify-center py-20 px-6 text-center border-2 border-dashed border-border/50 rounded-3xl bg-muted/10">
-              <div className="w-16 h-16 bg-brand-blue/10 rounded-2xl flex items-center justify-center mb-6">
-                <Link2 className="w-8 h-8 text-brand-blue" />
+            <div className="flex flex-col items-center justify-center py-20 px-6 text-center border border-border/60 rounded-3xl bg-card shadow-lg relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-brand-blue to-brand-purple" />
+              <div className="w-20 h-20 bg-gradient-to-br from-brand-blue/20 to-brand-purple/20 rounded-2xl flex items-center justify-center mb-6 shadow-inner">
+                <Link2 className="w-10 h-10 text-brand-blue" />
               </div>
-              <h3 className="text-2xl font-bold mb-2">Share a single-use link</h3>
-              <p className="text-muted-foreground font-medium max-w-md mb-8">
+              <h3 className="text-2xl font-bold mb-3 text-foreground">Share a single-use link</h3>
+              <p className="text-muted-foreground font-medium max-w-md mb-10 leading-relaxed">
                 Generate a unique link that expires after it's booked once. Perfect for offering times outside your normal schedule.
               </p>
-              <div className="text-sm text-muted-foreground text-left max-w-md w-full bg-white dark:bg-zinc-900 p-6 rounded-2xl shadow-sm border border-border/50">
-                <h4 className="font-bold text-foreground mb-4">How to use:</h4>
-                <ol className="list-decimal pl-5 space-y-2">
-                  <li>Go back to the <strong>Event types</strong> tab</li>
-                  <li>Click the <Settings className="w-4 h-4 inline-block mx-1" /> icon on any event</li>
-                  <li>Select <strong>Single-use link</strong> to copy a one-time link</li>
-                </ol>
+              <div className="text-sm text-left max-w-md w-full bg-muted/40 p-7 rounded-2xl border border-border/50">
+                <h4 className="font-bold text-foreground mb-4 flex items-center"><Settings className="w-4 h-4 mr-2 text-brand-blue" /> How to use</h4>
+                <ul className="space-y-4 text-muted-foreground font-medium">
+                  <li className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-background border border-border flex items-center justify-center text-xs font-bold text-foreground">1</span>
+                    <span>Go back to the <strong className="text-foreground">Event types</strong> tab</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-background border border-border flex items-center justify-center text-xs font-bold text-foreground">2</span>
+                    <span>Click the <Settings className="w-4 h-4 inline-block mx-0.5 text-foreground" /> icon on any event</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-background border border-border flex items-center justify-center text-xs font-bold text-foreground">3</span>
+                    <span>Select <strong className="text-foreground">Single-use link</strong> to copy a one-time link</span>
+                  </li>
+                </ul>
               </div>
             </div>
           )}
