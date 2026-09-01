@@ -23,16 +23,30 @@ export class UsersService {
   }
 
   async getProfile(userId: string) {
-    return this.prisma.profile.findUnique({
+    const profile = await this.prisma.profile.findUnique({
       where: { userId },
+      include: { user: { select: { email: true } } }
     });
+    if (!profile) return null;
+    return { ...profile, email: profile.user?.email };
   }
 
   async updateProfile(userId: string, data: any) {
-    return this.prisma.profile.update({
+    const { email, ...profileData } = data;
+    
+    const profile = await this.prisma.profile.update({
       where: { userId },
-      data,
+      data: profileData,
     });
+
+    if (email) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { email },
+      });
+    }
+
+    return { ...profile, email };
   }
 
   async deleteAccount(userId: string) {

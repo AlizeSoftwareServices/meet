@@ -19,6 +19,10 @@ const registerSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
   email: z.string().email({ message: 'Invalid email address' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters' }),
+  confirmPassword: z.string()
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -32,7 +36,7 @@ export default function RegisterPage() {
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { name: '', email: '', password: '' },
+    defaultValues: { name: '', email: '', password: '', confirmPassword: '' },
   });
 
   const registerMutation = useMutation({
@@ -42,7 +46,9 @@ export default function RegisterPage() {
     },
     onSuccess: (data, variables) => {
       localStorage.setItem('token', data.accessToken);
-      setSuccessEmail(variables.email);
+      alert('You successfully signed up in Meet!');
+      // Immediately redirect to dashboard
+      router.push('/dashboard');
     },
     onError: (err: any) => {
       setError(err.response?.data?.message || 'Failed to register');
@@ -81,10 +87,10 @@ export default function RegisterPage() {
               <span className="font-extrabold text-2xl tracking-tight">Meet</span>
             </Link>
             <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-foreground">
-              {successEmail ? 'Check your email' : 'Create an account'}
+              Create an account
             </h1>
             <p className="text-muted-foreground text-sm sm:text-base font-medium">
-              {successEmail ? 'We sent a verification link to your email.' : 'Start accepting appointments in minutes.'}
+              Start accepting appointments in minutes.
             </p>
           </div>
 
@@ -94,31 +100,7 @@ export default function RegisterPage() {
             transition={{ duration: 0.5 }}
             className="bg-white/70 dark:bg-zinc-900/70 backdrop-blur-2xl border border-white/50 dark:border-zinc-800/50 p-8 sm:p-10 rounded-3xl shadow-2xl relative z-10"
           >
-            {successEmail ? (
-              <div className="space-y-6 text-center">
-                <div className="w-16 h-16 bg-brand-green/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle2 className="w-8 h-8 text-brand-green" />
-                </div>
-                <p className="text-foreground font-medium">
-                  Please click the link we sent to <span className="font-bold">{successEmail}</span> to verify your account.
-                </p>
-                <div className="pt-4">
-                  <Button 
-                    onClick={handleResend} 
-                    variant="outline" 
-                    className="w-full h-12"
-                    disabled={resendStatus === 'loading' || resendStatus === 'sent'}
-                  >
-                    {resendStatus === 'loading' ? 'Sending...' : resendStatus === 'sent' ? 'Email Sent!' : 'Resend Verification Email'}
-                  </Button>
-                </div>
-                <div className="pt-4">
-                  <Button onClick={() => router.push('/dashboard')} className="w-full h-14 bg-gradient-to-r from-brand-blue to-brand-purple text-white shadow-lg text-lg font-bold">
-                    Continue to Dashboard
-                  </Button>
-                </div>
-              </div>
-            ) : (
+            {/* Success screen removed as per user request */}
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <div className="space-y-2">
                   <Label htmlFor="name" className="text-sm font-semibold text-foreground">Full Name</Label>
@@ -176,6 +158,24 @@ export default function RegisterPage() {
                   )}
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword" className="text-sm font-semibold text-foreground">Confirm Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      className="h-14 bg-white/50 dark:bg-zinc-950/50 border-border/50 focus:border-brand-red focus:ring-brand-red/20 transition-all rounded-xl text-base pr-12"
+                      {...form.register('confirmPassword')}
+                    />
+                  </div>
+                  {form.formState.errors.confirmPassword && (
+                    <p className="text-xs text-brand-red font-bold flex items-center gap-1 mt-1">
+                      {form.formState.errors.confirmPassword.message}
+                    </p>
+                  )}
+                </div>
+
                 {error && (
                   <motion.div 
                     initial={{ opacity: 0, y: -10 }}
@@ -198,7 +198,6 @@ export default function RegisterPage() {
                   )}
                 </Button>
               </form>
-            )}
           </motion.div>
 
           <div className="text-center text-sm text-muted-foreground mt-8 relative z-10 font-medium">

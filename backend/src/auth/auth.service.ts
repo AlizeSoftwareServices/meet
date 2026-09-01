@@ -46,16 +46,15 @@ export class AuthService {
             timezone: 'UTC', // Default, can be updated later
           },
         },
+        isVerified: true, // Auto-verify on signup as per request
       },
       include: {
         profile: true,
       },
     });
 
-    const verifyToken = await this.secureTokenService.generateToken(TokenType.EMAIL_VERIFICATION, 24, user.id);
-    const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${verifyToken}`;
-    this.emailService.sendVerificationEmail(user.email, user.profile?.name || 'User', verifyUrl).catch(e => {
-       this.logger.error(`Failed to send verification email during registration: ${e.message}`);
+    this.emailService.sendWelcomeEmail(user.email, user.profile?.name || 'User').catch(e => {
+       this.logger.error(`Failed to send welcome email during registration: ${e.message}`);
     });
 
     const payload = { sub: user.id, email: user.email };

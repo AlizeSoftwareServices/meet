@@ -296,6 +296,16 @@ export class EmailService {
     return this.sendMail(email, `Verify Your Email`, this.getBaseTemplate('Email Verification', content));
   }
 
+  async sendWelcomeEmail(email: string, name: string) {
+    const content = `
+      <p>Hello <strong>${name}</strong>,</p>
+      <p>You have successfully signed up in Meet!</p>
+      <p>We're excited to have you on board. Start scheduling your meetings effortlessly.</p>
+      <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard" class="button" target="_blank">Go to Dashboard</a>
+    `;
+    return this.sendMail(email, \`Welcome to Meet!\`, this.getBaseTemplate('Registration Successful', content));
+  }
+
   async sendHostNotificationEmail(hostEmail: string, guestName: string, eventTitle: string, status: string, startTime?: string) {
     let subject = '';
     let message = '';
