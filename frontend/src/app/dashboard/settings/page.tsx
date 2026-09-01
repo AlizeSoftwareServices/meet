@@ -144,8 +144,8 @@ export default function SettingsPage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Profile Settings</h1>
-        <p className="text-zinc-500">Manage your public profile and preferences.</p>
+        <h1 className="text-3xl font-bold tracking-tight">My Profile</h1>
+        <p className="text-zinc-500">Manage your public booking profile and preferences.</p>
       </div>
 
       <Card className="shadow-sm sm:shadow-md border-border/50 relative">
@@ -202,12 +202,12 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-3 min-w-0 md:col-span-2">
-                <Label htmlFor="username" className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 ml-1">Username (URL Slug)</Label>
+                <Label htmlFor="username" className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 ml-1">Username (Booking URL)</Label>
                 <div className={`flex rounded-xl shadow-sm w-full transition-all bg-zinc-50/50 dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 overflow-hidden ${isEditing ? 'focus-within:ring-2 focus-within:ring-brand-blue/30 focus-within:border-brand-blue/50' : 'opacity-70'}`}>
                   <span className="inline-flex items-center px-4 bg-muted/50 text-muted-foreground sm:text-sm whitespace-nowrap font-medium border-r border-zinc-200/80 dark:border-zinc-800">
-                    meetsync.com/
+                    meet.alizesoftwareservices.com/book/
                   </span>
-                  <Input disabled={!isEditing} id="username" className="h-12 px-4 rounded-none border-0 min-w-0 flex-1 w-full focus-visible:ring-0 shadow-none bg-transparent disabled:opacity-100" placeholder="johndoe" {...form.register('username')} />
+                  <Input disabled={!isEditing} id="username" className="h-12 px-4 rounded-none border-0 min-w-0 flex-1 w-full focus-visible:ring-0 shadow-none bg-transparent disabled:opacity-100 font-mono" placeholder="johndoe" {...form.register('username')} />
                 </div>
                 {form.formState.errors.username && <p className="text-sm text-red-500 ml-1">{form.formState.errors.username.message}</p>}
               </div>
