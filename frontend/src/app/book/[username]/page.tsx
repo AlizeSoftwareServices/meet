@@ -46,8 +46,10 @@ export default function UserProfilePage() {
   useEffect(() => {
     if (isOwner) {
       router.replace('/dashboard/events');
+    } else if (profile && profile.eventTypes && profile.eventTypes.length === 1) {
+      router.replace(`/book/${profile.username}/${profile.eventTypes[0].slug}`);
     }
-  }, [isOwner, router]);
+  }, [isOwner, profile, router]);
 
   if (isOwner) {
     return (
@@ -99,7 +101,20 @@ export default function UserProfilePage() {
         <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden">
           <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
             {profile.eventTypes.length === 0 ? (
-              <div className="p-8 text-center text-zinc-500">No active event types found.</div>
+              <div className="p-12 text-center space-y-4">
+                <div className="w-12 h-12 bg-blue-50 dark:bg-blue-950 text-blue-600 rounded-full flex items-center justify-center mx-auto">
+                  <Clock className="w-6 h-6" />
+                </div>
+                <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">No active meeting types configured yet</h3>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                  The host has not created an active event type yet. Create an event type in your dashboard to enable public booking calendar.
+                </p>
+                <Link href="/dashboard/events" passHref>
+                  <Button className="rounded-xl font-semibold gap-2 mt-2">
+                    + Create 30 Min Event Type in Dashboard
+                  </Button>
+                </Link>
+              </div>
             ) : (
               profile.eventTypes.map((event: any) => (
                 <Link 
