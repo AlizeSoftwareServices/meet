@@ -323,9 +323,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Desktop Top Header Bar with Profile Share Button */}
         <header className="hidden md:flex items-center justify-between px-8 py-3.5 border-b border-border/60 bg-background/60 backdrop-blur-xl shrink-0 z-30">
           <div className="flex items-center gap-3">
-            <span className="text-xs font-medium text-muted-foreground">
-              Booking Page: <span className="font-mono text-foreground font-semibold">/book/{username}</span>
-            </span>
           </div>
 
           <div className="flex items-center gap-3">
