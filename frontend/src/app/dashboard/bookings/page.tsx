@@ -163,7 +163,13 @@ export default function BookingsManagementPage() {
                         <div className="space-y-4 flex-1">
                           <div className="flex flex-wrap items-center gap-3">
                             <h3 className="font-bold text-xl">{booking.guestName}</h3>
-                            {getStatusBadge(booking.status)}
+                            {booking.isExternal ? (
+                              <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-semibold gap-1">
+                                🔵 Google Calendar (Synced)
+                              </Badge>
+                            ) : (
+                              getStatusBadge(booking.status)
+                            )}
                             {booking.bookingSeriesId && (
                               <Badge variant="outline" className="border-purple-200 bg-purple-50 text-purple-700">
                                 Recurring
@@ -182,11 +188,11 @@ export default function BookingsManagementPage() {
                             </div>
                             <div className="flex items-center gap-2">
                               <User className="w-4 h-4 text-primary/70" />
-                              <a href={`mailto:${booking.guestEmail}`} className="hover:text-primary transition-colors">{booking.guestEmail}</a>
+                              <a href={`mailto:${booking.guestEmail}`} className="hover:text-primary transition-colors">{booking.guestEmail || 'Google Calendar Event'}</a>
                             </div>
                             <div className="flex items-center gap-2">
                               <Video className="w-4 h-4 text-primary/70" />
-                              <span className="font-medium">{booking.eventType?.title || 'Meet'}</span>
+                              <span className="font-medium">{booking.eventType?.title || (booking.isExternal ? 'Google Calendar' : 'Meet')}</span>
                             </div>
                           </div>
 
@@ -206,32 +212,47 @@ export default function BookingsManagementPage() {
                       </div>
 
                       <div className="flex flex-row lg:flex-col gap-3 min-w-[140px] pt-2 sm:pl-[72px] lg:pl-0">
-                        {booking.status === 'CONFIRMED' && new Date(booking.startTime) > now && (
-                          <>
-                            <Button 
-                              variant="outline" 
-                              className="w-full text-destructive border-destructive/20 hover:text-destructive hover:bg-destructive/10 rounded-full"
-                              onClick={() => handleCancel(booking.id)}
-                              disabled={cancelMutation.isPending && cancellingId === booking.id}
-                            >
-                              <XCircle className="w-4 h-4 mr-2" />
-                              {cancelMutation.isPending && cancellingId === booking.id ? 'Cancelling...' : 'Cancel Occurrence'}
+                        {booking.isExternal ? (
+                          booking.meetingUrl ? (
+                            <a href={booking.meetingUrl} target="_blank" rel="noopener noreferrer" className="w-full">
+                              <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-full text-xs font-semibold gap-1.5 shadow-sm">
+                                <Video className="w-3.5 h-3.5" />
+                                Join Meeting
+                              </Button>
+                            </a>
+                          ) : (
+                            <Button variant="outline" disabled className="w-full rounded-full text-xs">
+                              Google Synced
                             </Button>
-                            {booking.bookingSeriesId && (
+                          )
+                        ) : (
+                          booking.status === 'CONFIRMED' && new Date(booking.startTime) > now && (
+                            <>
                               <Button 
                                 variant="outline" 
                                 className="w-full text-destructive border-destructive/20 hover:text-destructive hover:bg-destructive/10 rounded-full"
-                                onClick={() => handleCancelSeries(booking.bookingSeriesId)}
-                                disabled={cancelSeriesMutation.isPending && cancellingId === `series-${booking.bookingSeriesId}`}
+                                onClick={() => handleCancel(booking.id)}
+                                disabled={cancelMutation.isPending && cancellingId === booking.id}
                               >
                                 <XCircle className="w-4 h-4 mr-2" />
-                                {cancelSeriesMutation.isPending && cancellingId === `series-${booking.bookingSeriesId}` ? 'Cancelling...' : 'Cancel Series'}
+                                {cancelMutation.isPending && cancellingId === booking.id ? 'Cancelling...' : 'Cancel Occurrence'}
                               </Button>
-                            )}
-                            <Button variant="secondary" className="w-full rounded-full bg-secondary hover:bg-secondary/80">
-                              Reschedule
-                            </Button>
-                          </>
+                              {booking.bookingSeriesId && (
+                                <Button 
+                                  variant="outline" 
+                                  className="w-full text-destructive border-destructive/20 hover:text-destructive hover:bg-destructive/10 rounded-full"
+                                  onClick={() => handleCancelSeries(booking.bookingSeriesId)}
+                                  disabled={cancelSeriesMutation.isPending && cancellingId === `series-${booking.bookingSeriesId}`}
+                                >
+                                  <XCircle className="w-4 h-4 mr-2" />
+                                  {cancelSeriesMutation.isPending && cancellingId === `series-${booking.bookingSeriesId}` ? 'Cancelling...' : 'Cancel Series'}
+                                </Button>
+                              )}
+                              <Button variant="secondary" className="w-full rounded-full bg-secondary hover:bg-secondary/80">
+                                Reschedule
+                              </Button>
+                            </>
+                          )
                         )}
                         <Button variant="ghost" size="icon" className="hidden lg:flex self-end mt-auto text-muted-foreground hover:text-foreground">
                           <MoreHorizontal className="w-5 h-5" />

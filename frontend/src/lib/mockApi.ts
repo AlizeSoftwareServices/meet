@@ -4,6 +4,7 @@ import { api } from './api';
 let mockBookings = [
   { id: 'b1', guestName: 'Sarah Smith', guestEmail: 'sarah@company.com', startTime: new Date(Date.now() + 86400000).toISOString(), endTime: new Date(Date.now() + 86400000 + 30 * 60000).toISOString(), status: 'UPCOMING', eventType: { title: '30 Min Strategy Call' }, notes: 'Looking forward to it!' },
   { id: 'b2', guestName: 'Michael Chen', guestEmail: 'michael@startup.io', startTime: new Date(Date.now() + 172800000).toISOString(), endTime: new Date(Date.now() + 172800000 + 30 * 60000).toISOString(), status: 'UPCOMING', eventType: { title: '15 Min Consultation' } },
+  { id: 'google-evt-1', guestName: 'Google Calendar Sync', guestEmail: 'alex.j@example.com', startTime: new Date(Date.now() + 43200000).toISOString(), endTime: new Date(Date.now() + 43200000 + 45 * 60000).toISOString(), status: 'UPCOMING', eventType: { title: 'Google Calendar (Synced)' }, notes: 'Personal appointment synced from Google Calendar', isExternal: true, provider: 'google', meetingUrl: 'https://meet.google.com/xyz-demo-app' },
   { id: 'b3', guestName: 'Emma Watson', guestEmail: 'emma@agency.com', startTime: new Date(Date.now() - 86400000).toISOString(), endTime: new Date(Date.now() - 86400000 + 60 * 60000).toISOString(), status: 'PAST', eventType: { title: '60 Min Review' } }
 ];
 

@@ -5,6 +5,27 @@
 html, body {
   max-width: 100vw;
   overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: contain;
+  scroll-behavior: smooth;
+}
+
+/* Ensure smooth touch rendering across all devices */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button, a, nav, [role="button"] {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* GPU Hardware Acceleration for zero-lag animations */
+.gpu-layer {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: transform, opacity;
 }
 
 @layer base {
@@ -89,4 +110,35 @@ html, body {
 }
 .glass-card {
   @apply bg-white/80 dark:bg-zinc-900/80 backdrop-blur-lg border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm transition-all duration-300;
+}
+
+/* Universal Safe Area Inset System for Notches, Status Bars, and Gesture Home Bars */
+.safe-area-header {
+  padding-top: max(0.875rem, calc(0.875rem + env(safe-area-inset-top, 0px)));
+}
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.safe-area-bottom {
+  padding-bottom: max(0.75rem, calc(0.75rem + env(safe-area-inset-bottom, 0px)));
+}
+
+/* Scrollbar customization */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Top Route Progress Bar Animation */
+@keyframes topProgress {
+  0% { width: 0%; }
+  30% { width: 45%; }
+  70% { width: 85%; }
+  100% { width: 98%; }
+}
+.animate-top-progress {
+  animation: topProgress 1.2s cubic-bezier(0.1, 0.7, 0.1, 1) forwards;
 }

@@ -510,7 +510,7 @@ export class BookingsService {
     };
   }
   async getHostBookings(hostId: string) {
-    return this.prisma.booking.findMany({
+    const dbBookings = await this.prisma.booking.findMany({
       where: {
         OR: [
           { hostId },
@@ -524,6 +524,13 @@ export class BookingsService {
         host: { include: { profile: true } }
       }
     });
+
+    try {
+      const googleEvents = await this.calendarService.getGoogleEvents(hostId);
+      return [...dbBookings, ...googleEvents];
+    } catch (err) {
+      return dbBookings;
+    }
   }
 
 async cancelBooking(bookingId: string, hostId: string, reason: string) {

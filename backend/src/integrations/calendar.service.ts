@@ -370,4 +370,43 @@ export class CalendarService {
 
     return busyPeriods;
   }
+
+  async getGoogleEvents(hostId: string, timeMin?: string, timeMax?: string) {
+    try {
+      const calendar = await this.getGoogleCalendarClient(hostId);
+      if (!calendar) return [];
+
+      const minDate = timeMin || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const maxDate = timeMax || new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString();
+
+      const response = await calendar.events.list({
+        calendarId: 'primary',
+        timeMin: minDate,
+        timeMax: maxDate,
+        singleEvents: true,
+        orderBy: 'startTime',
+      });
+
+      const items = response.data.items || [];
+      return items.map((evt) => ({
+        id: `google-${evt.id}`,
+        title: evt.summary || 'Google Calendar Event',
+        description: evt.description || '',
+        startTime: evt.start?.dateTime || evt.start?.date || '',
+        endTime: evt.end?.dateTime || evt.end?.date || '',
+        guestName: evt.organizer?.displayName || evt.organizer?.email || 'Google Calendar User',
+        guestEmail: evt.organizer?.email || '',
+        status: 'CONFIRMED',
+        meetingUrl: evt.hangoutLink || evt.htmlLink || '',
+        isExternal: true,
+        provider: 'google',
+        eventType: {
+          title: 'Google Calendar (Synced)',
+        },
+      }));
+    } catch (error: any) {
+      this.logger.error(`Failed to fetch Google Calendar events: ${error.message}`);
+      return [];
+    }
+  }
 }

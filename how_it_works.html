@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meet — How It Works & Comprehensive Master Guide</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-glow: rgba(37, 99, 235, 0.25);
+      --secondary: #4f46e5;
+      --accent: #06b6d4;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --bg: #090d16;
+      --card-bg: rgba(17, 24, 39, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* Background Gradients */
+    .bg-blobs {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: -1;
+      overflow: hidden;
+    }
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.25;
+    }
+    .blob-1 { top: -10%; left: -5%; width: 50vw; height: 50vw; background: #2563eb; }
+    .blob-2 { bottom: 10%; right: -5%; width: 45vw; height: 45vw; background: #7c3aed; }
+    .blob-3 { top: 40%; left: 30%; width: 35vw; height: 35vw; background: #06b6d4; opacity: 0.15; }
+
+    /* Layout */
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 40px 24px;
+    }
+
+    /* Header */
+    header {
+      text-align: center;
+      margin-bottom: 60px;
+      padding: 40px 20px;
+      background: linear-gradient(180deg, rgba(37, 99, 235, 0.1) 0%, rgba(15, 23, 42, 0) 100%);
+      border-radius: 28px;
+      border: 1px solid var(--card-border);
+      position: relative;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 16px;
+      border-radius: 999px;
+      background: rgba(37, 99, 235, 0.15);
+      border: 1px solid rgba(37, 99, 235, 0.3);
+      color: #60a5fa;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+    h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: clamp(32px, 5vw, 54px);
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1.15;
+      background: linear-gradient(135deg, #ffffff 30%, #93c5fd 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 16px;
+    }
+    .subtitle {
+      font-size: 18px;
+      color: var(--text-muted);
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    /* Navigation Pill Bar */
+    .nav-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 50px;
+      position: sticky;
+      top: 20px;
+      z-index: 50;
+      background: rgba(9, 13, 22, 0.85);
+      backdrop-filter: blur(16px);
+      padding: 10px 16px;
+      border-radius: 20px;
+      border: 1px solid var(--card-border);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    .nav-btn {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 12px;
+      transition: all 0.2s ease;
+    }
+    .nav-btn:hover, .nav-btn.active {
+      background: rgba(37, 99, 235, 0.2);
+      color: #93c5fd;
+      border: 1px solid rgba(37, 99, 235, 0.4);
+    }
+
+    /* Section Styles */
+    section {
+      margin-bottom: 70px;
+      scroll-margin-top: 100px;
+    }
+    .section-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .section-title span.icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: rgba(37, 99, 235, 0.15);
+      border: 1px solid rgba(37, 99, 235, 0.3);
+      color: #60a5fa;
+      font-size: 20px;
+    }
+
+    /* Glass Cards */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 30px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .card:hover {
+      border-color: rgba(37, 99, 235, 0.3);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+      gap: 24px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+
+    /* Workflow Visual Steps */
+    .flow-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      position: relative;
+    }
+    .flow-step {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+      background: rgba(17, 24, 39, 0.6);
+      border: 1px solid var(--card-border);
+      padding: 24px;
+      border-radius: 18px;
+    }
+    .flow-num {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 4px 15px var(--primary-glow);
+    }
+    .flow-content h4 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 6px;
+    }
+    .flow-content p {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+    .flow-tamil {
+      margin-top: 8px;
+      padding: 8px 12px;
+      background: rgba(37, 99, 235, 0.08);
+      border-left: 3px solid var(--primary);
+      border-radius: 6px;
+      font-size: 13px;
+      color: #93c5fd;
+    }
+
+    /* Feature Box */
+    .feature-box {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .feature-box h3 {
+      font-size: 17px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .feature-box p {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: auto;
+    }
+    .tag {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.06);
+      color: #cbd5e1;
+    }
+
+    /* Comparison Table */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+    }
+    th, td {
+      padding: 14px 18px;
+      text-align: left;
+      border-bottom: 1px solid var(--card-border);
+      font-size: 14px;
+    }
+    th {
+      background: rgba(255, 255, 255, 0.03);
+      color: #ffffff;
+      font-weight: 600;
+    }
+    td.check {
+      color: var(--success);
+      font-weight: 700;
+    }
+
+    /* Code Snippet */
+    .code-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 3px 8px;
+      border-radius: 6px;
+      color: #38bdf8;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 40px 0;
+      border-top: 1px solid var(--card-border);
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    @media (max-width: 768px) {
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .container { padding: 20px 16px; }
+      .nav-bar { justify-content: flex-start; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="bg-blobs">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+    <div class="blob blob-3"></div>
+  </div>
+
+  <div class="container">
+    
+    <!-- Header -->
+    <header>
+      <div class="badge">🚀 Official Platform Architecture & User Guide</div>
+      <h1>How Meet Works — The Complete Master Guide</h1>
+      <p class="subtitle">
+        A comprehensive overview of the core philosophy, live workflows, section-by-section breakdown, and step-by-step instructions for Web & Mobile APK.
+      </p>
+    </header>
+
+    <!-- Navigation Pills -->
+    <nav class="nav-bar">
+      <a href="#core-concept" class="nav-btn">1. Core Philosophy</a>
+      <a href="#workflow" class="nav-btn">2. Live Workflow</a>
+      <a href="#sections" class="nav-btn">3. Section Breakdown</a>
+      <a href="#host-guide" class="nav-btn">4. Host Guide</a>
+      <a href="#guest-guide" class="nav-btn">5. Guest Experience</a>
+      <a href="#integrations" class="nav-btn">6. Google Sync & Tech</a>
+    </nav>
+
+    <!-- 1. Core Philosophy -->
+    <section id="core-concept">
+      <h2 class="section-title"><span class="icon">💡</span> 1. The Core Concept (Why Meet Exists)</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3 style="color: #f87171; margin-bottom: 12px;">❌ The Old Friction-Filled Way</h3>
+          <p style="color: var(--text-muted); margin-bottom: 16px;">
+            Arranging a meeting manually requires endless back-and-forth messaging across emails, WhatsApp, or phone calls:
+          </p>
+          <ul style="padding-left: 20px; color: #cbd5e1; font-size: 14px; line-height: 1.8;">
+            <li>"Are you free tomorrow at 3 PM?"</li>
+            <li>"No, I have another meeting. How about Thursday at 11 AM?"</li>
+            <li>"Thursday I'm traveling. What about Friday?"</li>
+            <li>Result: Wasted time, forgotten meetings, timezone mix-ups, and double-bookings.</li>
+          </ul>
+        </div>
+
+        <div class="card" style="border-color: rgba(16, 185, 129, 0.3); background: rgba(16, 185, 129, 0.04);">
+          <h3 style="color: #34d399; margin-bottom: 12px;">✅ The Meet Autonomous Way</h3>
+          <p style="color: var(--text-muted); margin-bottom: 16px;">
+            Meet replaces all communication friction with a single intelligent, self-service link:
+          </p>
+          <ul style="padding-left: 20px; color: #cbd5e1; font-size: 14px; line-height: 1.8;">
+            <li><strong>You connect your calendar once</strong> (Google Calendar or Outlook).</li>
+            <li><strong>You share your link</strong>: <span class="code-pill">meet.alizesoftwareservices.com/book/username</span></li>
+            <li><strong>The guest picks an available slot</strong> that automatically fits around your existing schedule.</li>
+            <li><strong>Instant Confirmation</strong>: Video link generated, calendars synced, emails delivered.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Live Workflow -->
+    <section id="workflow">
+      <h2 class="section-title"><span class="icon">⚡</span> 2. Complete End-to-End Workflow</h2>
+      <div class="flow-container">
+        
+        <div class="flow-step">
+          <div class="flow-num">1</div>
+          <div class="flow-content">
+            <h4>Host Setup & Real-time Integration</h4>
+            <p>The Host logs into Meet, connects Google Calendar via OAuth2 in the Integrations tab, and defines their working hours (e.g. Mon–Fri, 9:00 AM – 5:00 PM).</p>
+            <div class="flow-tamil">📌 <strong>தமிழ் விளக்கம்:</strong> நீங்கள் உங்கள் Google Calendar-ஐ இணைத்து வேலை நேரத்தை பிக்ஸ் செய்கிறீர்கள்.</div>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="flow-num">2</div>
+          <div class="flow-content">
+            <h4>One-Click Sharing (Profile or Specific Event)</h4>
+            <p>The Host copies their personal public booking link from the top-right corner of the Dashboard and shares it on WhatsApp, Email, LinkedIn, or SMS.</p>
+            <div class="flow-tamil">📌 <strong>தமிழ் விளக்கம்:</strong> உங்கள் Top-Right பட்டன் மூலம் Booking Link-ஐ வாட்ஸ்அப் அல்லது சமூக வலைத்தளங்களில் பகிர்கிறீர்கள்.</div>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="flow-num">3</div>
+          <div class="flow-content">
+            <h4>Dynamic Availability Calculation & Timezone Conversion</h4>
+            <p>When the Guest opens the link on their mobile or computer, Meet queries the Host's Google Calendar in real time (`freebusy` API). Any busy time is automatically hidden. The times are converted automatically to the Guest's local timezone (e.g., US EST, London GMT, or IST).</p>
+            <div class="flow-tamil">📌 <strong>தமிழ் விளக்கம்:</strong> கெஸ்ட் அந்த லிங்க்கை திறந்ததும், நீங்கள் ஃப்ரீயாக உள்ள நேரம் மட்டும் அவர்களது சொந்த நாட்டு நேரப்படி (Local Timezone) தானாகக் காட்டும்.</div>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="flow-num">4</div>
+          <div class="flow-content">
+            <h4>Zero-Friction Instant Booking</h4>
+            <p>The Guest selects a date, chooses a time slot, enters their Name, Email, and any custom questions, and clicks <strong>"Schedule Event"</strong>. The booking is instantly confirmed with optimistic concurrency control.</p>
+            <div class="flow-tamil">📌 <strong>தமிழ் விளக்கம்:</strong> கெஸ்ட் நேரத்தைத் தொட்டு பெயர், மெயில் கொடுத்ததும் மீட்டிங் உடனடியாக உறுதியாகிவிடும் (Instant Confirmed).</div>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="flow-num">5</div>
+          <div class="flow-content">
+            <h4>Automated Video Injection & Calendar Sync</h4>
+            <p>The backend automatically generates a Google Meet video conference link, writes the event to the Host's Google Calendar, sends an HTML confirmation with an `.ics` invite to the Guest, and delivers Push and Slack notifications to the Host.</p>
+            <div class="flow-tamil">📌 <strong>தமிழ் விளக்கம்:</strong> கூகுள் மீட் வீடியோ லிங்க் உருவாகி, உங்கள் காலண்டரிலும் கெஸ்ட் மெயிலிலும் தானாகப் பதிவாகிவிடும்.</div>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="flow-num">6</div>
+          <div class="flow-content">
+            <h4>One-Click Reschedule / Cancellation Sync</h4>
+            <p>If plans change, either party can reschedule or cancel using the secure token buttons. When rescheduled, the Google Calendar event shifts to the new time automatically without any manual intervention.</p>
+            <div class="flow-tamil">📌 <strong>தமிழ் விளக்கம்:</strong> மீட்டிங்கை மாற்றினாலோ அல்லது ரத்து செய்தாலோ உங்கள் Google Calendar-லிருந்து அது தானாகவே அப்டேட் ஆகிவிடும்.</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 3. Section Breakdown -->
+    <section id="sections">
+      <h2 class="section-title"><span class="icon">📂</span> 3. Purpose of Every Dashboard Section</h2>
+      <div class="grid-3">
+        
+        <div class="feature-box">
+          <div>
+            <h3>📊 Dashboard</h3>
+            <p>The command center showing upcoming meetings count, total scheduled hours, booking trends charts, and quick shortcut actions.</p>
+          </div>
+          <div class="tag-list">
+            <span class="tag">Analytics</span>
+            <span class="tag">Recent Bookings</span>
+          </div>
+        </div>
+
+        <div class="feature-box">
+          <div>
+            <h3>📅 Event Types</h3>
+            <p>Create and manage different meeting durations and formats (15-min call, 30-min demo, 60-min consultation, Group events, Single-use one-time links).</p>
+          </div>
+          <div class="tag-list">
+            <span class="tag">Custom Questions</span>
+            <span class="tag">Buffers</span>
+            <span class="tag">Color Branding</span>
+          </div>
+        </div>
+
+        <div class="feature-box">
+          <div>
+            <h3>👥 Bookings</h3>
+            <p>Complete history and upcoming schedule of all meetings. Search, filter by status (Confirmed, Rescheduled, Cancelled), and export to CSV.</p>
+          </div>
+          <div class="tag-list">
+            <span class="tag">Upcoming</span>
+            <span class="tag">Past</span>
+            <span class="tag">CSV Export</span>
+          </div>
+        </div>
+
+        <div class="feature-box">
+          <div>
+            <h3>⏰ Availability</h3>
+            <p>Set your weekly working hours, customize availability per day, add buffer times (e.g. 10 mins before/after calls), and block specific holiday dates.</p>
+          </div>
+          <div class="tag-list">
+            <span class="tag">Schedules</span>
+            <span class="tag">Date Overrides</span>
+            <span class="tag">Notice Period</span>
+          </div>
+        </div>
+
+        <div class="feature-box">
+          <div>
+            <h3>🤝 Teams</h3>
+            <p>Enterprise multi-host scheduling. Enable <strong>Round-Robin</strong> (auto-assign to least busy member) or <strong>Collective</strong> (find slots where all hosts are free).</p>
+          </div>
+          <div class="tag-list">
+            <span class="tag">Round-Robin</span>
+            <span class="tag">Collective</span>
+            <span class="tag">Roles</span>
+          </div>
+        </div>
+
+        <div class="feature-box">
+          <div>
+            <h3>🔀 Routing Forms</h3>
+            <p>Intake qualification forms with smart rules. Route respondents to different calendars or sales reps based on answers (e.g., Company size &gt; 50).</p>
+          </div>
+          <div class="tag-list">
+            <span class="tag">Lead Qualification</span>
+            <span class="tag">Smart Branching</span>
+          </div>
+        </div>
+
+        <div class="feature-box">
+          <div>
+            <h3>🗳️ Meeting Polls</h3>
+            <p>Multi-option consensus scheduling. Offer multiple dates and times, let participants vote for their preferred slots, and book the winning consensus time.</p>
+          </div>
+          <div class="tag-list">
+            <span class="tag">Group Voting</span>
+            <span class="tag">Consensus</span>
+          </div>
+        </div>
+
+        <div class="feature-box">
+          <div>
+            <h3>✨ Workflows</h3>
+            <p>Automated notifications and triggers. Automatically send 24-hour reminder emails, 1-hour SMS reminders, or post-meeting thank you notes.</p>
+          </div>
+          <div class="tag-list">
+            <span class="tag">Reminders</span>
+            <span class="tag">Automations</span>
+          </div>
+        </div>
+
+        <div class="feature-box">
+          <div>
+            <h3>🔌 Integrations</h3>
+            <p>Connect Google Calendar, Microsoft Outlook, Slack channels, Push Notifications, and Developer Webhooks for full external synchronization.</p>
+          </div>
+          <div class="tag-list">
+            <span class="tag">Google Meet</span>
+            <span class="tag">Outlook</span>
+            <span class="tag">Webhooks</span>
+          </div>
+        </div>
+
+        <div class="feature-box">
+          <div>
+            <h3>👤 Profile</h3>
+            <p>Manage your public identity, display name, username URL slug, custom avatar, bio, brand colors, and welcome descriptions.</p>
+          </div>
+          <div class="tag-list">
+            <span class="tag">Branding</span>
+            <span class="tag">Slug</span>
+            <span class="tag">Timezone</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- 4. Step-by-Step Host Guide -->
+    <section id="host-guide">
+      <h2 class="section-title"><span class="icon">📖</span> 4. Step-by-Step Guide for the Host</h2>
+      <div class="card space-y-6">
+        <div style="margin-bottom: 20px;">
+          <h3 style="color: #60a5fa; font-size: 18px; margin-bottom: 8px;">Step 1: Connect Your Google Calendar</h3>
+          <p style="color: var(--text-muted); font-size: 14px;">
+            Go to <strong>Integrations</strong> in the sidebar. Click <strong>"Connect Google Calendar"</strong> and grant calendar permissions. Meet will now monitor your real-time busy slots to prevent overlap.
+          </p>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <h3 style="color: #60a5fa; font-size: 18px; margin-bottom: 8px;">Step 2: Define Your Weekly Working Hours</h3>
+          <p style="color: var(--text-muted); font-size: 14px;">
+            Go to <strong>Availability</strong>. Check the days you work (e.g. Monday to Friday) and set your open hours (e.g., 09:00 to 17:00). You can also set a 15-minute buffer between meetings.
+          </p>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <h3 style="color: #60a5fa; font-size: 18px; margin-bottom: 8px;">Step 3: Create Your Event Types</h3>
+          <p style="color: var(--text-muted); font-size: 14px;">
+            Go to <strong>Event Types</strong> &rarr; Click <strong>"+ Create Event Type"</strong>. Choose a name like "30-Min Consultation", select 30 mins duration, pick "Google Meet" as location, and save.
+          </p>
+        </div>
+
+        <div>
+          <h3 style="color: #60a5fa; font-size: 18px; margin-bottom: 8px;">Step 4: Share Your Link Anywhere</h3>
+          <p style="color: var(--text-muted); font-size: 14px;">
+            Click <strong>"Share Profile Link"</strong> in the top-right corner of your Dashboard. You can copy the link or directly click WhatsApp/LinkedIn to send it to clients.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Guest Experience -->
+    <section id="guest-guide">
+      <h2 class="section-title"><span class="icon">🌟</span> 5. What the Guest Sees and Experiences</h2>
+      <div class="card">
+        <p style="color: var(--text-muted); font-size: 15px; margin-bottom: 20px;">
+          The guest experience is designed to be frictionless, fast, and does NOT require downloading any app or creating an account:
+        </p>
+
+        <div class="grid-2">
+          <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 14px; border: 1px solid var(--card-border);">
+            <h4 style="color: #ffffff; margin-bottom: 8px;">1. Interactive Calendar View</h4>
+            <p style="color: var(--text-muted); font-size: 13px;">
+              The guest clicks your link and sees a clean calendar. Only dates where you have open slots are clickable.
+            </p>
+          </div>
+
+          <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 14px; border: 1px solid var(--card-border);">
+            <h4 style="color: #ffffff; margin-bottom: 8px;">2. Local Timezone Display</h4>
+            <p style="color: var(--text-muted); font-size: 13px;">
+              The app detects the guest's location and displays time slots in their local timezone so no manual conversion is needed.
+            </p>
+          </div>
+
+          <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 14px; border: 1px solid var(--card-border);">
+            <h4 style="color: #ffffff; margin-bottom: 8px;">3. Instant Email & .ics Invite</h4>
+            <p style="color: var(--text-muted); font-size: 13px;">
+              Once booked, the guest gets an email confirmation containing the Google Meet URL and a calendar attachment to auto-add to their phone calendar.
+            </p>
+          </div>
+
+          <div style="background: rgba(0,0,0,0.3); padding: 20px; border-radius: 14px; border: 1px solid var(--card-border);">
+            <h4 style="color: #ffffff; margin-bottom: 8px;">4. Self-Service Reschedule</h4>
+            <p style="color: var(--text-muted); font-size: 13px;">
+              If the guest has a conflict later, they click "Reschedule" in their email to choose a new slot without calling or messaging you.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Google Sync & Parity Table -->
+    <section id="integrations">
+      <h2 class="section-title"><span class="icon">🛡️</span> 6. Calendly Parity & Technical Capabilities</h2>
+      <div class="card" style="overflow-x: auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Feature Capability</th>
+              <th>Meet (Our Platform)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Real-time Google Calendar Free/Busy Sync</td>
+              <td>Direct OAuth2 + `freebusy` conflict detection</td>
+              <td class="check">✅ 100% Operational</td>
+            </tr>
+            <tr>
+              <td>Automatic Google Meet Video Generation</td>
+              <td>Dynamic `hangoutLink` created on booking</td>
+              <td class="check">✅ 100% Operational</td>
+            </tr>
+            <tr>
+              <td>Double-Booking Prevention Engine</td>
+              <td>Optimistic Concurrency Control + OCC Versioning</td>
+              <td class="check">✅ 100% Operational</td>
+            </tr>
+            <tr>
+              <td>Timezone Calculation</td>
+              <td>Native `Intl` + `date-fns-tz` worldwide support</td>
+              <td class="check">✅ 100% Operational</td>
+            </tr>
+            <tr>
+              <td>Team Round-Robin Scheduling</td>
+              <td>Least-busy host auto-distribution</td>
+              <td class="check">✅ 100% Operational</td>
+            </tr>
+            <tr>
+              <td>Team Collective Scheduling</td>
+              <td>Unified overlapping slot intersection</td>
+              <td class="check">✅ 100% Operational</td>
+            </tr>
+            <tr>
+              <td>Single-Use One-Time Links</td>
+              <td>Self-expiring tokens for VIP meetings</td>
+              <td class="check">✅ 100% Operational</td>
+            </tr>
+            <tr>
+              <td>Native Android APK + Web Parity</td>
+              <td>Capacitor Native Bridge + Responsive PWA</td>
+              <td class="check">✅ 100% Operational</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <p>Meet Scheduling Platform &bull; Built with Next.js, NestJS, Prisma & Capacitor</p>
+      <p style="margin-top: 6px; font-size: 12px; opacity: 0.7;">Alize Software Services &bull; Real-Time Production Ready</p>
+    </footer>
+
+  </div>
+
+</body>
+</html>

@@ -125,9 +125,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="h-screen bg-background text-foreground flex flex-col md:flex-row font-sans selection:bg-primary/20 overflow-hidden w-full max-w-[100vw]">
+      {/* Route Navigation Instant Progress Bar */}
+      {isNavigating && (
+        <div className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 via-indigo-500 to-sky-400 z-[100] animate-top-progress shadow-[0_0_10px_#2563eb]" />
+      )}
       
-      {/* Mobile Header (Glass) */}
-      <div className="md:hidden flex items-center justify-between p-3.5 px-4 bg-background/90 backdrop-blur-xl border-b border-border sticky top-0 z-40">
+      {/* Mobile Header (Glass with Safe Area Top Inset) */}
+      <div className="md:hidden flex items-center justify-between safe-area-header px-4 pb-3.5 bg-background/95 backdrop-blur-xl border-b border-border sticky top-0 z-40">
         <div className="flex items-center gap-2">
           <img src="/logo.png" alt="Meet Logo" className="w-8 h-8 rounded-lg object-contain" />
           <span className="font-bold text-xl tracking-tight">
@@ -170,7 +174,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="absolute inset-y-0 left-0 w-72 h-full bg-background shadow-2xl border-r border-border flex flex-col"
+              className="absolute inset-y-0 left-0 w-72 h-full bg-background shadow-2xl border-r border-border flex flex-col safe-area-top safe-area-bottom"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-6 flex items-center justify-between border-b border-border shrink-0">

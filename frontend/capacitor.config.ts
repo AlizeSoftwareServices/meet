@@ -20,8 +20,9 @@ const config: CapacitorConfig = {
       showSpinner: false,
     },
     StatusBar: {
-      style: 'Default',
+      style: 'Dark',
       backgroundColor: '#ffffff',
+      overlaysWebView: false,
     },
     Keyboard: {
       resize: KeyboardResize.Body,
