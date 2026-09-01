@@ -103,6 +103,19 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     
+    // Check file size (50KB)
+    if (file.size > 50 * 1024) {
+      alert('File size must be 50KB or less');
+      return;
+    }
+
+    // Check file type (JPEG, PNG)
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      alert('Only JPEG, JPG, and PNG files are allowed');
+      return;
+    }
+
+    
     const formData = new FormData();
     formData.append('file', file);
     
@@ -163,14 +176,14 @@ export default function SettingsPage() {
               {isEditing && (
                 <label className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity text-xs font-medium">
                   Upload
-                  <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
+                  <input type="file" className="hidden" accept="image/jpeg, image/png" onChange={handleAvatarUpload} />
                 </label>
               )}
             </div>
             <div>
               <h3 className="font-semibold text-lg">{profile?.name || 'Your Avatar'}</h3>
               <p className="text-sm text-zinc-500">
-                {isEditing ? 'Click the avatar to upload a new image. Max size 5MB.' : 'Your current avatar image.'}
+                {isEditing ? 'Click the avatar to upload a new image. Max size 50KB (JPG/PNG).' : 'Your current avatar image.'}
               </p>
             </div>
           </div>
