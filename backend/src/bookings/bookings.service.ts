@@ -100,6 +100,9 @@ export class BookingsService {
     }) : null;
 
     if (!eventType) {
+      if (!dto.hostId) {
+        throw new BadRequestException('Host ID is required to create a booking');
+      }
       let defaultEvent: any = await this.prisma.eventType.findFirst({
         where: { userId: dto.hostId, slug: '30min' },
         include: { customQuestions: true, hosts: true }
