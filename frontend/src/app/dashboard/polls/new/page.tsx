@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash2, Plus, ArrowLeft } from 'lucide-react';
+import { Trash2, Plus, ArrowLeft, BarChart, CalendarDays, Clock, AlignLeft, Send } from 'lucide-react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 
 export default function NewPollPage() {
   const router = useRouter();
@@ -23,9 +24,7 @@ export default function NewPollPage() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      // Convert slots to ISO strings
       const formattedSlots = slots.map(s => {
-        // Just simple conversion assuming local timezone
         const start = new Date(`${s.date}T${s.startTime}`);
         const end = new Date(`${s.date}T${s.endTime}`);
         return {
@@ -48,75 +47,187 @@ export default function NewPollPage() {
   });
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-6 pb-12">
       <div className="flex items-center gap-4">
-        <Link href="/dashboard/polls" className="p-2 hover:bg-muted rounded-full transition-colors">
-          <ArrowLeft className="w-5 h-5" />
+        <Link href="/dashboard/polls" className="p-2.5 bg-background border border-border/50 hover:bg-muted rounded-full transition-all hover:scale-105 shadow-sm">
+          <ArrowLeft className="w-5 h-5 text-muted-foreground" />
         </Link>
-        <h1 className="text-2xl font-bold text-foreground">Create Meeting Poll</h1>
+        <div>
+          <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Create Meeting Poll</h1>
+          <p className="text-muted-foreground mt-1">Let your invitees vote on the best time to meet.</p>
+        </div>
       </div>
 
-      <div className="bg-card border border-border p-8 rounded-2xl shadow-sm space-y-6">
-        <div className="space-y-2">
-          <Label>Poll Title *</Label>
-          <Input required value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Project Kickoff Meeting" />
-        </div>
+      <div className="bg-card border border-border/60 rounded-3xl shadow-xl overflow-hidden relative">
+        {/* Top gradient strip */}
+        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-brand-purple via-brand-blue to-brand-green" />
+        
+        <div className="p-8 sm:p-10 space-y-10">
+          
+          {/* Section 1: Details */}
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold flex items-center gap-2 border-b border-border/50 pb-4">
+              <span className="bg-brand-purple/10 text-brand-purple p-2 rounded-xl">
+                <BarChart className="w-5 h-5" />
+              </span>
+              Poll Details
+            </h2>
+            
+            <div className="grid gap-6">
+              <div className="space-y-2.5">
+                <Label className="text-base font-semibold">Poll Title <span className="text-brand-red">*</span></Label>
+                <Input 
+                  required 
+                  value={title} 
+                  onChange={e => setTitle(e.target.value)} 
+                  placeholder="e.g. Q3 Roadmap Planning" 
+                  className="h-12 text-lg px-4 border-gray-300 focus:border-brand-purple focus:ring-brand-purple shadow-sm transition-all rounded-xl"
+                />
+              </div>
 
-        <div className="space-y-2">
-          <Label>Description</Label>
-          <Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="What is this meeting about?" />
-        </div>
+              <div className="space-y-2.5">
+                <Label className="text-base font-semibold flex items-center gap-2">
+                  <AlignLeft className="w-4 h-4 text-muted-foreground" /> Description
+                </Label>
+                <Textarea 
+                  value={description} 
+                  onChange={e => setDescription(e.target.value)} 
+                  placeholder="Share context, agenda, or anything else attendees should know..." 
+                  className="min-h-[120px] resize-y border-gray-300 focus:border-brand-purple focus:ring-brand-purple shadow-sm transition-all rounded-xl p-4 text-base"
+                />
+              </div>
+            </div>
+          </div>
 
-        <div className="space-y-2">
-          <Label>Duration (minutes) *</Label>
-          <select 
-            value={duration} 
-            onChange={e => setDuration(Number(e.target.value))}
-            className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background"
-          >
-            <option value={15}>15 min</option>
-            <option value={30}>30 min</option>
-            <option value={45}>45 min</option>
-            <option value={60}>60 min</option>
-          </select>
-        </div>
+          {/* Section 2: Duration */}
+          <div className="space-y-6">
+            <h2 className="text-xl font-bold flex items-center gap-2 border-b border-border/50 pb-4">
+              <span className="bg-brand-blue/10 text-brand-blue p-2 rounded-xl">
+                <Clock className="w-5 h-5" />
+              </span>
+              Duration <span className="text-brand-red font-normal text-base ml-1">*</span>
+            </h2>
+            
+            <div className="flex flex-wrap gap-3">
+              {[15, 30, 45, 60, 90].map((min) => (
+                <button
+                  key={min}
+                  onClick={() => setDuration(min)}
+                  className={`px-6 py-3 rounded-xl font-bold text-sm transition-all duration-200 border-2 ${
+                    duration === min 
+                      ? 'border-brand-blue bg-brand-blue/10 text-brand-blue shadow-sm' 
+                      : 'border-border/60 text-muted-foreground hover:border-brand-blue/50 hover:bg-muted'
+                  }`}
+                >
+                  {min} min
+                </button>
+              ))}
+            </div>
+          </div>
 
-        <div className="space-y-4 pt-4 border-t">
-          <Label className="text-base font-semibold">Propose Times *</Label>
-          {slots.map((slot, idx) => (
-            <div key={idx} className="flex flex-wrap sm:flex-nowrap items-center gap-2">
-              <Input type="date" required value={slot.date} onChange={e => {
-                const newSlots = [...slots];
-                newSlots[idx].date = e.target.value;
-                setSlots(newSlots);
-              }} />
-              <Input type="time" required value={slot.startTime} onChange={e => {
-                const newSlots = [...slots];
-                newSlots[idx].startTime = e.target.value;
-                setSlots(newSlots);
-              }} />
-              <span>to</span>
-              <Input type="time" required value={slot.endTime} onChange={e => {
-                const newSlots = [...slots];
-                newSlots[idx].endTime = e.target.value;
-                setSlots(newSlots);
-              }} />
-              <Button type="button" variant="ghost" size="icon" onClick={() => removeSlot(idx)} disabled={slots.length === 1} className="shrink-0 text-destructive">
-                <Trash2 className="w-4 h-4" />
+          {/* Section 3: Time Slots */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between border-b border-border/50 pb-4">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <span className="bg-brand-green/10 text-brand-green p-2 rounded-xl">
+                  <CalendarDays className="w-5 h-5" />
+                </span>
+                Propose Times <span className="text-brand-red font-normal text-base ml-1">*</span>
+              </h2>
+              <Button type="button" onClick={addSlot} className="bg-brand-green/10 text-brand-green hover:bg-brand-green/20 hover:text-brand-green rounded-full font-bold shadow-none">
+                <Plus className="w-4 h-4 mr-2" /> Add Option
               </Button>
             </div>
-          ))}
-          <Button type="button" variant="outline" onClick={addSlot} className="gap-2">
-            <Plus className="w-4 h-4" /> Add Time Option
-          </Button>
+            
+            <div className="space-y-4">
+              {slots.map((slot, idx) => (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  key={idx} 
+                  className="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-muted/20 border border-border/60 rounded-2xl shadow-sm hover:border-brand-green/30 transition-all"
+                >
+                  <div className="flex-1">
+                    <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1.5 block">Date</Label>
+                    <Input 
+                      type="date" 
+                      required 
+                      value={slot.date} 
+                      onChange={e => {
+                        const newSlots = [...slots];
+                        newSlots[idx].date = e.target.value;
+                        setSlots(newSlots);
+                      }} 
+                      className="bg-background border-gray-300 focus:border-brand-green h-11" 
+                    />
+                  </div>
+                  
+                  <div className="flex-1">
+                    <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1.5 block">Start Time</Label>
+                    <Input 
+                      type="time" 
+                      required 
+                      value={slot.startTime} 
+                      onChange={e => {
+                        const newSlots = [...slots];
+                        newSlots[idx].startTime = e.target.value;
+                        setSlots(newSlots);
+                      }} 
+                      className="bg-background border-gray-300 focus:border-brand-green h-11" 
+                    />
+                  </div>
+                  
+                  <div className="hidden sm:flex self-end h-11 items-center px-1 text-muted-foreground font-medium">to</div>
+                  
+                  <div className="flex-1">
+                    <Label className="text-xs text-muted-foreground font-semibold uppercase tracking-wider mb-1.5 block">End Time</Label>
+                    <Input 
+                      type="time" 
+                      required 
+                      value={slot.endTime} 
+                      onChange={e => {
+                        const newSlots = [...slots];
+                        newSlots[idx].endTime = e.target.value;
+                        setSlots(newSlots);
+                      }} 
+                      className="bg-background border-gray-300 focus:border-brand-green h-11" 
+                    />
+                  </div>
+                  
+                  <div className="self-end pb-1 sm:pb-0">
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => removeSlot(idx)} 
+                      disabled={slots.length === 1} 
+                      className="h-11 w-11 text-muted-foreground hover:bg-red-50 hover:text-brand-red rounded-xl transition-colors shrink-0"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </Button>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+
         </div>
 
-        <div className="pt-6 border-t flex justify-end">
+        {/* Footer / Actions */}
+        <div className="bg-muted/30 p-8 border-t border-border/60 flex items-center justify-between">
+          <p className="text-sm text-muted-foreground font-medium max-w-[60%]">
+            Once created, you will get a link to share with participants to collect their votes.
+          </p>
           <Button 
             onClick={() => createMutation.mutate()} 
             disabled={createMutation.isPending || !title || slots.some(s => !s.date || !s.startTime || !s.endTime)}
+            className="h-12 px-8 rounded-full font-bold text-base bg-brand-purple hover:bg-brand-purple/90 text-white shadow-lg shadow-brand-purple/20 transition-all hover:-translate-y-0.5 active:translate-y-0"
           >
-            {createMutation.isPending ? 'Creating...' : 'Create Poll'}
+            {createMutation.isPending ? 'Creating...' : (
+              <>
+                Create Poll <Send className="w-4 h-4 ml-2" />
+              </>
+            )}
           </Button>
         </div>
       </div>

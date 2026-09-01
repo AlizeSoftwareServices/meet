@@ -168,22 +168,13 @@ export default function EventTypesPage() {
                   </div>
                 </div>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => router.push('/dashboard/polls/new')} className="p-3 rounded-xl cursor-pointer hover:bg-muted focus:bg-muted transition-colors group">
-                <div className="flex gap-3">
-                  <div className="mt-0.5"><BarChart className="w-5 h-5 text-zinc-500" /></div>
-                  <div>
-                    <p className="font-bold text-foreground">Meeting poll</p>
-                    <p className="text-xs text-muted-foreground font-medium mt-0.5 group-hover:text-foreground/70">Let invitees vote on a time to meet</p>
-                  </div>
-                </div>
-              </DropdownMenuItem>
             </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
       <div className="flex gap-6 border-b border-border">
-        {['event_types', 'single_use', 'polls'].map((tab) => (
+        {['event_types', 'single_use'].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab as any)}
@@ -195,7 +186,6 @@ export default function EventTypesPage() {
           >
             {tab === 'event_types' && 'Event types'}
             {tab === 'single_use' && 'Single-use links'}
-            {tab === 'polls' && 'Meeting polls'}
             {activeTab === tab && (
               <motion.div 
                 layoutId="activeTabIndicator" 
@@ -311,40 +301,6 @@ export default function EventTypesPage() {
                   <li>Select <strong>Single-use link</strong> to copy a one-time link</li>
                 </ol>
               </div>
-            </div>
-          )}
-
-          {activeTab === 'polls' && (
-            <div className="flex flex-col items-center justify-center py-20 px-6 text-center border-2 border-dashed border-border/50 rounded-3xl bg-muted/10">
-              <div className="w-16 h-16 bg-brand-purple/10 rounded-2xl flex items-center justify-center mb-6">
-                <BarChart className="w-8 h-8 text-brand-purple" />
-              </div>
-              <h3 className="text-2xl font-bold mb-2">Find the best time for everyone</h3>
-              <p className="text-muted-foreground font-medium max-w-md mb-8">
-                Gather everyone's availability to pick the best time for the group. Track votes as they come in, and book the most popular time.
-              </p>
-              <Button onClick={() => router.push('/dashboard/events/new-poll')} className="rounded-full px-8 h-12 font-bold shadow-md bg-brand-purple hover:bg-brand-purple/90 text-white">
-                Create Meeting Poll
-              </Button>
-              
-              {polls?.length > 0 && (
-                <div className="w-full max-w-2xl mt-12 text-left">
-                  <h4 className="font-bold mb-4">Active Polls</h4>
-                  <div className="space-y-3">
-                    {polls.map((poll: any) => (
-                      <div key={poll.id} className="bg-background border border-border/50 p-4 rounded-xl flex items-center justify-between shadow-sm">
-                        <div>
-                          <p className="font-bold">{poll.title}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{poll.votes} votes • {poll.status}</p>
-                        </div>
-                        <Button variant="outline" size="sm" className="rounded-full font-bold">
-                          View Results
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </motion.div>
