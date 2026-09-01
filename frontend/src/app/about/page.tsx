@@ -112,9 +112,11 @@ export default function AboutPage() {
               Join Meet today and experience a new era of effortless scheduling and time management.
             </p>
             <div className="pt-2">
-              <Button onClick={handleStartDemo} size="lg" className="rounded-full h-14 sm:h-16 px-8 sm:px-12 text-lg sm:text-xl font-bold bg-white text-zinc-900 hover:bg-zinc-100 hover:scale-105 transition-all shadow-xl">
-                Try Interactive Demo
-              </Button>
+              <Link href="/register" passHref>
+                <Button size="lg" className="rounded-full h-14 sm:h-16 px-8 sm:px-12 text-lg sm:text-xl font-bold bg-white text-zinc-900 hover:bg-zinc-100 hover:scale-105 transition-all shadow-xl">
+                  Get Started Free
+                </Button>
+              </Link>
             </div>
           </div>
         </div>

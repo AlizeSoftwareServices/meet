@@ -148,79 +148,29 @@ export default function LandingPage() {
 
           {/* Center Navigation Menu */}
           <div className="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2 h-full">
-            <div className="relative group h-full flex items-center">
-              <button className="flex items-center gap-1 text-sm font-bold text-foreground hover:text-brand-blue transition-colors">
-                Product <ChevronDown className="w-4 h-4 transition-transform group-hover:rotate-180" />
-              </button>
-              
-              {/* Mega Menu Dropdown */}
-              <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                <div className="w-[600px] bg-background border border-border shadow-2xl rounded-2xl p-6 flex gap-6">
-                  {/* Left Column: Core Features */}
-                  <div className="flex-1 space-y-5">
-                    <h4 className="text-xs font-black text-muted-foreground uppercase tracking-widest pl-2">Core Product</h4>
-                    <div className="flex items-start gap-4 p-3 rounded-xl hover:bg-brand-blue/5 transition-colors group/item cursor-default">
-                      <div className="w-10 h-10 rounded-lg bg-brand-blue/10 flex items-center justify-center shrink-0">
-                        <LinkIcon className="w-5 h-5 text-brand-blue" />
-                      </div>
-                      <div>
-                        <h5 className="text-sm font-bold text-foreground group-hover/item:text-brand-blue transition-colors">Scheduling</h5>
-                        <p className="text-xs text-muted-foreground mt-1">Create event types and share links.</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-4 p-3 rounded-xl hover:bg-brand-purple/5 transition-colors group/item cursor-default">
-                      <div className="w-10 h-10 rounded-lg bg-brand-purple/10 flex items-center justify-center shrink-0">
-                        <Clock className="w-5 h-5 text-brand-purple" />
-                      </div>
-                      <div>
-                        <h5 className="text-sm font-bold text-foreground group-hover/item:text-brand-purple transition-colors">Availability</h5>
-                        <p className="text-xs text-muted-foreground mt-1">Set your weekly hours and exceptions.</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-4 p-3 rounded-xl hover:bg-brand-red/5 transition-colors group/item cursor-default">
-                      <div className="w-10 h-10 rounded-lg bg-brand-red/10 flex items-center justify-center shrink-0">
-                        <Users className="w-5 h-5 text-brand-red" />
-                      </div>
-                      <div>
-                        <h5 className="text-sm font-bold text-foreground group-hover/item:text-brand-red transition-colors">Bookings</h5>
-                        <p className="text-xs text-muted-foreground mt-1">Manage and view all your Meets.</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right Column: Platform Features */}
-                  <div className="flex-1 bg-muted/40 rounded-xl p-5 space-y-5 border border-border/50">
-                    <h4 className="text-xs font-black text-muted-foreground uppercase tracking-widest pl-2">Platform</h4>
-                    <div className="flex items-start gap-4 p-2 rounded-xl hover:bg-background transition-colors group/item cursor-default">
-                      <div className="w-8 h-8 rounded-lg bg-background shadow-sm border border-border/50 flex items-center justify-center shrink-0">
-                        <Plug className="w-4 h-4 text-foreground" />
-                      </div>
-                      <div>
-                        <h5 className="text-sm font-bold text-foreground group-hover/item:text-foreground">Integrations</h5>
-                        <p className="text-xs text-muted-foreground mt-0.5">Connect with Google, Zoom & more.</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-4 p-2 rounded-xl hover:bg-background transition-colors group/item cursor-default">
-                      <div className="w-8 h-8 rounded-lg bg-background shadow-sm border border-border/50 flex items-center justify-center shrink-0">
-                        <BarChart3 className="w-4 h-4 text-foreground" />
-                      </div>
-                      <div>
-                        <h5 className="text-sm font-bold text-foreground group-hover/item:text-foreground">Analytics</h5>
-                        <p className="text-xs text-muted-foreground mt-0.5">Track Meet trends and insights.</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <Link href="/about" className="text-sm font-bold text-foreground hover:text-brand-blue transition-colors">About</Link>
+            <Link href="/" className="text-sm font-bold text-foreground hover:text-brand-blue transition-colors">
+              Home
+            </Link>
+            <a href="#features" className="text-sm font-bold text-foreground hover:text-brand-blue transition-colors">
+              Features
+            </a>
+            <a href="#integrations" className="text-sm font-bold text-foreground hover:text-brand-blue transition-colors">
+              Integrations
+            </a>
+            <Link href="/about" className="text-sm font-bold text-foreground hover:text-brand-blue transition-colors">
+              About
+            </Link>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <Link href="/login" passHref>
-              <Button className="rounded-full bg-foreground text-background hover:bg-brand-blue hover:text-white shadow-xl hover:shadow-brand-blue/30 transition-all duration-300 px-6 font-bold">
+              <Button variant="ghost" className="rounded-full text-sm font-bold text-foreground hover:text-brand-blue px-4">
                 Sign In
+              </Button>
+            </Link>
+            <Link href="/register" passHref>
+              <Button className="rounded-full bg-foreground text-background hover:bg-brand-blue hover:text-white shadow-xl hover:shadow-brand-blue/30 transition-all duration-300 px-6 font-bold">
+                Get Started Free
               </Button>
             </Link>
           </div>
@@ -283,9 +233,11 @@ export default function LandingPage() {
                   Get Started Free
                 </Button>
               </Link>
-              <Button onClick={handleStartDemo} variant="outline" size="lg" className="rounded-full text-lg px-8 h-14 border-2 border-border/50 hover:bg-muted font-bold text-foreground transition-all duration-300">
-                Try Interactive Demo
-              </Button>
+              <Link href="/login" passHref>
+                <Button variant="outline" size="lg" className="rounded-full text-lg px-8 h-14 border-2 border-border/50 hover:bg-muted font-bold text-foreground transition-all duration-300">
+                  Sign In
+                </Button>
+              </Link>
             </div>
             
             <div className="pt-12 border-t border-border/50">
@@ -363,7 +315,7 @@ export default function LandingPage() {
       </main>
 
       {/* Features Section - Interactive Switcher */}
-      <section className="py-32 relative">
+      <section id="features" className="py-32 relative">
         <div className="max-w-7xl mx-auto px-6 relative z-10">
           <div className="text-center mb-20">
             <h2 className="text-4xl sm:text-5xl font-black text-foreground mb-6">We make scheduling simple</h2>
@@ -494,7 +446,7 @@ export default function LandingPage() {
       </section>
 
       {/* Integrations Section */}
-      <section className="py-32 px-6 bg-zinc-50 dark:bg-zinc-900/30 border-t border-border/50">
+      <section id="integrations" className="py-32 px-6 bg-zinc-50 dark:bg-zinc-900/30 border-t border-border/50">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
             <div>
@@ -613,12 +565,14 @@ export default function LandingPage() {
         
         <div className="max-w-4xl mx-auto text-center relative z-10">
           <h2 className="text-5xl sm:text-6xl font-black text-foreground mb-8 tracking-tight">Ready to streamline your calendar?</h2>
-          <p className="text-2xl text-muted-foreground mb-12 font-medium">Experience Meet's full capabilities instantly.</p>
+          <p className="text-2xl text-muted-foreground mb-12 font-medium font-medium">Join Meet today and automate your scheduling workflows.</p>
           <div className="flex flex-col sm:flex-row justify-center gap-6">
-            <Button onClick={handleStartDemo} size="lg" className="rounded-full text-xl px-12 h-20 bg-foreground text-background hover:bg-brand-blue hover:text-white shadow-2xl hover:shadow-brand-blue/40 transition-all hover:scale-105 group font-bold">
-              Try Interactive Demo
-              <ArrowRight className="w-6 h-6 ml-3 group-hover:translate-x-2 transition-transform" />
-            </Button>
+            <Link href="/register" passHref>
+              <Button size="lg" className="rounded-full text-xl px-12 h-20 bg-foreground text-background hover:bg-brand-blue hover:text-white shadow-2xl hover:shadow-brand-blue/40 transition-all hover:scale-105 group font-bold">
+                Get Started Free
+                <ArrowRight className="w-6 h-6 ml-3 group-hover:translate-x-2 transition-transform" />
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
@@ -643,22 +597,20 @@ export default function LandingPage() {
             </div>
 
             <div>
-              <h4 className="font-bold text-foreground mb-4">Product</h4>
+              <h4 className="font-bold text-foreground mb-4">Navigation</h4>
               <ul className="space-y-3 text-sm text-muted-foreground font-medium">
-                <li><span className="cursor-default">Scheduling</span></li>
-                <li><span className="cursor-default">Availability</span></li>
-                <li><span className="cursor-default">Bookings</span></li>
-                <li><span className="cursor-default">Integrations</span></li>
-                <li><span className="cursor-default">Analytics</span></li>
+                <li><Link href="/" className="hover:text-brand-blue transition-colors">Home</Link></li>
+                <li><a href="#features" className="hover:text-brand-blue transition-colors">Features</a></li>
+                <li><a href="#integrations" className="hover:text-brand-blue transition-colors">Integrations</a></li>
+                <li><Link href="/about" className="hover:text-brand-blue transition-colors">About Us</Link></li>
               </ul>
             </div>
 
             <div>
-              <h4 className="font-bold text-foreground mb-4">Integrations</h4>
+              <h4 className="font-bold text-foreground mb-4">Account</h4>
               <ul className="space-y-3 text-sm text-muted-foreground font-medium">
-                <li><span className="cursor-default">Google Calendar & Meet</span></li>
-                <li><span className="cursor-default">Microsoft Outlook & Teams</span></li>
-                <li><span className="cursor-default">Slack</span></li>
+                <li><Link href="/login" className="hover:text-brand-blue transition-colors">Sign In</Link></li>
+                <li><Link href="/register" className="hover:text-brand-blue transition-colors">Get Started Free</Link></li>
               </ul>
             </div>
           </div>
