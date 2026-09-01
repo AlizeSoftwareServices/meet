@@ -303,7 +303,7 @@ export class EmailService {
       <p>We're excited to have you on board. Start scheduling your meetings effortlessly.</p>
       <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard" class="button" target="_blank">Go to Dashboard</a>
     `;
-    return this.sendMail(email, \`Welcome to Meet!\`, this.getBaseTemplate('Registration Successful', content));
+    return this.sendMail(email, 'Welcome to Meet!', this.getBaseTemplate('Registration Successful', content));
   }
 
   async sendHostNotificationEmail(hostEmail: string, guestName: string, eventTitle: string, status: string, startTime?: string) {
