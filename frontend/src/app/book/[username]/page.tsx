@@ -5,14 +5,20 @@ import { api, getApiBaseUrl } from '@/lib/api';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Clock, MapPin, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 
-export default function UserProfilePage({ params }: any) {
+export default function UserProfilePage() {
+  const params = useParams();
+  const rawUsername = params?.username as string;
+  const username = typeof rawUsername === 'string' ? decodeURIComponent(rawUsername) : 'me';
+
   const { data: profile, isLoading, error } = useQuery({
-    queryKey: ['public-profile', params.username],
+    queryKey: ['public-profile', username],
     queryFn: async () => {
-      const res = await api.get(`/public/users/${params.username}`);
+      const res = await api.get(`/public/users/${username}`);
       return res.data;
     },
+    enabled: !!username,
     retry: false
   });
 

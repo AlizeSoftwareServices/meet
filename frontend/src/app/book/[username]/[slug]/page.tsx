@@ -13,10 +13,16 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { triggerHaptic } from '@/lib/haptics';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 
-export default function SchedulingPage({ params }: any) {
+export default function SchedulingPage() {
   const router = useRouter();
+  const params = useParams();
+  const rawUsername = params?.username as string;
+  const username = typeof rawUsername === 'string' ? decodeURIComponent(rawUsername) : 'me';
+  const rawSlug = params?.slug as string;
+  const slug = typeof rawSlug === 'string' ? decodeURIComponent(rawSlug) : '';
+
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedTime, setSelectedTime] = useState<{ startTime: string, endTime: string } | null>(null);
   const [timezone, setTimezone] = useState<string>('');
@@ -38,11 +44,12 @@ export default function SchedulingPage({ params }: any) {
 
   // Fetch host and event profile
   const { data: profile, isLoading: isProfileLoading, error } = useQuery({
-    queryKey: ['public-profile', params.username],
+    queryKey: ['public-profile', username],
     queryFn: async () => {
-      const res = await api.get(`/public/users/${params.username}`);
+      const res = await api.get(`/public/users/${username}`);
       return res.data;
     },
+    enabled: !!username,
     retry: false
   });
 
@@ -57,20 +64,20 @@ export default function SchedulingPage({ params }: any) {
 
   // Fetch availability for the selected date
   const { data: availableSlots, isLoading: isSlotsLoading } = useQuery({
-    queryKey: ['public-slots', params.username, params.slug, selectedDate ? format(selectedDate, 'yyyy-MM-dd') : null, timezone],
+    queryKey: ['public-slots', username, slug, selectedDate ? format(selectedDate, 'yyyy-MM-dd') : null, timezone],
     queryFn: async () => {
       if (!selectedDate) return [];
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
-      const res = await api.get(`/public/availability/${params.username}/${params.slug}/slots?date=${dateStr}&timezone=${timezone || 'UTC'}`);
+      const res = await api.get(`/public/availability/${username}/${slug}/slots?date=${dateStr}&timezone=${timezone || 'UTC'}`);
       return res.data;
     },
-    enabled: !!selectedDate && !!profile && !!timezone,
+    enabled: !!selectedDate && !!profile && !!timezone && !!slug,
   });
 
   const bookMutation = useMutation({
     mutationFn: async () => {
       if (!profile || !selectedTime) return;
-      const eventType = profile.eventTypes.find((e: any) => e.slug === params.slug);
+      const eventType = profile.eventTypes.find((e: any) => e.slug === slug);
       
       const payload: any = {
         hostId: profile.id,
@@ -132,7 +139,7 @@ export default function SchedulingPage({ params }: any) {
     );
   }
 
-  const eventType = profile.eventTypes.find((e: any) => e.slug === params.slug);
+  const eventType = profile.eventTypes.find((e: any) => e.slug === slug);
   if (!eventType) {
     return <div className="flex justify-center items-center h-screen">Event type not found</div>;
   }
