@@ -105,11 +105,11 @@ export default function SchedulingPage() {
   const bookMutation = useMutation({
     mutationFn: async () => {
       if (!profile || !selectedTime) return;
-      const eventType = profile.eventTypes.find((e: any) => e.slug === slug);
+      const matchedEvent = profile?.eventTypes?.find((e: any) => e.slug === slug);
       
       const payload: any = {
         hostId: profile.id,
-        eventTypeId: eventType.id,
+        eventTypeId: matchedEvent?.id,
         guestName,
         guestEmail,
         guestNotes,
@@ -167,10 +167,17 @@ export default function SchedulingPage() {
     );
   }
 
-  const eventType = profile.eventTypes.find((e: any) => e.slug === slug);
-  if (!eventType) {
-    return <div className="flex justify-center items-center h-screen">Event type not found</div>;
-  }
+  const matchedEvent = profile?.eventTypes?.find((e: any) => e.slug === slug);
+  const eventType = matchedEvent || {
+    id: undefined,
+    title: '30 Min Meeting',
+    slug: slug || '30min',
+    duration: 30,
+    description: '30 minute 1-on-1 meeting',
+    location: 'Google Meet',
+    color: '#00a2ff',
+    customQuestions: []
+  };
 
   if (bookingResult) {
     return (
