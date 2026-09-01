@@ -78,7 +78,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col md:flex-row font-sans selection:bg-primary/20 overflow-x-hidden w-full max-w-[100vw]">
+    <div className="h-screen bg-background text-foreground flex flex-col md:flex-row font-sans selection:bg-primary/20 overflow-hidden w-full max-w-[100vw]">
       
       {/* Mobile Header (Glass) */}
       <div className="md:hidden flex items-center justify-between p-4 bg-background/80 backdrop-blur-xl border-b border-border sticky top-0 z-40">
