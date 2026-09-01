@@ -1,16 +1,35 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, getApiBaseUrl } from '@/lib/api';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Clock, MapPin, ChevronRight } from 'lucide-react';
+import { Clock, MapPin, ChevronRight, LayoutDashboard } from 'lucide-react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 
 export default function UserProfilePage() {
+  const router = useRouter();
   const params = useParams();
   const rawUsername = params?.username as string;
   const username = typeof rawUsername === 'string' ? decodeURIComponent(rawUsername) : 'me';
+
+  // Check if current visitor is the logged-in owner
+  const { data: myProfile } = useQuery({
+    queryKey: ['my-auth-profile'],
+    queryFn: async () => {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      if (!token) return null;
+      try {
+        const res = await api.get('/profile');
+        return res.data;
+      } catch {
+        return null;
+      }
+    },
+    retry: false,
+  });
 
   const { data: profile, isLoading, error } = useQuery({
     queryKey: ['public-profile', username],
@@ -21,6 +40,32 @@ export default function UserProfilePage() {
     enabled: !!username,
     retry: false
   });
+
+  const isOwner = myProfile && (myProfile.username === username || (username === 'me' && myProfile));
+
+  useEffect(() => {
+    if (isOwner) {
+      router.replace('/dashboard/events');
+    }
+  }, [isOwner, router]);
+
+  if (isOwner) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-50 dark:bg-zinc-950 p-6 text-center">
+        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-sm text-muted-foreground font-medium">Opening your account dashboard...</p>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => router.replace('/dashboard/events')}
+          className="mt-4 gap-2"
+        >
+          <LayoutDashboard className="w-4 h-4" />
+          Go to Dashboard
+        </Button>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;

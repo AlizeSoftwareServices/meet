@@ -42,6 +42,22 @@ export default function SchedulingPage() {
   const [bookingResult, setBookingResult] = useState<any>(null);
   const [bookingError, setBookingError] = useState<string | null>(null);
 
+  // Check if current visitor is the logged-in owner
+  const { data: myProfile } = useQuery({
+    queryKey: ['my-auth-profile'],
+    queryFn: async () => {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      if (!token) return null;
+      try {
+        const res = await api.get('/profile');
+        return res.data;
+      } catch {
+        return null;
+      }
+    },
+    retry: false,
+  });
+
   // Fetch host and event profile
   const { data: profile, isLoading: isProfileLoading, error } = useQuery({
     queryKey: ['public-profile', username],
@@ -52,6 +68,18 @@ export default function SchedulingPage() {
     enabled: !!username,
     retry: false
   });
+
+  const isOwner = myProfile && (myProfile.username === username || (username === 'me' && myProfile));
+
+  // Redirect owner to their event settings
+  if (isOwner && typeof window !== 'undefined') {
+    const eventType = profile?.eventTypes?.find((e: any) => e.slug === slug);
+    if (eventType) {
+      router.replace(`/dashboard/events/${eventType.id}/edit`);
+    } else {
+      router.replace('/dashboard/events');
+    }
+  }
 
   // Initialize timezone once on client side
   if (typeof Intl !== 'undefined' && timezone === '') {

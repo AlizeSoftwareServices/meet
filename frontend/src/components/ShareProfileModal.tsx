@@ -110,27 +110,16 @@ export default function ShareProfileModal({ isOpen, onClose, profile }: SharePro
           </div>
 
           {/* User Profile Card */}
-          <div className="mt-5 p-3.5 rounded-xl bg-muted/50 border border-border/80 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center shrink-0 shadow-sm">
-                {(name || 'U').charAt(0).toUpperCase()}
-              </div>
-              <div className="min-w-0">
-                <h3 className="font-semibold text-sm truncate">{name}</h3>
-                <p className="text-xs text-muted-foreground font-mono truncate">
-                  /book/{username}
-                </p>
-              </div>
+          <div className="mt-5 p-3.5 rounded-xl bg-muted/50 border border-border/80 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center shrink-0 shadow-sm">
+              {(name || 'U').charAt(0).toUpperCase()}
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => window.open(bookingUrl, '_blank')}
-              className="text-xs shrink-0 gap-1.5 hover:text-blue-600"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              Preview
-            </Button>
+            <div className="min-w-0">
+              <h3 className="font-semibold text-sm truncate">{name}</h3>
+              <p className="text-xs text-muted-foreground font-mono truncate">
+                /book/{username}
+              </p>
+            </div>
           </div>
 
           {/* Copy URL Box */}
