@@ -50,10 +50,16 @@ export class AvailabilityService {
     });
   }
 
-  async updateSchedule(userId: string, id: string, name: string, isDefault: boolean, timezone: string, slots: any[], overrides: any[]) {
+  async updateSchedule(userId: string, id: string, name: string, isDefault: boolean, timezone: string, slots: any[], overrides: any[] = []) {
     const schedule = await this.getSchedule(userId, id);
 
-    if (isDefault && !schedule.isDefault) {
+    const finalName = name || schedule.name || 'Working Hours';
+    const finalIsDefault = typeof isDefault === 'boolean' ? isDefault : schedule.isDefault;
+    const finalTimezone = timezone || schedule.timezone || 'UTC';
+    const finalSlots = Array.isArray(slots) ? slots : [];
+    const finalOverrides = Array.isArray(overrides) ? overrides : [];
+
+    if (finalIsDefault && !schedule.isDefault) {
       // Unset previous defaults
       await this.prisma.availability.updateMany({
         where: { userId, isDefault: true },
@@ -66,32 +72,30 @@ export class AvailabilityService {
       this.prisma.availabilityOverride.deleteMany({ where: { availabilityId: id } }),
     ]);
 
-    let dataToUpdate: any = { name, isDefault, timezone };
-
     await this.prisma.availability.update({
       where: { id },
-      data: dataToUpdate
+      data: { name: finalName, isDefault: finalIsDefault, timezone: finalTimezone }
     });
 
-    if (slots && slots.length > 0) {
+    if (finalSlots.length > 0) {
       await this.prisma.availabilitySlot.createMany({
-        data: slots.map(slot => ({
+        data: finalSlots.map(slot => ({
           availabilityId: id,
-          dayOfWeek: slot.dayOfWeek,
+          dayOfWeek: Number(slot.dayOfWeek),
           startTime: slot.startTime,
           endTime: slot.endTime,
         })),
       });
     }
 
-    if (overrides && overrides.length > 0) {
+    if (finalOverrides.length > 0) {
       await this.prisma.availabilityOverride.createMany({
-        data: overrides.map(override => ({
+        data: finalOverrides.map(override => ({
           availabilityId: id,
           date: override.date,
-          isAvailable: override.isAvailable,
-          startTime: override.startTime,
-          endTime: override.endTime,
+          isAvailable: Boolean(override.isAvailable),
+          startTime: override.startTime || null,
+          endTime: override.endTime || null,
         })),
       });
     }

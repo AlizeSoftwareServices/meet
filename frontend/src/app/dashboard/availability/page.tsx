@@ -229,9 +229,10 @@ export default function AvailabilityPage() {
       setIsEditing(false);
       showToast('Schedule saved to DB! Updated live for guests on your booking link.');
     },
-    onError: () => {
+    onError: (err: any) => {
       setIsSaving(false);
-      showToast('Failed to save availability.');
+      const msg = err?.response?.data?.message || err?.message || 'Failed to save availability.';
+      showToast(typeof msg === 'string' ? msg : 'Failed to save availability.');
     }
   });
 
