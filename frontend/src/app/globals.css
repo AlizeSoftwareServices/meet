@@ -1,3 +1,5 @@
+@import "react-day-picker/src/style.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -141,4 +143,128 @@ button, a, nav, [role="button"] {
 }
 .animate-top-progress {
   animation: topProgress 1.2s cubic-bezier(0.1, 0.7, 0.1, 1) forwards;
+}
+
+/* Force 7-column grid layout for React Day Picker across all versions */
+.rdp, [data-slot="calendar"] {
+  --rdp-cell-size: 40px;
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+}
+
+.rdp-months {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.rdp-month {
+  width: 100%;
+}
+
+.rdp-caption, .rdp-month_caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px 16px 8px;
+  position: relative;
+}
+
+.rdp-caption_label, .rdp-month_label {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--foreground);
+  text-align: center;
+  width: 100%;
+}
+
+.rdp-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 2px;
+  pointer-events: none;
+}
+
+.rdp-nav_button, .rdp-button_previous, .rdp-button_next {
+  pointer-events: auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.rdp-nav_button:hover {
+  background: var(--muted);
+}
+
+.rdp-table, .rdp-month_grid {
+  width: 100% !important;
+  border-collapse: collapse;
+  display: block !important;
+}
+
+.rdp-tbody, .rdp-weeks {
+  display: flex !important;
+  flex-direction: column !important;
+  width: 100% !important;
+}
+
+.rdp-head_row, .rdp-row, .rdp-weekdays, .rdp-week {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  width: 100% !important;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.rdp-head_cell, .rdp-weekday {
+  font-size: 0.7rem !important;
+  font-weight: 700 !important;
+  color: #71717a !important;
+  text-align: center !important;
+  padding: 6px 0 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em;
+}
+
+.rdp-cell, .rdp-day {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  aspect-ratio: 1 / 1;
+  width: 100% !important;
+}
+
+.rdp-day_button, .rdp-button {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 9999px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  border: none !important;
+  background: transparent;
+  cursor: pointer;
+}
+
+.rdp-day_selected, [data-selected-single="true"] {
+  background-color: #7c3aed !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35) !important;
+  transform: scale(1.08);
 }
