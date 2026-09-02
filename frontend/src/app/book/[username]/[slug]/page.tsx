@@ -71,16 +71,6 @@ export default function SchedulingPage() {
 
   const isOwner = myProfile && (myProfile.username === username || (username === 'me' && myProfile));
 
-  // Redirect owner to their event settings
-  if (isOwner && typeof window !== 'undefined') {
-    const eventType = profile?.eventTypes?.find((e: any) => e.slug === slug);
-    if (eventType) {
-      router.replace(`/dashboard/events/${eventType.id}/edit`);
-    } else {
-      router.replace('/dashboard/events');
-    }
-  }
-
   // Initialize timezone once on client side
   if (typeof Intl !== 'undefined' && timezone === '') {
     setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone);
@@ -238,7 +228,17 @@ export default function SchedulingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      {isOwner && (
+        <div className="max-w-5xl w-full mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-between text-xs text-amber-700 dark:text-amber-300">
+          <span className="font-medium">👀 You are viewing your public booking page in preview mode.</span>
+          {eventType && (
+            <Link href={`/dashboard/events/${eventType.id}/edit`} className="font-semibold underline hover:text-amber-900 dark:hover:text-amber-100">
+              Edit Event Type Settings
+            </Link>
+          )}
+        </div>
+      )}
       <div className="max-w-5xl w-full bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-200 dark:border-zinc-800 flex flex-col md:flex-row overflow-hidden min-h-[600px]">
         
         {/* Left Column - Event Details */}
