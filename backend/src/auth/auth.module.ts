@@ -14,7 +14,7 @@ import { SecureTokenService } from './secure-token.service';
     PassportModule,
     JwtModule.register({
       secret: getJwtSecret(),
-      signOptions: { expiresIn: '1d' },
+      signOptions: { expiresIn: '30d' },
     }),
   ],
   controllers: [AuthController],

@@ -99,36 +99,39 @@ export default function SettingsPage() {
   };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!isEditing) return;
     const file = e.target.files?.[0];
     if (!file) return;
     
-    // Check file size (50KB)
-    if (file.size > 50 * 1024) {
-      alert('File size must be 50KB or less');
+    // Check file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be 5MB or less');
       return;
     }
 
-    // Check file type (JPEG, PNG)
-    if (!['image/jpeg', 'image/png'].includes(file.type)) {
-      alert('Only JPEG, JPG, and PNG files are allowed');
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      alert('Only image files (JPEG, PNG, WEBP, GIF) are allowed');
       return;
     }
 
-    
     const formData = new FormData();
     formData.append('file', file);
     
     try {
-      const res = await api.post('/profile/avatar', formData, {
+      await api.post('/profile/avatar', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
-      // Invalidate to fetch new avatar
+      // Invalidate to fetch new avatar across the dashboard
       queryClient.invalidateQueries({ queryKey: ['profile'] });
-    } catch (err) {
+      queryClient.invalidateQueries({ queryKey: ['my-auth-profile'] });
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err: any) {
       console.error('Avatar upload failed', err);
+      const errMsg = err?.response?.data?.message || 'Avatar upload failed. Please try again.';
+      alert(errMsg);
     }
   };
 

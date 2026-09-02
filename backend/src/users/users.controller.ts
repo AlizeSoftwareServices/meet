@@ -36,11 +36,11 @@ export class UsersController {
       }
     }),
     limits: {
-      fileSize: 50 * 1024, // 50KB limit
+      fileSize: 5 * 1024 * 1024, // 5MB limit
     },
     fileFilter: (req, file, cb) => {
-      if (!file.mimetype.match(/\/(jpg|jpeg|png)$/)) {
-        return cb(new BadRequestException('Only JPG, JPEG, and PNG image files are allowed!'), false);
+      if (!file.mimetype.match(/\/(jpg|jpeg|png|webp|gif)$/i)) {
+        return cb(new BadRequestException('Only JPG, JPEG, PNG, WEBP, and GIF image files are allowed!'), false);
       }
       cb(null, true);
     }
