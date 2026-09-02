@@ -24,9 +24,10 @@ export default function SchedulingPage() {
   const slug = typeof rawSlug === 'string' ? decodeURIComponent(rawSlug) : '';
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [selectedTime, setSelectedTime] = useState<{ startTime: string, endTime: string } | null>(null);
   const [timezone, setTimezone] = useState<string>('');
-  
+
   // Guest details state
   const [guestName, setGuestName] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
@@ -79,6 +80,19 @@ export default function SchedulingPage() {
   const timezones = typeof Intl !== 'undefined' && Intl.supportedValuesOf 
     ? Intl.supportedValuesOf('timeZone') 
     : ['UTC', 'America/New_York', 'America/Los_Angeles', 'Europe/London', 'Europe/Paris', 'Asia/Tokyo'];
+
+  // Fetch month-level available dates
+  const monthStr = format(currentMonth, 'yyyy-MM');
+  const { data: availableDates = [], isLoading: isMonthLoading } = useQuery({
+    queryKey: ['public-month-availability', username, slug, monthStr, timezone],
+    queryFn: async () => {
+      const res = await api.get(`/public/availability/${username}/${slug}/month?month=${monthStr}&timezone=${timezone || 'UTC'}`);
+      return (res.data || []) as string[];
+    },
+    enabled: !!profile && !!timezone && !!slug,
+  });
+
+  const availableDatesSet = new Set(availableDates);
 
   // Fetch availability for the selected date
   const { data: availableSlots, isLoading: isSlotsLoading } = useQuery({
@@ -293,23 +307,66 @@ export default function SchedulingPage() {
           {!selectedTime ? (
             <div className="flex flex-col md:flex-row gap-8 flex-1">
               <div className="flex-1">
-                <h2 className="text-xl font-bold mb-4">Select a Date & Time</h2>
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={(date) => {
-                    triggerHaptic('light');
-                    setSelectedDate(date);
-                  }}
-                  className="rounded-xl border shadow-sm p-3 w-full flex justify-center"
-                  disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
-                />
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold">Select a Date & Time</h2>
+                  {isMonthLoading && (
+                    <div className="flex items-center gap-1.5 text-xs text-violet-600 dark:text-violet-400 font-medium">
+                      <span className="w-3 h-3 border-2 border-violet-600 border-t-transparent rounded-full animate-spin"></span>
+                      Checking availability...
+                    </div>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    month={currentMonth}
+                    onMonthChange={(month) => {
+                      setCurrentMonth(month);
+                      setSelectedDate(undefined);
+                    }}
+                    onSelect={(date) => {
+                      if (!date) return;
+                      const dateStr = format(date, 'yyyy-MM-dd');
+                      if (availableDatesSet.has(dateStr)) {
+                        triggerHaptic('light');
+                        setSelectedDate(date);
+                      }
+                    }}
+                    className="rounded-xl border shadow-sm p-3 w-full flex justify-center"
+                    disabled={(date) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      if (date < today) return true;
+                      const dateStr = format(date, 'yyyy-MM-dd');
+                      // Only disable if month loading is done and date is not in available set
+                      return !isMonthLoading && !availableDatesSet.has(dateStr);
+                    }}
+                    modifiers={{
+                      available: (date) => availableDatesSet.has(format(date, 'yyyy-MM-dd')),
+                    }}
+                    modifiersClassNames={{
+                      available: 'font-bold text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-950/60 ring-2 ring-violet-500/30',
+                    }}
+                  />
+                </div>
+
+                {!isMonthLoading && availableDates.length === 0 && (
+                  <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs text-center font-medium">
+                    No available dates found for this month. Try changing the month or timezone.
+                  </div>
+                )}
+
                 <div className="mt-4 flex items-center justify-between bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-4 py-2">
                    <Label className="text-xs text-zinc-500 font-medium whitespace-nowrap mr-3">Time zone</Label>
                    <select 
                      className="bg-transparent border-none text-sm focus:ring-0 w-full outline-none"
                      value={timezone}
-                     onChange={(e) => setTimezone(e.target.value)}
+                     onChange={(e) => {
+                       setTimezone(e.target.value);
+                       setSelectedDate(undefined);
+                     }}
                    >
                      {timezones.map(tz => (
                        <option key={tz} value={tz}>{tz}</option>
@@ -325,11 +382,12 @@ export default function SchedulingPage() {
                   </h3>
                   <div className="flex-1 overflow-y-auto pr-2 space-y-2 h-[400px]">
                     {isSlotsLoading ? (
-                      <div className="text-center text-zinc-500 py-8">Loading times...</div>
+                      <div className="flex flex-col items-center justify-center py-12 text-zinc-500 gap-2">
+                        <span className="w-6 h-6 border-2 border-violet-600 border-t-transparent rounded-full animate-spin"></span>
+                        <span className="text-xs">Loading available times...</span>
+                      </div>
                     ) : availableSlots?.length > 0 ? (
                       availableSlots.map((slot: any, idx: number) => {
-                        // The backend returns ISO strings, we parse and format them locally.
-                        // Because we parse the UTC ISO string, it displays in the guest's local time automatically!
                         const localDate = parseISO(slot.startTime);
                         return (
                           <button
@@ -338,7 +396,7 @@ export default function SchedulingPage() {
                               triggerHaptic('medium');
                               setSelectedTime(slot);
                             }}
-                            className="w-full py-3 px-4 rounded-xl border border-primary/30 text-primary font-medium hover:bg-primary hover:text-white hover:border-primary transition-all text-center block flex flex-col items-center justify-center gap-0.5"
+                            className="w-full py-3 px-4 rounded-xl border border-primary/30 text-primary font-medium hover:bg-primary hover:text-white hover:border-primary transition-all text-center block flex flex-col items-center justify-center gap-0.5 shadow-sm"
                           >
                             <span>{format(localDate, 'h:mm a')}</span>
                             {slot.spotsRemaining !== undefined && eventType.isGroupEvent && (
@@ -350,7 +408,9 @@ export default function SchedulingPage() {
                         );
                       })
                     ) : (
-                      <div className="text-center text-zinc-500 py-8">No times available</div>
+                      <div className="p-6 text-center text-zinc-500 bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs">
+                        No slots available for this date.
+                      </div>
                     )}
                   </div>
                 </div>

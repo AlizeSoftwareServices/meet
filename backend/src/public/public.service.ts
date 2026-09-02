@@ -185,6 +185,45 @@ export class PublicService {
     return validSlots;
   }
 
+  async getAvailableDatesForMonth(username: string, eventSlug: string, monthStr: string, guestTimezone?: string): Promise<string[]> {
+    const [yearNum, monthNum] = monthStr.split('-').map(Number);
+    if (!yearNum || !monthNum) return [];
+
+    const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
+    
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    const monthDates: string[] = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dStr = `${yearNum}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      // Only include dates today or in the future
+      if (dStr >= todayStr) {
+        monthDates.push(dStr);
+      }
+    }
+
+    const availableDates: string[] = [];
+
+    // Evaluate each date concurrently in parallel batches
+    const batchSize = 10;
+    for (let i = 0; i < monthDates.length; i += batchSize) {
+      const batch = monthDates.slice(i, i + batchSize);
+      const results = await Promise.all(
+        batch.map(async (dStr) => {
+          const slots = await this.getAvailableSlots(username, eventSlug, dStr, guestTimezone);
+          return { dateStr: dStr, hasSlots: slots && slots.length > 0 };
+        })
+      );
+      for (const res of results) {
+        if (res.hasSlots) {
+          availableDates.push(res.dateStr);
+        }
+      }
+    }
+
+    return availableDates;
+  }
+
   private createZonedDate(dateStr: string, timeStr: string, timeZone: string): Date {
     const [year, month, day] = dateStr.split('-').map(Number);
     const [hours, minutes] = timeStr.split(':').map(Number);
