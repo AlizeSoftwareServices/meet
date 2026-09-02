@@ -86,6 +86,8 @@ model EventType {
   team             Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
   schedulingType   String    @default("PERSONAL") // 'PERSONAL', 'ROUND_ROBIN', 'COLLECTIVE'
   hosts            EventTypeHost[]
+  price            Float?
+  currency         String?   @default("usd")
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -170,6 +172,10 @@ model Booking {
   teamId          String?    @db.ObjectId
   team            Team?      @relation(fields: [teamId], references: [id], onDelete: SetNull)
   assignedHosts   BookingHost[]
+  price           Float?
+  currency        String?
+  stripePaymentIntentId String?
+  paymentStatus   String?   @default("FREE")
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
   actionTokens    ActionToken[]
@@ -229,6 +235,8 @@ model Workflow {
   triggerType  String    // e.g., 'BEFORE_EVENT', 'AFTER_EVENT'
   timeOffset   Int       // in minutes (e.g., 1440 for 24 hours)
   actionType   String    // e.g., 'EMAIL'
+  emailSubject String?
+  emailBody    String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
   executions   WorkflowExecution[]

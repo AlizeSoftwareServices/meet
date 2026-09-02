@@ -474,14 +474,53 @@ export class BookingsService {
       const endTimeIso = booking.endTime.toISOString();
 
       // Create external calendar events for all assigned hosts
+      // FIX #1: Capture meetLink + externalEventId and persist to DB
+      let storedMeetLink: string | null = booking.meetLink ?? null;
       for (const h of assignedHosts) {
         if (h.integrations && h.integrations.length > 0) {
           try {
-            await this.calendarService.createCalendarEvent(h.id, h.email, guestEmail, startTimeIso, endTimeIso, eventTitle);
+            const calendarResult = await this.calendarService.createCalendarEvent(
+              h.id, h.email, guestEmail, startTimeIso, endTimeIso, eventTitle
+            );
+            const meetLink = calendarResult?.meetLink ?? null;
+            const externalEventId = calendarResult?.eventId ?? null;
+            if (meetLink || externalEventId) {
+              await this.prisma.booking.update({
+                where: { id: booking.id },
+                data: {
+                  ...(meetLink && { meetLink }),
+                  ...(externalEventId && { externalEventId }),
+                },
+              });
+              // Update local reference so emails use the fresh link
+              if (meetLink) storedMeetLink = meetLink;
+            }
           } catch (error: any) {
             this.logger.error(`Failed to create external calendar event for host ${h.id}`, error.stack);
           }
         }
+      }
+
+      // FIX #2: Generate guest self-service tokens once per booking (bound to primary host)
+      // Tokens are scoped to booking.hostId so the guest cancel/reschedule handlers can
+      // verify the correct host and delete/update the right calendar event.
+      let guestCancelToken: string | undefined;
+      let guestRescheduleToken: string | undefined;
+      try {
+        guestCancelToken = await this.secureTokenService.generateToken(
+          TokenType.GUEST_CANCEL,
+          168, // 7 days
+          booking.hostId,
+          booking.id,
+        );
+        guestRescheduleToken = await this.secureTokenService.generateToken(
+          TokenType.GUEST_RESCHEDULE,
+          168,
+          booking.hostId,
+          booking.id,
+        );
+      } catch (error: any) {
+        this.logger.error(`Failed to generate guest tokens for booking ${booking.id}`, error.stack);
       }
 
       // 4. Send Confirmation Emails to guest and all hosts
@@ -492,12 +531,12 @@ export class BookingsService {
             guestName,
             eventTitle,
             startTimeIso,
-            booking.meetLink,
+            storedMeetLink || undefined,
             booking.eventType.duration,
             h.profile?.name || 'Host',
             h.email,
-            undefined, // cancelToken
-            undefined // rescheduleToken
+            guestCancelToken,      // FIX #2: was undefined
+            guestRescheduleToken   // FIX #2: was undefined
           );
         } catch (error: any) {
           this.logger.error(`Failed to send confirmation email for booking ${booking.id}`, error.stack);
@@ -553,6 +592,41 @@ export class BookingsService {
     } catch (err) {
       return dbBookings;
     }
+  }
+
+  async markNoShow(bookingId: string, hostId: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { assignedHosts: true }
+    });
+
+    if (!booking) {
+      throw new BadRequestException('Booking not found');
+    }
+
+    const isAssigned = booking.hostId === hostId || booking.assignedHosts.some(h => h.userId === hostId);
+    if (!isAssigned) {
+      throw new BadRequestException('Unauthorized');
+    }
+
+    if (new Date(booking.startTime) > new Date()) {
+      throw new BadRequestException('Cannot mark a future booking as no-show');
+    }
+
+    if (booking.status !== 'CONFIRMED' && booking.status !== 'RESCHEDULED') {
+      throw new BadRequestException('Only confirmed or rescheduled bookings can be marked as no-show');
+    }
+
+    const updatedBooking = await this.prisma.booking.update({
+      where: { id: bookingId },
+      data: { status: 'NO_SHOW' },
+      include: { eventType: true }
+    });
+
+    // Dispatch Webhook
+    await this.dispatchBookingWebhook('booking.no_show', updatedBooking);
+
+    return updatedBooking;
   }
 
 async cancelBooking(bookingId: string, hostId: string, reason: string) {

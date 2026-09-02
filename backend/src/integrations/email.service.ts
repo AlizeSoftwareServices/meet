@@ -272,6 +272,46 @@ export class EmailService {
     return this.sendMail(email, `Follow-up: ${eventTitle}`, this.getBaseTemplate('Thank You for Attending', content));
   }
 
+  async sendCustomWorkflowEmail(
+    email: string,
+    guestName: string,
+    eventTitle: string,
+    startTime: string,
+    meetLink?: string,
+    customSubject?: string | null,
+    customBody?: string | null
+  ) {
+    const formattedDate = new Date(startTime).toLocaleString('en-US', {
+      dateStyle: 'full',
+      timeStyle: 'short',
+    });
+
+    const vars: Record<string, string> = {
+      guest_name: guestName,
+      event_title: eventTitle,
+      start_time: formattedDate,
+      meeting_link: meetLink || '',
+    };
+
+    const interpolate = (tpl: string) =>
+      tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? `{{${k}}}`);
+
+    const subject = customSubject
+      ? interpolate(customSubject)
+      : `Reminder: ${eventTitle}`;
+
+    const bodyContent = customBody
+      ? `<div style="font-size: 15px; leading: 1.6;">${interpolate(customBody).replace(/\n/g, '<br/>')}</div>`
+      : `
+        <p>Hello <strong>${guestName}</strong>,</p>
+        <p>This is a friendly reminder for your upcoming meeting: <strong>${eventTitle}</strong>.</p>
+        <p>Time: ${formattedDate}</p>
+        ${meetLink ? `<p><a href="${meetLink}">Join Meeting</a></p>` : ''}
+      `;
+
+    return this.sendMail(email, subject, this.getBaseTemplate(eventTitle, bodyContent));
+  }
+
   async sendPasswordResetEmail(email: string, name: string, tokenUrl: string) {
     const content = `
       <p>Hello <strong>${name}</strong>,</p>

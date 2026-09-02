@@ -5,7 +5,7 @@ import { api } from '@/lib/api';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, Video, User, XCircle, FileText, Filter, CheckCircle2, MoreHorizontal } from 'lucide-react';
+import { Calendar, Clock, Video, User, XCircle, FileText, Filter, CheckCircle2, MoreHorizontal, UserX } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -37,6 +37,16 @@ export default function BookingsManagementPage() {
     onError: () => setCancellingId(null),
   });
 
+  const noShowMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await api.post(`/bookings/${id}/no-show`);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+    },
+  });
+
   const cancelSeriesMutation = useMutation({
     mutationFn: async ({ id, reason }: { id: string; reason: string }) => {
       const res = await api.post(`/bookings/series/${id}/cancel`, { reason });
@@ -62,6 +72,12 @@ export default function BookingsManagementPage() {
     }
   };
 
+  const handleMarkNoShow = (id: string) => {
+    if (confirm('Mark this guest as a No-Show?')) {
+      noShowMutation.mutate(id);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'CONFIRMED':
@@ -70,6 +86,8 @@ export default function BookingsManagementPage() {
         return <Badge className="bg-destructive/10 text-destructive hover:bg-destructive/20 border-0"><XCircle className="w-3 h-3 mr-1"/> Cancelled</Badge>;
       case 'RESCHEDULED':
         return <Badge className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 border-0"><Clock className="w-3 h-3 mr-1"/> Rescheduled</Badge>;
+      case 'NO_SHOW':
+        return <Badge className="bg-purple-500/10 text-purple-600 hover:bg-purple-500/20 border-0"><UserX className="w-3 h-3 mr-1"/> No Show</Badge>;
       default:
         return <Badge>{status}</Badge>;
     }
@@ -253,6 +271,17 @@ export default function BookingsManagementPage() {
                               </Button>
                             </>
                           )
+                        )}
+                        {!booking.isExternal && new Date(booking.startTime) <= now && (booking.status === 'CONFIRMED' || booking.status === 'RESCHEDULED') && (
+                          <Button 
+                            variant="outline"
+                            className="w-full text-amber-600 border-amber-500/20 hover:bg-amber-500/10 rounded-full text-xs"
+                            onClick={() => handleMarkNoShow(booking.id)}
+                            disabled={noShowMutation.isPending}
+                          >
+                            <UserX className="w-3.5 h-3.5 mr-1.5" />
+                            Mark No-Show
+                          </Button>
                         )}
                         <Button variant="ghost" size="icon" className="hidden lg:flex self-end mt-auto text-muted-foreground hover:text-foreground">
                           <MoreHorizontal className="w-5 h-5" />

@@ -153,4 +153,45 @@ export class AnalyticsService {
 
     return csvContent;
   }
+
+  async getEventTypeAnalytics(hostId: string, startDate?: string, endDate?: string) {
+    const dateFilter = {
+      ...(startDate && { gte: new Date(startDate) }),
+      ...(endDate && { lte: new Date(endDate) })
+    };
+
+    const eventTypes = await this.prisma.eventType.findMany({
+      where: { userId: hostId },
+      include: {
+        bookings: {
+          where: {
+            hostId,
+            ...(Object.keys(dateFilter).length > 0 && { startTime: dateFilter })
+          },
+          select: { status: true }
+        }
+      }
+    });
+
+    return eventTypes.map(et => {
+      const total = et.bookings.length;
+      const confirmed = et.bookings.filter(b => b.status === 'CONFIRMED').length;
+      const cancelled = et.bookings.filter(b => b.status === 'CANCELLED').length;
+      const completed = et.bookings.filter(b => b.status === 'COMPLETED').length;
+      const noShow = et.bookings.filter(b => b.status === 'NO_SHOW').length;
+      return {
+        id: et.id,
+        title: et.title,
+        slug: et.slug,
+        color: et.color,
+        isActive: et.isActive,
+        total,
+        confirmed,
+        cancelled,
+        completed,
+        noShow,
+        cancellationRate: total > 0 ? Math.round((cancelled / total) * 100) : 0,
+      };
+    });
+  }
 }

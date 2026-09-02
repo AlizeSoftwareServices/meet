@@ -14,7 +14,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { PublicModule } from './public/public.module';
-import { MailModule } from './mail/mail.module';
+// mail/mail.module removed (Fix #5) — use integrations/email.service instead
 import { ThrottlerModule } from '@nestjs/throttler';
 import { WorkflowsModule } from './workflows/workflows.module';
 
@@ -44,8 +44,8 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     AnalyticsModule,
     ContactsModule,
     PublicModule,
-    MailModule,
     WorkflowsModule,
+    // MailModule intentionally removed — EmailService is @Global via IntegrationsModule
     PollsModule,
     RoutingModule,
     TeamsModule,

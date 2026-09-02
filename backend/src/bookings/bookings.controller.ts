@@ -73,4 +73,13 @@ export class BookingsController {
   ) {
     return this.bookingsService.rescheduleBooking(id, req.user.userId, new Date(newStartTime), new Date(newEndTime));
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/no-show')
+  markNoShow(
+    @Param('id') id: string,
+    @Request() req: any
+  ) {
+    return this.bookingsService.markNoShow(id, req.user.userId);
+  }
 }

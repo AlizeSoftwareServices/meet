@@ -29,4 +29,13 @@ export class AnalyticsController {
     const csvData = await this.analyticsService.exportBookingsCsv(req.user.userId, startDate, endDate);
     res.send(csvData);
   }
+
+  @Get('event-types')
+  getEventTypeAnalytics(
+    @Request() req,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string
+  ) {
+    return this.analyticsService.getEventTypeAnalytics(req.user.userId, startDate, endDate);
+  }
 }

@@ -3,6 +3,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import * as crypto from 'crypto';
 import axios from 'axios';
 
+// Exponential backoff delays in minutes per attempt index (0-based)
+const BACKOFF_MINUTES = [1, 5, 30];
+
 @Injectable()
 export class WebhookDeliveryService {
   private readonly logger = new Logger(WebhookDeliveryService.name);
@@ -68,8 +71,10 @@ export class WebhookDeliveryService {
 
   /**
    * Sends the HTTP POST to the webhook endpoint with HMAC signature and records the result.
+   * The HMAC is always computed fresh from the stored payload + secret (not cached).
    */
   async attemptDelivery(webhook: any, deliveryId: string, payloadString: string, event: string): Promise<boolean> {
+    // FIX #3: Always re-sign with fresh HMAC — never reuse a cached signature
     const signature = this.generateSignature(payloadString, webhook.secret);
     const headers = {
       'Content-Type': 'application/json',
@@ -104,6 +109,21 @@ export class WebhookDeliveryService {
     }
 
     try {
+      // Fetch current attempt count to compute next backoff window
+      const current = await this.prisma.webhookDelivery.findUnique({
+        where: { id: deliveryId },
+        select: { attempts: true },
+      });
+      const attemptsDone = (current?.attempts ?? 0) + 1;
+      const isAbandoned = !isSuccess && attemptsDone >= 3;
+
+      // Compute nextAttemptAt using exponential backoff, or null when done
+      let nextAttemptAt: Date | null = null;
+      if (!isSuccess && !isAbandoned) {
+        const backoffMs = BACKOFF_MINUTES[attemptsDone - 1] * 60 * 1000;
+        nextAttemptAt = new Date(Date.now() + backoffMs);
+      }
+
       await this.prisma.webhookDelivery.update({
         where: { id: deliveryId },
         data: {
@@ -111,14 +131,64 @@ export class WebhookDeliveryService {
           response: responseText,
           success: isSuccess,
           attempts: { increment: 1 },
-          deliveredAt: new Date(),
-          nextAttemptAt: isSuccess ? null : new Date(Date.now() + 60000), // Retry in 1 min if failed
+          deliveredAt: isSuccess ? new Date() : null,
+          nextAttemptAt: isSuccess ? null : nextAttemptAt,
+          // FIX #3: Mark abandoned after 3 consecutive failures
+          ...(isAbandoned && { nextAttemptAt: null }),
         },
       });
+
+      if (isAbandoned) {
+        this.logger.warn(`Webhook delivery ${deliveryId} abandoned after ${attemptsDone} failed attempts.`);
+      }
     } catch (dbErr: any) {
       this.logger.error(`Failed to update delivery status ${deliveryId}: ${dbErr.message}`);
     }
 
     return isSuccess;
+  }
+
+  /**
+   * FIX #3: Retry processor — picks up failed deliveries whose nextAttemptAt <= now.
+   * Called by CronService every 5 minutes.
+   * Only retries deliveries with attempts < 3 and nextAttemptAt set (non-null means not yet abandoned).
+   */
+  async retryFailedDeliveries(): Promise<void> {
+    try {
+      const due = await this.prisma.webhookDelivery.findMany({
+        where: {
+          success: false,
+          attempts: { lt: 3 },
+          nextAttemptAt: { lte: new Date() },
+        },
+        include: { webhook: true },
+      });
+
+      if (due.length === 0) return;
+
+      this.logger.debug(`Retrying ${due.length} failed webhook deliveries`);
+
+      for (const delivery of due) {
+        if (!delivery.webhook || !delivery.webhook.isActive) {
+          // Abandon deliveries whose webhook was deactivated or deleted
+          await this.prisma.webhookDelivery.update({
+            where: { id: delivery.id },
+            data: { nextAttemptAt: null },
+          }).catch(() => {});
+          this.logger.debug(`Abandoned delivery ${delivery.id}: webhook inactive or deleted`);
+          continue;
+        }
+
+        // Re-sign with fresh HMAC using stored payload + current secret
+        await this.attemptDelivery(
+          delivery.webhook,
+          delivery.id,
+          delivery.payload,
+          delivery.event,
+        );
+      }
+    } catch (err: any) {
+      this.logger.error(`Error in retryFailedDeliveries: ${err.message}`);
+    }
   }
 }

@@ -239,11 +239,26 @@ export class RoutingService {
       if (!answerVal) continue;
 
       let matched = false;
-      if (rule.operator === 'EQUALS' && answerVal.toLowerCase() === rule.value.toLowerCase()) {
+      const aLower = answerVal.toLowerCase();
+      const rLower = (rule.value || '').toLowerCase();
+
+      if (rule.operator === 'EQUALS' && aLower === rLower) {
         matched = true;
-      } else if (rule.operator === 'NOT_EQUALS' && answerVal.toLowerCase() !== rule.value.toLowerCase()) {
+      } else if (rule.operator === 'NOT_EQUALS' && aLower !== rLower) {
         matched = true;
-      } else if (rule.operator === 'CONTAINS' && answerVal.toLowerCase().includes(rule.value.toLowerCase())) {
+      } else if (rule.operator === 'CONTAINS' && aLower.includes(rLower)) {
+        matched = true;
+      } else if (rule.operator === 'STARTS_WITH' && aLower.startsWith(rLower)) {
+        matched = true;
+      } else if (rule.operator === 'ENDS_WITH' && aLower.endsWith(rLower)) {
+        matched = true;
+      } else if (rule.operator === 'IN_LIST' && rule.value.split(',').map(v => v.trim().toLowerCase()).includes(aLower)) {
+        matched = true;
+      } else if (rule.operator === 'IS_EMPTY' && (!answerVal || answerVal.trim() === '')) {
+        matched = true;
+      } else if (rule.operator === 'GREATER_THAN' && !isNaN(Number(answerVal)) && Number(answerVal) > Number(rule.value)) {
+        matched = true;
+      } else if (rule.operator === 'LESS_THAN' && !isNaN(Number(answerVal)) && Number(answerVal) < Number(rule.value)) {
         matched = true;
       }
 

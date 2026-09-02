@@ -16,6 +16,14 @@ export default function AnalyticsPage() {
     },
   });
 
+  const { data: eventTypeAnalytics } = useQuery({
+    queryKey: ['analytics-event-types'],
+    queryFn: async () => {
+      const res = await api.get('/analytics/event-types');
+      return res.data;
+    },
+  });
+
   const getIconForTitle = (title: string) => {
     if (title.includes('Upcoming')) return <CalendarDays className="w-5 h-5 text-blue-500" />;
     if (title.includes('Completed')) return <Activity className="w-5 h-5 text-emerald-500" />;
@@ -175,6 +183,58 @@ export default function AnalyticsPage() {
           </Card>
         </motion.div>
       </div>
+
+      {/* Event Type Performance Breakdown */}
+      {eventTypeAnalytics && eventTypeAnalytics.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          <Card className="border-border/50 bg-background/50 backdrop-blur-xl shadow-md overflow-hidden">
+            <CardHeader>
+              <CardTitle className="text-xl">Event Type Performance</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-border/50 text-muted-foreground font-medium">
+                      <th className="py-3 px-4">Event Type</th>
+                      <th className="py-3 px-4">Total</th>
+                      <th className="py-3 px-4">Confirmed</th>
+                      <th className="py-3 px-4">Cancelled</th>
+                      <th className="py-3 px-4">No-Show</th>
+                      <th className="py-3 px-4">Cancel Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/30">
+                    {eventTypeAnalytics.map((et: any) => (
+                      <tr key={et.id} className="hover:bg-muted/30 transition-colors">
+                        <td className="py-3 px-4 font-semibold flex items-center gap-2">
+                          <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: et.color || '#0066FF' }} />
+                          {et.title}
+                        </td>
+                        <td className="py-3 px-4">{et.total}</td>
+                        <td className="py-3 px-4 text-emerald-600 font-medium">{et.confirmed}</td>
+                        <td className="py-3 px-4 text-destructive font-medium">{et.cancelled}</td>
+                        <td className="py-3 px-4 text-amber-600 font-medium">{et.noShow || 0}</td>
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            et.cancellationRate > 20 ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'
+                          }`}>
+                            {et.cancellationRate}%
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
     </div>
   );
 }
