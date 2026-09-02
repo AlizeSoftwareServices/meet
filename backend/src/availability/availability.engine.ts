@@ -105,20 +105,19 @@ export class AvailabilityEngineService {
     });
     if (!host) throw new NotFoundException('Host not found');
 
-    const eventType = await this.prisma.eventType.findUnique({
-      where: { id: eventTypeId }
-    });
-    if (!eventType) throw new NotFoundException('Event type not found');
+    const eventType = eventTypeId 
+      ? await this.prisma.eventType.findUnique({ where: { id: eventTypeId } })
+      : null;
 
     const schedule = await this.getEffectiveAvailability(hostId, eventTypeId);
     if (!schedule) throw new BadRequestException('Host has no availability schedule configured.');
 
     const timezone = schedule.timezone || host.profile?.timezone || 'UTC';
-    const duration = eventType.duration;
-    const bufferBefore = eventType.bufferBefore || 0;
-    const bufferAfter = eventType.bufferAfter || 0;
-    const minNotice = eventType.minNotice || 0;
-    const maxAdvanceDays = eventType.maxAdvanceDays || 60;
+    const duration = eventType?.duration || 30;
+    const bufferBefore = eventType?.bufferBefore || 0;
+    const bufferAfter = eventType?.bufferAfter || 0;
+    const minNotice = eventType?.minNotice || 0;
+    const maxAdvanceDays = eventType?.maxAdvanceDays || 60;
 
     const now = new Date();
     const nowHost = toZonedTime(now, timezone);
@@ -183,7 +182,7 @@ export class AvailabilityEngineService {
         if (!isWithinWorkingHours) {
           isAvailable = false;
           reason = 'Slot is outside host working hours.';
-        } else if (eventType.maxDailyBookings && eventType.maxDailyBookings > 0) {
+        } else if (eventType?.maxDailyBookings && eventType.maxDailyBookings > 0) {
           // maxDailyBookings enforcement based on host timezone calendar date
           const sameDayBookingsCount = existingBookings.filter(b => {
             if (b.eventTypeId !== eventTypeId) return false;
@@ -210,7 +209,7 @@ export class AvailabilityEngineService {
         const slotStartWithBuffer = addMinutes(slot.startTime, -bufferBefore);
         const slotEndWithBuffer = addMinutes(slot.endTime, bufferAfter);
 
-        if (eventType.isGroupEvent) {
+        if (eventType?.isGroupEvent) {
           // Count existing bookings for this specific group event
           const groupBookingsCount = existingBookings.filter(b => 
             b.eventTypeId === eventTypeId && 
@@ -218,7 +217,7 @@ export class AvailabilityEngineService {
             b.endTime.getTime() === slot.endTime.getTime()
           ).length;
 
-          if (groupBookingsCount >= eventType.maxInvitees) {
+          if (eventType.maxInvitees && groupBookingsCount >= eventType.maxInvitees) {
             isAvailable = false;
             reason = 'Group event slot is full.';
           } else {
