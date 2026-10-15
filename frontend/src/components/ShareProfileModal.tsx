@@ -26,6 +26,9 @@ interface ShareProfileModalProps {
   };
 }
 
+import { shareMeetingLink } from '@/lib/nativeShare';
+import { triggerHaptic } from '@/lib/haptics';
+
 export default function ShareProfileModal({ isOpen, onClose, profile }: ShareProfileModalProps) {
   const [copied, setCopied] = useState(false);
 
@@ -41,6 +44,7 @@ export default function ShareProfileModal({ isOpen, onClose, profile }: SharePro
 
   const handleCopy = async () => {
     try {
+      triggerHaptic('light');
       await navigator.clipboard.writeText(bookingUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
@@ -50,19 +54,16 @@ export default function ShareProfileModal({ isOpen, onClose, profile }: SharePro
   };
 
   const handleNativeShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `${name}'s Booking Page - Meet`,
-          text: `Schedule a meeting with ${name}:`,
-          url: bookingUrl,
-        });
-      } catch (err) {
-        // User cancelled or share failed
-        console.log('Share dismissed');
-      }
-    } else {
-      handleCopy();
+    triggerHaptic('medium');
+    const shared = await shareMeetingLink({
+      title: `${name}'s Booking Page - Meet`,
+      text: `Schedule a meeting with ${name}:`,
+      url: bookingUrl,
+      dialogTitle: 'Share your booking profile'
+    });
+    if (!shared) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
     }
   };
 

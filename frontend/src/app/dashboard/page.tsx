@@ -12,7 +12,10 @@ import {
   Clock, 
   Link as LinkIcon, 
   Download, 
-  Activity 
+  Activity,
+  Video,
+  ExternalLink,
+  Sparkles
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -71,6 +74,13 @@ export default function DashboardPage() {
 
   const displayAnalytics = analytics || defaultAnalytics;
   const displayBookings = Array.isArray(bookings) ? bookings : [];
+
+  // Find next upcoming meeting
+  const now = new Date();
+  const upcomingMeets = displayBookings
+    .filter((b: any) => b.status !== 'CANCELLED' && new Date(b.endTime) >= now)
+    .sort((a: any, b: any) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+  const nextMeeting = upcomingMeets[0];
 
   const statIcons: Record<string, any> = {
     'Upcoming Meets': CalendarIcon,
@@ -171,6 +181,77 @@ export default function DashboardPage() {
           </div>
         </div>
       </motion.div>
+
+      {/* Calendly-style Next Upcoming Meeting / 1-Tap Join Banner */}
+      {nextMeeting && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-[1px] shadow-lg shadow-blue-500/10"
+        >
+          <div className="bg-background/95 backdrop-blur-xl rounded-[15px] p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 border border-blue-500/20 shadow-sm">
+                <Video className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                    <Sparkles className="w-3 h-3" />
+                    Next Meeting
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(nextMeeting.startTime).toDateString() === now.toDateString() 
+                      ? 'Today' 
+                      : new Date(nextMeeting.startTime).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </span>
+                </div>
+                <h3 className="text-lg font-semibold text-foreground mt-1">
+                  {nextMeeting.guestName} — <span className="font-normal text-muted-foreground">{nextMeeting.eventType?.title || 'Meet Call'}</span>
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>
+                    {new Date(nextMeeting.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - {new Date(nextMeeting.endTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  {nextMeeting.guestEmail && (
+                    <>
+                      <span>•</span>
+                      <span className="truncate max-w-[200px]">{nextMeeting.guestEmail}</span>
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 sm:self-center shrink-0">
+              {nextMeeting.meetLink ? (
+                <a
+                  href={nextMeeting.meetLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto"
+                >
+                  <Button 
+                    className="w-full sm:w-auto h-10 px-5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-xl gap-2 shadow-md shadow-blue-500/20 transition-all active:scale-95 text-xs"
+                  >
+                    <Video className="w-4 h-4" />
+                    Join Call
+                    <ExternalLink className="w-3.5 h-3.5 opacity-70" />
+                  </Button>
+                </a>
+              ) : (
+                <Link href="/dashboard/bookings" className="w-full sm:w-auto">
+                  <Button variant="outline" className="w-full sm:w-auto h-10 px-4 rounded-xl text-xs font-semibold gap-1.5">
+                    View in Bookings
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       <motion.div 
         variants={containerVariants}

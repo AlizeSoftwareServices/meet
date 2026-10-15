@@ -27,6 +27,9 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import ShareProfileModal from '@/components/ShareProfileModal';
+import { Capacitor } from '@capacitor/core';
+import { triggerHaptic } from '@/lib/haptics';
+import { WifiOff } from 'lucide-react';
 
 const sidebarLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -50,6 +53,53 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [copiedQuick, setCopiedQuick] = useState(false);
+  const [isOffline, setIsOffline] = useState(false);
+
+  // Network offline detector
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    if (typeof window !== 'undefined') {
+      setIsOffline(!navigator.onLine);
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+      }
+    };
+  }, []);
+
+  // Android Native Hardware Back Button handler
+  useEffect(() => {
+    if (typeof window === 'undefined' || !Capacitor.isNativePlatform()) return;
+
+    let removeListener: (() => void) | undefined;
+
+    import('@capacitor/app').then(({ App }) => {
+      App.addListener('backButton', ({ canGoBack }) => {
+        if (isShareModalOpen) {
+          setIsShareModalOpen(false);
+        } else if (isMobileMenuOpen) {
+          setIsMobileMenuOpen(false);
+        } else if (canGoBack && pathname !== '/dashboard' && pathname !== '/dashboard/') {
+          router.back();
+        } else {
+          App.exitApp();
+        }
+      }).then((listener) => {
+        removeListener = () => listener.remove();
+      });
+    });
+
+    return () => {
+      if (removeListener) removeListener();
+    };
+  }, [isShareModalOpen, isMobileMenuOpen, pathname, router]);
 
   // Fetch Profile data for sharing
   const { data: profile } = useQuery({
@@ -369,8 +419,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </header>
 
+        {/* Offline Warning Banner */}
+        {isOffline && (
+          <div className="bg-amber-500 text-amber-950 dark:bg-amber-600 dark:text-white text-xs font-medium py-1.5 px-4 flex items-center justify-center gap-2 shadow-sm shrink-0 z-40">
+            <WifiOff className="w-3.5 h-3.5" />
+            <span>You are currently offline. Changes will sync once reconnected.</span>
+          </div>
+        )}
+
         {/* Scrollable Page Body */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden relative w-full max-w-full">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden relative w-full max-w-full pb-24 md:pb-0">
           {/* Subtle decorative background blob */}
           <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl -z-10 pointer-events-none" />
           
@@ -379,6 +437,87 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         </main>
       </div>
+
+      {/* Mobile Persistent Bottom Navigation Bar (Calendly Style) */}
+      <nav 
+        aria-label="Mobile Navigation"
+        className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-background/95 backdrop-blur-xl border-t border-border/80 px-2 pt-1.5 pb-[calc(env(safe-area-inset-bottom,0px)+6px)] shadow-[0_-4px_25px_rgba(0,0,0,0.06)] dark:shadow-[0_-4px_25px_rgba(0,0,0,0.3)]"
+      >
+        <div className="flex items-center justify-around max-w-md mx-auto">
+          {/* 1. Events */}
+          <Link
+            href="/dashboard/events"
+            onClick={() => triggerHaptic('light')}
+            className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all ${
+              pathname.startsWith('/dashboard/events')
+                ? 'text-blue-600 dark:text-blue-400 font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Calendar className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] tracking-tight">Events</span>
+          </Link>
+
+          {/* 2. Bookings */}
+          <Link
+            href="/dashboard/bookings"
+            onClick={() => triggerHaptic('light')}
+            className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all ${
+              pathname === '/dashboard/bookings'
+                ? 'text-blue-600 dark:text-blue-400 font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Users className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] tracking-tight">Bookings</span>
+          </Link>
+
+          {/* 3. Availability */}
+          <Link
+            href="/dashboard/availability"
+            onClick={() => triggerHaptic('light')}
+            className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all ${
+              pathname === '/dashboard/availability'
+                ? 'text-blue-600 dark:text-blue-400 font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Clock className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] tracking-tight">Availability</span>
+          </Link>
+
+          {/* 4. Profile / Settings */}
+          <Link
+            href="/dashboard/settings"
+            onClick={() => triggerHaptic('light')}
+            className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all ${
+              pathname === '/dashboard/settings'
+                ? 'text-blue-600 dark:text-blue-400 font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <User className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] tracking-tight">Profile</span>
+          </Link>
+
+          {/* 5. More (Drawer Trigger) */}
+          <button
+            onClick={() => {
+              triggerHaptic('light');
+              setIsMobileMenuOpen(true);
+            }}
+            className={`flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all ${
+              isMobileMenuOpen
+                ? 'text-blue-600 dark:text-blue-400 font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+            aria-label="Open More Menu"
+          >
+            <Menu className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] tracking-tight">More</span>
+          </button>
+        </div>
+      </nav>
 
       {/* Profile Share Modal */}
       <ShareProfileModal
