@@ -280,13 +280,35 @@ export default function EventTypesPage() {
                           </div>
                         </CardHeader>
                         
-                        <CardFooter className="border-t border-border/50 px-4 py-4 flex justify-between items-center bg-muted/10">
-                          <Button variant="ghost" size="sm" onClick={() => handleShare(event)} className="text-primary hover:text-primary hover:bg-primary/10 rounded-lg font-bold px-3">
-                            <Share2 className="w-4 h-4 mr-2" />
-                            Share link
-                          </Button>
+                        <CardFooter className="border-t border-border/50 px-4 py-3 flex justify-between items-center bg-muted/10">
+                          <div className="flex items-center gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleShare(event)} 
+                              className="text-primary hover:text-primary hover:bg-primary/10 rounded-lg font-bold px-2.5 h-8 text-xs gap-1.5"
+                            >
+                              <Share2 className="w-3.5 h-3.5" />
+                              Share
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={async () => {
+                                const url = `${window.location.origin}/book/me/${event.slug}`;
+                                await navigator.clipboard.writeText(url);
+                                triggerHaptic('light');
+                                alert('Link copied to clipboard!');
+                              }} 
+                              className="text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg font-medium px-2 h-8 text-xs gap-1"
+                              title="Copy link"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                              Copy
+                            </Button>
+                          </div>
                           
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
                             <Switch checked={event.isActive} onCheckedChange={(checked) => toggleStatusMutation.mutate({ id: event.id, isActive: checked })} />
                           </div>
                         </CardFooter>

@@ -173,9 +173,9 @@ export default function BookingsManagementPage() {
                     <div key={booking.id} className="p-6 md:p-8 flex flex-col lg:flex-row lg:items-start justify-between gap-6 hover:bg-muted/10 transition-colors">
                       <div className="flex gap-6 flex-1">
                         
-                        {/* Avatar initials (Fallback) */}
-                        <div className="hidden sm:flex shrink-0 w-12 h-12 rounded-full bg-primary/10 text-primary items-center justify-center font-bold text-lg border border-primary/20">
-                          {booking.guestName.charAt(0).toUpperCase()}
+                        {/* Avatar initials */}
+                        <div className="flex shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-primary/10 text-primary items-center justify-center font-bold text-base sm:text-lg border border-primary/20">
+                          {booking.guestName ? booking.guestName.charAt(0).toUpperCase() : 'G'}
                         </div>
 
                         <div className="space-y-4 flex-1">
@@ -229,7 +229,7 @@ export default function BookingsManagementPage() {
                         </div>
                       </div>
 
-                      <div className="flex flex-row lg:flex-col gap-3 min-w-[140px] pt-2 sm:pl-[72px] lg:pl-0">
+                      <div className="flex flex-row lg:flex-col flex-wrap gap-2.5 min-w-[140px] pt-2 sm:pl-[72px] lg:pl-0">
                         {booking.isExternal ? (
                           booking.meetingUrl ? (
                             <a href={booking.meetingUrl} target="_blank" rel="noopener noreferrer" className="w-full">
@@ -246,29 +246,34 @@ export default function BookingsManagementPage() {
                         ) : (
                           booking.status === 'CONFIRMED' && new Date(booking.startTime) > now && (
                             <>
+                              {booking.meetLink && (
+                                <a href={booking.meetLink} target="_blank" rel="noopener noreferrer" className="w-full">
+                                  <Button className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-full text-xs font-semibold gap-1.5 shadow-sm">
+                                    <Video className="w-3.5 h-3.5" />
+                                    Join Call
+                                  </Button>
+                                </a>
+                              )}
                               <Button 
                                 variant="outline" 
-                                className="w-full text-destructive border-destructive/20 hover:text-destructive hover:bg-destructive/10 rounded-full"
+                                className="w-full text-destructive border-destructive/20 hover:text-destructive hover:bg-destructive/10 rounded-full text-xs"
                                 onClick={() => handleCancel(booking.id)}
                                 disabled={cancelMutation.isPending && cancellingId === booking.id}
                               >
-                                <XCircle className="w-4 h-4 mr-2" />
+                                <XCircle className="w-3.5 h-3.5 mr-1.5" />
                                 {cancelMutation.isPending && cancellingId === booking.id ? 'Cancelling...' : 'Cancel Occurrence'}
                               </Button>
                               {booking.bookingSeriesId && (
                                 <Button 
                                   variant="outline" 
-                                  className="w-full text-destructive border-destructive/20 hover:text-destructive hover:bg-destructive/10 rounded-full"
+                                  className="w-full text-destructive border-destructive/20 hover:text-destructive hover:bg-destructive/10 rounded-full text-xs"
                                   onClick={() => handleCancelSeries(booking.bookingSeriesId)}
                                   disabled={cancelSeriesMutation.isPending && cancellingId === `series-${booking.bookingSeriesId}`}
                                 >
-                                  <XCircle className="w-4 h-4 mr-2" />
+                                  <XCircle className="w-3.5 h-3.5 mr-1.5" />
                                   {cancelSeriesMutation.isPending && cancellingId === `series-${booking.bookingSeriesId}` ? 'Cancelling...' : 'Cancel Series'}
                                 </Button>
                               )}
-                              <Button variant="secondary" className="w-full rounded-full bg-secondary hover:bg-secondary/80">
-                                Reschedule
-                              </Button>
                             </>
                           )
                         )}
