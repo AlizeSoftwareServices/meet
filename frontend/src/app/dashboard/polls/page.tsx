@@ -25,7 +25,7 @@ export default function PollsDashboardPage() {
     <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-light text-foreground">Meeting Polls</h1>
+          <h1 className="text-3xl font-heading font-extrabold tracking-tight text-foreground">Meeting Polls</h1>
           <p className="text-muted-foreground mt-2">Create polls to find the best time to meet with multiple people.</p>
         </div>
         <Link href="/dashboard/polls/new">

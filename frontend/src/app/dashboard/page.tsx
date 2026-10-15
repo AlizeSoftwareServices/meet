@@ -133,7 +133,7 @@ export default function DashboardPage() {
       >
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-light text-foreground">
+            <h1 className="text-3xl font-heading font-extrabold tracking-tight text-foreground">
               Dashboard
             </h1>
             <p className="text-muted-foreground mt-2 text-sm max-w-2xl">
@@ -278,7 +278,7 @@ export default function DashboardPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="relative z-10 px-6 pb-6">
-                  <div className="text-4xl font-light tracking-tight mt-1">{stat.value}</div>
+                  <div className="text-3xl sm:text-4xl font-heading font-black tracking-tight text-foreground mt-1">{stat.value}</div>
                 </CardContent>
               </Card>
             </motion.div>

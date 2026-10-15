@@ -32,7 +32,7 @@ button, a, nav, [role="button"] {
 
 @layer base {
   .theme {
-    --font-heading: var(--font-sans);
+    --font-heading: var(--font-heading);
     --font-sans: var(--font-sans);
   }
   :root {
@@ -99,7 +99,11 @@ button, a, nav, [role="button"] {
     @apply border-border outline-ring;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading), var(--font-sans), sans-serif;
+    letter-spacing: -0.02em;
   }
   html {
     @apply font-sans;

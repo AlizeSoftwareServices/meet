@@ -68,18 +68,18 @@ function ConfirmationContent() {
     <div className="max-w-2xl mx-auto p-6 md:p-12">
       <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-sm border border-zinc-200 dark:border-zinc-800 p-8 md:p-12 text-center">
         {isCancelled ? (
-          <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+          <div className="w-20 h-20 bg-red-100 text-red-600 dark:bg-red-950/50 dark:text-red-400 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-md border border-red-200 dark:border-red-900">
             <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </div>
         ) : (
-          <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle2 className="w-10 h-10" />
+          <div className="w-20 h-20 bg-gradient-to-tr from-emerald-500 to-teal-400 text-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-emerald-500/20 animate-in zoom-in-90 duration-300">
+            <CheckCircle2 className="w-10 h-10 stroke-[2.5]" />
           </div>
         )}
         
-        <h1 className="text-3xl font-bold mb-2">
+        <h1 className="text-3xl font-heading font-extrabold text-zinc-900 dark:text-white tracking-tight mb-2">
           {isCancelled ? 'Booking Cancelled' : 'You are scheduled'}
         </h1>
         
@@ -135,9 +135,9 @@ function ConfirmationContent() {
                       href={data.meetLink} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center w-full bg-brand-blue text-white rounded-lg py-2 font-medium text-sm hover:bg-brand-blue/90 transition-colors"
+                      className="inline-flex items-center justify-center w-full bg-gradient-to-r from-violet-600 via-indigo-600 to-blue-600 hover:from-violet-700 hover:via-indigo-700 hover:to-blue-700 text-white rounded-xl py-3 font-bold text-sm shadow-lg shadow-violet-500/25 transition-all duration-200 active:scale-[0.99]"
                     >
-                      Join Meeting
+                      Join Meeting →
                     </a>
                   )}
                 </div>

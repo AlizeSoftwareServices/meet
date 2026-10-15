@@ -270,12 +270,14 @@ export default function SchedulingPage() {
 
               <div className="flex flex-col items-start gap-4">
                 <div className="relative">
-                  <Avatar className="w-16 h-16 shadow-md border-2 border-white dark:border-zinc-800 ring-2 ring-violet-500/30">
-                    <AvatarImage src={profile.avatar ? `${getApiBaseUrl()}${profile.avatar}` : ''} alt={profile.name} />
-                    <AvatarFallback className="bg-gradient-to-br from-violet-600 to-indigo-600 text-white font-bold text-xl">
-                      {profile.name?.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="p-0.5 rounded-full bg-gradient-to-tr from-violet-600 via-indigo-500 to-emerald-400 shadow-md">
+                    <Avatar className="w-16 h-16 border-2 border-white dark:border-zinc-900">
+                      <AvatarImage src={profile.avatar ? `${getApiBaseUrl()}${profile.avatar}` : ''} alt={profile.name} />
+                      <AvatarFallback className="bg-gradient-to-br from-violet-600 to-indigo-600 text-white font-bold text-xl">
+                        {profile.name?.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
                   <span className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-emerald-500 border-2 border-white dark:border-zinc-900 shadow-xs" title="Verified Host"></span>
                 </div>
 
@@ -283,7 +285,7 @@ export default function SchedulingPage() {
                   <p className="text-xs font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400 mb-1">
                     {profile.bookingPageTitle || profile.name}
                   </p>
-                  <h1 className="text-2xl lg:text-3xl font-extrabold text-zinc-900 dark:text-white tracking-tight mb-2">
+                  <h1 className="text-2xl lg:text-3xl font-heading font-extrabold text-zinc-900 dark:text-white tracking-tight mb-2">
                     {eventType.title}
                   </h1>
                   
@@ -435,11 +437,11 @@ export default function SchedulingPage() {
                                 triggerHaptic('medium');
                                 setSelectedTime(slot);
                               }}
-                              className="w-full py-2.5 px-4 rounded-xl border border-violet-500/30 text-violet-700 dark:text-violet-300 font-bold bg-violet-50/50 dark:bg-violet-950/30 hover:bg-violet-600 hover:text-white dark:hover:bg-violet-600 dark:hover:text-white hover:border-violet-600 transition-all text-center flex flex-col items-center justify-center gap-0.5 shadow-xs group cursor-pointer"
+                              className="w-full py-3 px-4 rounded-xl border border-zinc-200/90 dark:border-zinc-800 text-zinc-800 dark:text-zinc-200 font-bold bg-white dark:bg-zinc-900/90 hover:border-violet-600 hover:bg-gradient-to-r hover:from-violet-600 hover:to-indigo-600 hover:text-white dark:hover:border-violet-500 dark:hover:from-violet-600 dark:hover:to-indigo-600 dark:hover:text-white hover:shadow-md hover:shadow-violet-500/20 active:scale-[0.98] transition-all duration-200 text-center flex flex-col items-center justify-center gap-0.5 group cursor-pointer"
                             >
-                              <span className="text-sm font-semibold tracking-tight">{format(localDate, 'h:mm a')}</span>
+                              <span className="text-sm font-bold tracking-tight">{format(localDate, 'h:mm a')}</span>
                               {slot.spotsRemaining !== undefined && eventType.isGroupEvent && (
-                                <span className="text-[10px] font-bold opacity-80 uppercase tracking-wider text-violet-600 group-hover:text-white">
+                                <span className="text-[10px] font-semibold opacity-80 uppercase tracking-wider text-violet-600 dark:text-violet-400 group-hover:text-white transition-colors">
                                   {slot.spotsRemaining} spots left
                                 </span>
                               )}
@@ -646,11 +648,18 @@ export default function SchedulingPage() {
 
                 <Button 
                   type="submit" 
-                  className="w-full h-12 text-base rounded-xl font-semibold"
-                  style={{ backgroundColor: profile.brandColor || undefined, color: profile.brandColor ? '#fff' : undefined }}
+                  className="w-full h-12 text-base rounded-xl font-bold bg-gradient-to-r from-violet-600 via-indigo-600 to-blue-600 hover:from-violet-700 hover:via-indigo-700 hover:to-blue-700 text-white shadow-lg shadow-violet-500/20 transition-all duration-200 active:scale-[0.99] cursor-pointer"
+                  style={profile.brandColor ? { backgroundColor: profile.brandColor, backgroundImage: 'none', color: '#fff' } : undefined}
                   disabled={bookMutation.isPending}
                 >
-                  {bookMutation.isPending ? 'Scheduling...' : 'Schedule Event'}
+                  {bookMutation.isPending ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      Scheduling meeting...
+                    </span>
+                  ) : (
+                    'Confirm Booking →'
+                  )}
                 </Button>
               </form>
             </div>

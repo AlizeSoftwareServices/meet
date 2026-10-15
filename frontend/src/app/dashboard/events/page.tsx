@@ -101,7 +101,7 @@ export default function EventTypesPage() {
   return (
     <div className="space-y-6 pb-10 max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-3xl font-light text-foreground">Scheduling</h1>
+        <h1 className="text-3xl font-heading font-extrabold tracking-tight text-foreground">Scheduling</h1>
         
         <DropdownMenu>
           <DropdownMenuTrigger render={

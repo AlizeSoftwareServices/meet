@@ -1,9 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import Providers from "../providers/query-provider";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+const jakarta = Plus_Jakarta_Sans({ 
+  subsets: ["latin"], 
+  variable: "--font-heading",
+  weight: ["400", "500", "600", "700", "800"],
+});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -49,7 +54,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} overflow-x-hidden antialiased gpu-layer`}>
+      <body className={`${inter.variable} ${jakarta.variable} font-sans overflow-x-hidden antialiased gpu-layer`}>
         <Providers>
           {children}
         </Providers>
