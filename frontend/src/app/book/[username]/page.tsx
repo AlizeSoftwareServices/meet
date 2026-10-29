@@ -47,10 +47,10 @@ export default function UserProfilePage() {
     if (isOwner) {
       router.replace('/dashboard/events');
     } else if (profile) {
-      if (profile.eventTypes && profile.eventTypes.length >= 1) {
+      // If the host has only 1 event type, take the guest directly to it.
+      // If the host has multiple event types, let the guest choose from their booking hub.
+      if (profile.eventTypes && profile.eventTypes.length === 1) {
         router.replace(`/book/${profile.username}/${profile.eventTypes[0].slug}`);
-      } else {
-        router.replace(`/book/${profile.username}/30min`);
       }
     }
   }, [isOwner, profile, router]);

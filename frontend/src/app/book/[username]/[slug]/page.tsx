@@ -163,25 +163,30 @@ export default function SchedulingPage() {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
   }
 
-  if (error || !profile) {
+  const matchedEvent = profile?.eventTypes?.find((e: any) => e.slug === slug);
+
+  if (error || !profile || !matchedEvent) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-50 dark:bg-zinc-950">
-        <h1 className="text-2xl font-bold">Event Not Found</h1>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-50 dark:bg-zinc-950 px-4 text-center">
+        <div className="w-16 h-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-4 text-zinc-400">
+          <Clock className="w-8 h-8" />
+        </div>
+        <h1 className="text-2xl font-bold mb-2">Event Not Found</h1>
+        <p className="text-zinc-500 max-w-sm mb-6">
+          This meeting link does not exist or has been turned off by the host.
+        </p>
+        <Link
+          href={`/book/${username}`}
+          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          View all events for @{username}
+        </Link>
       </div>
     );
   }
 
-  const matchedEvent = profile?.eventTypes?.find((e: any) => e.slug === slug);
-  const eventType = matchedEvent || {
-    id: undefined,
-    title: '30 Min Meeting',
-    slug: slug || '30min',
-    duration: 30,
-    description: '30 minute 1-on-1 meeting',
-    location: 'Google Meet',
-    color: '#00a2ff',
-    customQuestions: []
-  };
+  const eventType = matchedEvent;
 
   if (bookingResult) {
     return (

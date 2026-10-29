@@ -42,15 +42,33 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor to handle 401 Unauthorized
+// Response interceptor to handle 401 Unauthorized safely (ignoring public guest flows)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     const isDemo = typeof window !== 'undefined' && localStorage.getItem('demoMode') === 'true';
     if (error.response && error.response.status === 401 && !isDemo) {
-      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-        localStorage.removeItem('token');
-        window.location.href = '/login';
+      if (typeof window !== 'undefined') {
+        const path = window.location.pathname;
+        const isPublicPage =
+          path.startsWith('/book') ||
+          path.startsWith('/booking') ||
+          path.startsWith('/forms') ||
+          path.startsWith('/polls') ||
+          path.startsWith('/guest') ||
+          path === '/' ||
+          path.includes('/login') ||
+          path.includes('/register') ||
+          path.includes('/forgot-password') ||
+          path.includes('/reset-password') ||
+          path.includes('/verify-email') ||
+          path.includes('/about') ||
+          path.includes('/contact');
+
+        if (!isPublicPage) {
+          localStorage.removeItem('token');
+          window.location.href = '/login';
+        }
       }
     }
     return Promise.reject(error);
