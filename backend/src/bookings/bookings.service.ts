@@ -886,9 +886,34 @@ async rescheduleBooking(bookingId: string, hostId: string, newStartTime: Date, n
     // Send emails and external calendar updates
     const assignedHosts = updatedBooking.assignedHosts.map(ah => ah.user);
     
-    // Clear old external event if we changed host? Or just update it.
-    // Actually calendar sync handles updating if possible, but if host changed, we might need to recreate.
-    // For now, we will notify hosts.
+    // Update external calendar event (Google / Microsoft)
+    if (booking.externalEventId) {
+      await this.calendarService.updateCalendarEvent(
+        selectedPrimaryHostId,
+        booking.externalEventId,
+        newStartTime.toISOString(),
+        newEndTime.toISOString()
+      ).catch(e => this.logger.error(`Failed to update calendar event on reschedule: ${e.message}`));
+    }
+
+    // Generate tokens and send reschedule email to guest
+    try {
+      const rescheduleToken = await this.secureTokenService.generateToken(TokenType.GUEST_RESCHEDULE, 168, booking.hostId, booking.id);
+      const cancelToken = await this.secureTokenService.generateToken(TokenType.GUEST_CANCEL, 168, booking.hostId, booking.id);
+
+      await this.emailService.sendRescheduleEmail(
+        booking.guestEmail,
+        booking.guestName,
+        updatedBooking.eventType.title,
+        newStartTime.toISOString(),
+        booking.meetLink || undefined,
+        cancelToken,
+        rescheduleToken
+      );
+    } catch (e: any) {
+      this.logger.error(`Failed to send reschedule email for booking ${booking.id}: ${e.message}`);
+    }
+
     for (const h of assignedHosts) {
        await this.pushService.sendToUser(
          h.id,

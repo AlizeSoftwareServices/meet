@@ -18,16 +18,42 @@ export default function GuestPollPage({ params }: any) {
   // pollSlotId -> status ('YES', 'NO', 'IF_NEED_BE')
   const [votes, setVotes] = useState<Record<string, string>>({});
 
+  const { data: myProfile } = useQuery({
+    queryKey: ['my-profile-poll'],
+    queryFn: async () => {
+      try {
+        const res = await api.get('/profile');
+        return res.data;
+      } catch {
+        return null;
+      }
+    },
+    retry: false
+  });
+
   const { data: poll, isLoading, error } = useQuery({
     queryKey: ['poll', params.id],
     queryFn: async () => {
-      // NOTE: We probably need a public endpoint for polls without auth. 
-      // The current getPollById requires auth? Wait, it's defined in PollsController.
-      // Let's assume it's open for now, or we need to add a public endpoint.
       const res = await api.get(`/polls/${params.id}`);
       return res.data;
     },
     retry: false
+  });
+
+  const isHost = myProfile && poll && (myProfile.userId === poll.hostId || myProfile.id === poll.hostId);
+
+  const finalizeMutation = useMutation({
+    mutationFn: async (slotId: string) => {
+      const res = await api.patch(`/polls/${params.id}/finalize`, { slotId });
+      return res.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['poll', params.id] });
+      alert(`🎉 Meeting booked! Calendar invitations sent to ${data.attendeeCount} participants.`);
+    },
+    onError: (err: any) => {
+      alert(err.response?.data?.message || 'Failed to finalize meeting poll');
+    }
   });
 
   const voteMutation = useMutation({
@@ -71,19 +97,40 @@ export default function GuestPollPage({ params }: any) {
               This poll is closed
             </div>
           )}
+          {poll.status === 'FINALIZED' && (
+            <div className="inline-block mt-4 px-4 py-1.5 bg-emerald-100 text-emerald-800 rounded-full font-bold text-sm">
+              🎉 Meeting Finalized & Booked! Calendar invites have been sent to attendees.
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border p-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div className="space-y-2">
-              <Label>Your Name *</Label>
-              <Input required value={guestName} onChange={e => setGuestName(e.target.value)} placeholder="Jane Doe" disabled={poll.status === 'CLOSED'} />
+          {isHost && (
+            <div className="mb-6 p-4 rounded-xl bg-violet-50 border border-violet-200 text-violet-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-sm">
+              <div>
+                <p className="font-bold flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-violet-600 animate-pulse"></span>
+                  Organizer View
+                </p>
+                <p className="text-xs text-violet-700 mt-0.5">
+                  Review participant votes below. When you're ready, click <strong>"Book This Slot"</strong> on the winning time to generate calendar invites for all voters.
+                </p>
+              </div>
             </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>Your Email *</Label>
-              <Input required type="email" value={guestEmail} onChange={e => setGuestEmail(e.target.value)} placeholder="jane@example.com" disabled={poll.status === 'CLOSED'} />
+          )}
+
+          {poll.status === 'OPEN' && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="space-y-2">
+                <Label>Your Name *</Label>
+                <Input required value={guestName} onChange={e => setGuestName(e.target.value)} placeholder="Jane Doe" disabled={poll.status !== 'OPEN'} />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Your Email *</Label>
+                <Input required type="email" value={guestEmail} onChange={e => setGuestEmail(e.target.value)} placeholder="jane@example.com" disabled={poll.status !== 'OPEN'} />
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="space-y-4">
             <h3 className="font-semibold text-lg border-b pb-2">Select your availability</h3>
@@ -110,31 +157,47 @@ export default function GuestPollPage({ params }: any) {
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                      <Button 
-                        variant={votes[slot.id] === 'YES' ? 'default' : 'outline'}
-                        className={`w-12 h-12 p-0 rounded-full ${votes[slot.id] === 'YES' ? 'bg-green-600 hover:bg-green-700' : ''}`}
-                        onClick={() => handleVote(slot.id, 'YES')}
-                        disabled={poll.status === 'CLOSED'}
-                      >
-                        <Check className="w-5 h-5" />
-                      </Button>
-                      <Button 
-                        variant={votes[slot.id] === 'IF_NEED_BE' ? 'default' : 'outline'}
-                        className={`w-12 h-12 p-0 rounded-full ${votes[slot.id] === 'IF_NEED_BE' ? 'bg-yellow-500 hover:bg-yellow-600' : ''}`}
-                        onClick={() => handleVote(slot.id, 'IF_NEED_BE')}
-                        disabled={poll.status === 'CLOSED'}
-                      >
-                        <HelpCircle className="w-5 h-5" />
-                      </Button>
-                      <Button 
-                        variant={votes[slot.id] === 'NO' ? 'default' : 'outline'}
-                        className={`w-12 h-12 p-0 rounded-full ${votes[slot.id] === 'NO' ? 'bg-red-500 hover:bg-red-600' : ''}`}
-                        onClick={() => handleVote(slot.id, 'NO')}
-                        disabled={poll.status === 'CLOSED'}
-                      >
-                        <X className="w-5 h-5" />
-                      </Button>
+                    <div className="flex flex-wrap items-center gap-3">
+                      {isHost && poll.status === 'OPEN' && (
+                        <Button
+                          size="sm"
+                          className="bg-violet-600 hover:bg-violet-700 text-white font-bold rounded-xl text-xs px-4 h-9 shadow-sm"
+                          onClick={() => {
+                            if (confirm(`Book meeting for ${format(start, 'EEE, MMM d h:mm a')} and send calendar invites to all who voted?`)) {
+                              finalizeMutation.mutate(slot.id);
+                            }
+                          }}
+                          disabled={finalizeMutation.isPending}
+                        >
+                          {finalizeMutation.isPending ? 'Booking...' : 'Book This Slot →'}
+                        </Button>
+                      )}
+
+                      {poll.status === 'OPEN' && (
+                        <div className="flex items-center gap-2">
+                          <Button 
+                            variant={votes[slot.id] === 'YES' ? 'default' : 'outline'}
+                            className={`w-10 h-10 p-0 rounded-full ${votes[slot.id] === 'YES' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
+                            onClick={() => handleVote(slot.id, 'YES')}
+                          >
+                            <Check className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            variant={votes[slot.id] === 'IF_NEED_BE' ? 'default' : 'outline'}
+                            className={`w-10 h-10 p-0 rounded-full ${votes[slot.id] === 'IF_NEED_BE' ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : ''}`}
+                            onClick={() => handleVote(slot.id, 'IF_NEED_BE')}
+                          >
+                            <HelpCircle className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            variant={votes[slot.id] === 'NO' ? 'default' : 'outline'}
+                            className={`w-10 h-10 p-0 rounded-full ${votes[slot.id] === 'NO' ? 'bg-red-500 hover:bg-red-600 text-white' : ''}`}
+                            onClick={() => handleVote(slot.id, 'NO')}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )
@@ -142,15 +205,17 @@ export default function GuestPollPage({ params }: any) {
             </div>
           </div>
 
-          <div className="mt-8 flex justify-end">
-            <Button 
-              size="lg" 
-              onClick={() => voteMutation.mutate()}
-              disabled={!guestName || !guestEmail || Object.keys(votes).length === 0 || voteMutation.isPending || poll.status === 'CLOSED'}
-            >
-              {voteMutation.isPending ? 'Submitting...' : 'Submit Votes'}
-            </Button>
-          </div>
+          {poll.status === 'OPEN' && (
+            <div className="mt-8 flex justify-end">
+              <Button 
+                size="lg" 
+                onClick={() => voteMutation.mutate()}
+                disabled={!guestName || !guestEmail || Object.keys(votes).length === 0 || voteMutation.isPending}
+              >
+                {voteMutation.isPending ? 'Submitting...' : 'Submit Votes'}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

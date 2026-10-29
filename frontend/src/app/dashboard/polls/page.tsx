@@ -47,8 +47,12 @@ export default function PollsDashboardPage() {
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
                   <CardTitle className="text-xl">{poll.title}</CardTitle>
-                  <span className={`text-xs px-2 py-1 rounded-full ${poll.status === 'OPEN' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
-                    {poll.status}
+                  <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${
+                    poll.status === 'OPEN' ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' :
+                    poll.status === 'FINALIZED' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300' :
+                    'bg-gray-100 text-gray-700 dark:bg-zinc-800 dark:text-zinc-400'
+                  }`}>
+                    {poll.status === 'FINALIZED' ? '✓ Booked' : poll.status}
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground line-clamp-1">{poll.description}</p>

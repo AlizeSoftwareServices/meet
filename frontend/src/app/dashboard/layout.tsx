@@ -127,6 +127,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [router]);
 
+  // Initialize Native Push Notifications on Mobile Devices
+  useEffect(() => {
+    if (isAuthenticated && Capacitor.isNativePlatform()) {
+      import('@/lib/pushNotifications').then(({ initPushNotifications }) => {
+        initPushNotifications(
+          (notif) => {
+            triggerHaptic('medium');
+            console.log('Push notification received in foreground:', notif);
+          },
+          (action) => {
+            const url = action.notification?.data?.url || '/dashboard/bookings';
+            router.push(url);
+          }
+        );
+      });
+    }
+  }, [isAuthenticated, router]);
+
   // Reset navigation state when pathname changes
   useEffect(() => {
     setIsNavigating(false);

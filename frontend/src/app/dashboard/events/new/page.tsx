@@ -89,6 +89,11 @@ export default function NewEventTypePage() {
     } else if (typeParam === 'group') {
       form.setValue('isGroupEvent', true);
       form.setValue('maxInvitees', 5);
+    } else if (typeParam === 'one-off') {
+      const uniqueSuffix = Math.random().toString(36).substring(2, 6);
+      form.setValue('title', 'One-off Meeting');
+      form.setValue('slug', `meet-${uniqueSuffix}`);
+      form.setValue('description', 'Custom one-off private meeting link.');
     }
   }, [searchParams, form]);
 

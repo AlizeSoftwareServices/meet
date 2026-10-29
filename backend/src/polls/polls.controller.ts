@@ -37,4 +37,10 @@ export class PollsController {
   closePoll(@Request() req, @Param('id') id: string) {
     return this.pollsService.closePoll(req.user.userId, id);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/finalize')
+  finalizePoll(@Request() req, @Param('id') id: string, @Body('slotId') slotId: string) {
+    return this.pollsService.finalizePoll(req.user.userId, id, slotId);
+  }
 }

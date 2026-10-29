@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, Link as LinkIcon, Plus, Trash2, Edit2, User, Users, ArrowRightLeft, CalendarDays, Link2, BarChart, Settings, Share2, Copy } from 'lucide-react';
+import { Calendar, Clock, Code, Link as LinkIcon, Plus, Trash2, Edit2, User, Users, ArrowRightLeft, CalendarDays, Link2, BarChart, Settings, Share2, Copy, QrCode, Download, X } from 'lucide-react';
 import { shareMeetingLink } from '@/lib/nativeShare';
 import { triggerHaptic } from '@/lib/haptics';
 import { motion, Variants, AnimatePresence } from 'framer-motion';
@@ -18,6 +18,9 @@ export default function EventTypesPage() {
   const queryClient = useQueryClient();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'event_types' | 'single_use' | 'polls'>('event_types');
+  const [selectedQrEvent, setSelectedQrEvent] = useState<any | null>(null);
+  const [selectedEmbedEvent, setSelectedEmbedEvent] = useState<any | null>(null);
+  const [embedTab, setEmbedTab] = useState<'inline' | 'popup'>('inline');
 
   const { data: events, isLoading: eventsLoading } = useQuery({
     queryKey: ['event-types'],
@@ -253,6 +256,12 @@ export default function EventTypesPage() {
                               </DropdownMenuItem>
                               <DropdownMenuItem 
                                 className="cursor-pointer font-medium" 
+                                onClick={() => setSelectedEmbedEvent(event)}
+                              >
+                                <Code className="w-4 h-4 mr-2 text-muted-foreground" /> Add to website
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                className="cursor-pointer font-medium" 
                                 onClick={() => duplicateMutation.mutate(event.id)}
                               >
                                 <Copy className="w-4 h-4 mr-2 text-muted-foreground" /> Duplicate
@@ -306,6 +315,19 @@ export default function EventTypesPage() {
                               <Copy className="w-3.5 h-3.5" />
                               Copy
                             </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => {
+                                triggerHaptic('light');
+                                setSelectedQrEvent(event);
+                              }} 
+                              className="text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg font-medium px-2 h-8 text-xs gap-1"
+                              title="Show QR Code"
+                            >
+                              <QrCode className="w-3.5 h-3.5" />
+                              QR
+                            </Button>
                           </div>
                           
                           <div className="flex items-center gap-2">
@@ -350,6 +372,170 @@ export default function EventTypesPage() {
             </div>
           )}
         </motion.div>
+      </AnimatePresence>
+
+      {/* QR Code Modal for In-Person & Mobile Booking */}
+      <AnimatePresence>
+        {selectedQrEvent && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-card border border-border rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl relative flex flex-col items-center text-center"
+            >
+              <button 
+                onClick={() => setSelectedQrEvent(null)}
+                className="absolute top-4 right-4 p-2 rounded-full hover:bg-muted text-muted-foreground transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-3">
+                <QrCode className="w-6 h-6" />
+              </div>
+
+              <h3 className="font-heading font-extrabold text-xl text-foreground">
+                {selectedQrEvent.title}
+              </h3>
+              <p className="text-xs text-muted-foreground mt-1 mb-5">
+                Scan with any mobile camera to open this booking page immediately.
+              </p>
+
+              <div className="p-4 bg-white rounded-2xl border border-zinc-200 shadow-inner mb-6">
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=8&data=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}/book/me/${selectedQrEvent.slug}` : '')}`} 
+                  alt="Booking QR Code" 
+                  className="w-48 h-48 rounded-lg"
+                />
+              </div>
+
+              <div className="flex gap-2 w-full">
+                <Button 
+                  className="flex-1 rounded-xl gap-2 font-bold text-xs h-10"
+                  onClick={async () => {
+                    const url = `${window.location.origin}/book/me/${selectedQrEvent.slug}`;
+                    await navigator.clipboard.writeText(url);
+                    triggerHaptic('light');
+                    alert('Booking URL copied to clipboard!');
+                  }}
+                >
+                  <Copy className="w-4 h-4" />
+                  Copy Link
+                </Button>
+                <a 
+                  href={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&margin=15&data=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}/book/me/${selectedQrEvent.slug}` : '')}`}
+                  target="_blank"
+                  download={`meet-qr-${selectedQrEvent.slug}.png`}
+                  className="inline-flex items-center justify-center px-4 rounded-xl border border-border hover:bg-muted text-xs font-semibold h-10 transition-colors"
+                  title="Download High-Res QR"
+                >
+                  <Download className="w-4 h-4" />
+                </a>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Embed on Website Modal */}
+      <AnimatePresence>
+        {selectedEmbedEvent && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-card border border-border rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl relative flex flex-col"
+            >
+              <button 
+                onClick={() => setSelectedEmbedEvent(null)}
+                className="absolute top-4 right-4 p-2 rounded-full hover:bg-muted text-muted-foreground transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-xl bg-violet-600/10 text-violet-600 flex items-center justify-center">
+                  <Code className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-heading font-extrabold text-xl text-foreground">
+                    Add to Website
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Embed {selectedEmbedEvent.title} seamlessly onto your website or landing page.
+                  </p>
+                </div>
+              </div>
+
+              {/* Tabs */}
+              <div className="flex gap-2 my-4 p-1 bg-muted/40 rounded-xl border border-border/50">
+                <button
+                  onClick={() => setEmbedTab('inline')}
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                    embedTab === 'inline' ? 'bg-background shadow-xs text-foreground' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Inline Embed (iFrame)
+                </button>
+                <button
+                  onClick={() => setEmbedTab('popup')}
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                    embedTab === 'popup' ? 'bg-background shadow-xs text-foreground' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Popup Button
+                </button>
+              </div>
+
+              {/* Code snippet display */}
+              <div className="relative mb-5">
+                <pre className="p-4 rounded-xl bg-zinc-950 text-zinc-100 font-mono text-xs overflow-x-auto max-h-48 border border-zinc-800">
+                  <code>
+                    {embedTab === 'inline' ? (
+`<iframe 
+  src="${typeof window !== 'undefined' ? window.location.origin : 'https://meet.alizesoftwareservices.com'}/book/me/${selectedEmbedEvent.slug}" 
+  width="100%" 
+  height="700px" 
+  frameborder="0"
+  style="border: 0; min-height: 650px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);"
+></iframe>`
+                    ) : (
+`<a 
+  href="${typeof window !== 'undefined' ? window.location.origin : 'https://meet.alizesoftwareservices.com'}/book/me/${selectedEmbedEvent.slug}" 
+  target="_blank" 
+  style="display: inline-flex; align-items: center; padding: 12px 24px; background: #6366f1; color: #fff; font-weight: bold; border-radius: 9999px; text-decoration: none; font-family: sans-serif; box-shadow: 0 4px 14px rgba(99,102,241,0.4);"
+>
+  📅 Schedule a Meeting
+</a>`
+                    )}
+                  </code>
+                </pre>
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[11px] text-muted-foreground">
+                  Works with WordPress, Webflow, Squarespace, Shopify, React, and plain HTML.
+                </p>
+                <Button
+                  className="rounded-xl font-bold text-xs gap-1.5 shrink-0"
+                  onClick={async () => {
+                    const code = embedTab === 'inline' 
+                      ? `<iframe src="${window.location.origin}/book/me/${selectedEmbedEvent.slug}" width="100%" height="700px" frameborder="0" style="border: 0; min-height: 650px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);"></iframe>`
+                      : `<a href="${window.location.origin}/book/me/${selectedEmbedEvent.slug}" target="_blank" style="display: inline-flex; align-items: center; padding: 12px 24px; background: #6366f1; color: #fff; font-weight: bold; border-radius: 9999px; text-decoration: none; font-family: sans-serif; box-shadow: 0 4px 14px rgba(99,102,241,0.4);">📅 Schedule a Meeting</a>`;
+                    await navigator.clipboard.writeText(code);
+                    triggerHaptic('light');
+                    alert('Embed code copied to clipboard!');
+                  }}
+                >
+                  <Copy className="w-4 h-4" />
+                  Copy Embed Code
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
     </div>
   );
