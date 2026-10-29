@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { decryptToken } from '../common/security/security.util';
 import axios from 'axios';
 
 @Injectable()
@@ -25,7 +26,7 @@ export class SlackService {
       }
 
       // We expect accessToken to be a Slack Incoming Webhook URL in this simple implementation
-      const webhookUrl = integration.accessToken;
+      const webhookUrl = decryptToken(integration.accessToken);
       if (!webhookUrl.startsWith('https://hooks.slack.com/')) {
         this.logger.warn(`Invalid Slack webhook URL for host ${hostId}.`);
         return;
@@ -84,7 +85,8 @@ export class SlackService {
         where: { userId_provider: { userId: hostId, provider: 'slack' } }
       });
 
-      if (!integration || !integration.accessToken.startsWith('https://hooks.slack.com/')) return;
+      const webhookUrl = decryptToken(integration?.accessToken);
+      if (!integration || !webhookUrl.startsWith('https://hooks.slack.com/')) return;
 
       const message = {
         blocks: [
@@ -103,7 +105,7 @@ export class SlackService {
         ]
       };
 
-      await axios.post(integration.accessToken, message);
+      await axios.post(webhookUrl, message);
       this.logger.log(`[SLACK] Sent cancellation notification for host ${hostId}`);
     } catch (error) {
       this.logger.error(`[SLACK] Failed to send cancellation: ${error.message}`);

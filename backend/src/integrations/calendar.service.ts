@@ -1,6 +1,7 @@
 import { Injectable, Logger, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { google } from 'googleapis';
 import { PrismaService } from '../prisma/prisma.service';
+import { encryptToken, decryptToken } from '../common/security/security.util';
 import axios from 'axios';
 
 @Injectable()
@@ -34,16 +35,16 @@ export class CalendarService {
           await this.prisma.integration.update({
             where: { userId_provider: { userId: hostId, provider: 'google' } },
             data: {
-              accessToken: tokens.access_token,
-              ...(tokens.refresh_token && { refreshToken: tokens.refresh_token }),
+              accessToken: encryptToken(tokens.access_token),
+              ...(tokens.refresh_token && { refreshToken: encryptToken(tokens.refresh_token) }),
             }
           }).catch(err => this.logger.error(`Failed to save refreshed Google tokens: ${err.message}`));
       }
     });
 
     oauth2Client.setCredentials({
-      access_token: googleIntegration.accessToken,
-      refresh_token: googleIntegration.refreshToken,
+      access_token: decryptToken(googleIntegration.accessToken),
+      refresh_token: decryptToken(googleIntegration.refreshToken),
     });
 
     return google.calendar({ version: 'v3', auth: oauth2Client });
@@ -57,19 +58,22 @@ export class CalendarService {
 
     if (!integration) return null;
 
+    const decryptedAccessToken = decryptToken(integration.accessToken);
+    const decryptedRefreshToken = decryptToken(integration.refreshToken);
+
     try {
       const response = await axios({
         method,
         url,
         data,
         headers: {
-          Authorization: `Bearer ${integration.accessToken}`,
+          Authorization: `Bearer ${decryptedAccessToken}`,
           'Content-Type': 'application/json'
         }
       });
       return response.data !== "" ? response.data : true;
     } catch (error: any) {
-      if (error.response?.status === 401 && integration.refreshToken) {
+      if (error.response?.status === 401 && decryptedRefreshToken) {
         // Try refresh
         try {
           const clientId = process.env.MICROSOFT_CLIENT_ID;
@@ -81,7 +85,7 @@ export class CalendarService {
             new URLSearchParams({
               client_id: clientId,
               scope: 'offline_access Calendars.ReadWrite',
-              refresh_token: integration.refreshToken,
+              refresh_token: decryptedRefreshToken,
               grant_type: 'refresh_token',
               client_secret: clientSecret
             }).toString(),
@@ -89,11 +93,14 @@ export class CalendarService {
           );
           
           const newAccessToken = tokenResponse.data.access_token;
-          const newRefreshToken = tokenResponse.data.refresh_token || integration.refreshToken;
+          const newRefreshToken = tokenResponse.data.refresh_token || decryptedRefreshToken;
           
           await this.prisma.integration.update({
             where: { userId_provider: { userId: hostId, provider: 'microsoft' } },
-            data: { accessToken: newAccessToken, refreshToken: newRefreshToken }
+            data: {
+              accessToken: encryptToken(newAccessToken),
+              refreshToken: newRefreshToken ? encryptToken(newRefreshToken) : null,
+            }
           });
 
           // Retry request with new token

@@ -1,6 +1,7 @@
 import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { createEvent, EventAttributes } from 'ics';
+import { escapeHtml } from '../common/security/security.util';
 
 @Injectable()
 export class EmailService {
@@ -97,6 +98,9 @@ export class EmailService {
   }
 
   async sendBookingConfirmation(email: string, guestName: string, eventTitle: string, startTime: string, meetLink?: string, duration: number = 30, hostName: string = 'Host', hostEmail?: string, cancelToken?: string, rescheduleToken?: string) {
+    const safeGuest = escapeHtml(guestName);
+    const safeEvent = escapeHtml(eventTitle);
+    const safeHost = escapeHtml(hostName);
     const start = new Date(startTime);
     const end = new Date(start.getTime() + duration * 60000);
     const formattedDate = start.toLocaleString('en-US', {
@@ -105,13 +109,13 @@ export class EmailService {
     });
 
     const content = `
-      <p>Hello <strong>${guestName}</strong>,</p>
+      <p>Hello <strong>${safeGuest}</strong>,</p>
       <p>Your meeting has been successfully confirmed!</p>
       
       <div class="details-card">
         <div class="detail-item">
           <div class="label">Event</div>
-          <div class="value">${eventTitle}</div>
+          <div class="value">${safeEvent}</div>
         </div>
         <div class="detail-item">
           <div class="label">Date & Time</div>
@@ -123,8 +127,6 @@ export class EmailService {
           <div class="value"><a href="${meetLink}" target="_blank" style="color: #2563eb;">${meetLink}</a></div>
         </div>
         ` : ''}
-      </div>
-
       </div>
 
       ${meetLink ? `<a href="${meetLink}" class="button" target="_blank">Join Meeting</a>` : ''}
@@ -163,19 +165,22 @@ export class EmailService {
   }
 
   async sendCancellationEmail(email: string, guestName: string, eventTitle: string, reason?: string) {
+    const safeGuest = escapeHtml(guestName);
+    const safeEvent = escapeHtml(eventTitle);
+    const safeReason = reason ? escapeHtml(reason) : '';
     const content = `
-      <p>Hello <strong>${guestName}</strong>,</p>
-      <p>Your meeting <strong>${eventTitle}</strong> has been cancelled.</p>
+      <p>Hello <strong>${safeGuest}</strong>,</p>
+      <p>Your meeting <strong>${safeEvent}</strong> has been cancelled.</p>
       
       <div class="details-card" style="border-left: 4px solid #ef4444;">
         <div class="detail-item">
           <div class="label">Event</div>
-          <div class="value">${eventTitle}</div>
+          <div class="value">${safeEvent}</div>
         </div>
-        ${reason ? `
+        ${safeReason ? `
         <div class="detail-item">
           <div class="label">Reason</div>
-          <div class="value">${reason}</div>
+          <div class="value">${safeReason}</div>
         </div>
         ` : ''}
       </div>
@@ -187,19 +192,21 @@ export class EmailService {
   }
 
   async sendRescheduleEmail(email: string, guestName: string, eventTitle: string, newStartTime: string, meetLink?: string, cancelToken?: string, rescheduleToken?: string) {
+    const safeGuest = escapeHtml(guestName);
+    const safeEvent = escapeHtml(eventTitle);
     const formattedDate = new Date(newStartTime).toLocaleString('en-US', {
       dateStyle: 'full',
       timeStyle: 'short',
     });
 
     const content = `
-      <p>Hello <strong>${guestName}</strong>,</p>
-      <p>Your meeting <strong>${eventTitle}</strong> has been rescheduled to a new time.</p>
+      <p>Hello <strong>${safeGuest}</strong>,</p>
+      <p>Your meeting <strong>${safeEvent}</strong> has been rescheduled to a new time.</p>
       
       <div class="details-card" style="border-left: 4px solid #f59e0b;">
         <div class="detail-item">
           <div class="label">Event</div>
-          <div class="value">${eventTitle}</div>
+          <div class="value">${safeEvent}</div>
         </div>
         <div class="detail-item">
           <div class="label">New Date & Time</div>
@@ -211,8 +218,6 @@ export class EmailService {
           <div class="value"><a href="${meetLink}" target="_blank" style="color: #2563eb;">${meetLink}</a></div>
         </div>
         ` : ''}
-      </div>
-
       </div>
 
       ${meetLink ? `<a href="${meetLink}" class="button" target="_blank">Join Meeting</a>` : ''}
@@ -230,19 +235,21 @@ export class EmailService {
   }
 
   async sendReminderEmail(email: string, guestName: string, eventTitle: string, startTime: string, meetLink?: string) {
+    const safeGuest = escapeHtml(guestName);
+    const safeEvent = escapeHtml(eventTitle);
     const formattedDate = new Date(startTime).toLocaleString('en-US', {
       dateStyle: 'full',
       timeStyle: 'short',
     });
 
     const content = `
-      <p>Hello <strong>${guestName}</strong>,</p>
+      <p>Hello <strong>${safeGuest}</strong>,</p>
       <p>This is a friendly reminder for your upcoming meeting.</p>
       
       <div class="details-card">
         <div class="detail-item">
           <div class="label">Event</div>
-          <div class="value">${eventTitle}</div>
+          <div class="value">${safeEvent}</div>
         </div>
         <div class="detail-item">
           <div class="label">Time</div>
@@ -263,9 +270,11 @@ export class EmailService {
   }
 
   async sendFollowUpEmail(email: string, guestName: string, eventTitle: string) {
+    const safeGuest = escapeHtml(guestName);
+    const safeEvent = escapeHtml(eventTitle);
     const content = `
-      <p>Hello <strong>${guestName}</strong>,</p>
-      <p>Thank you for attending the <strong>${eventTitle}</strong> meeting.</p>
+      <p>Hello <strong>${safeGuest}</strong>,</p>
+      <p>Thank you for attending the <strong>${safeEvent}</strong> meeting.</p>
       <p>We hope it was productive. If you have any follow-up questions, feel free to reply or book another session.</p>
     `;
 
@@ -281,14 +290,16 @@ export class EmailService {
     customSubject?: string | null,
     customBody?: string | null
   ) {
+    const safeGuest = escapeHtml(guestName);
+    const safeEvent = escapeHtml(eventTitle);
     const formattedDate = new Date(startTime).toLocaleString('en-US', {
       dateStyle: 'full',
       timeStyle: 'short',
     });
 
     const vars: Record<string, string> = {
-      guest_name: guestName,
-      event_title: eventTitle,
+      guest_name: safeGuest,
+      event_title: safeEvent,
       start_time: formattedDate,
       meeting_link: meetLink || '',
     };
@@ -298,23 +309,24 @@ export class EmailService {
 
     const subject = customSubject
       ? interpolate(customSubject)
-      : `Reminder: ${eventTitle}`;
+      : `Reminder: ${safeEvent}`;
 
     const bodyContent = customBody
       ? `<div style="font-size: 15px; leading: 1.6;">${interpolate(customBody).replace(/\n/g, '<br/>')}</div>`
       : `
-        <p>Hello <strong>${guestName}</strong>,</p>
-        <p>This is a friendly reminder for your upcoming meeting: <strong>${eventTitle}</strong>.</p>
+        <p>Hello <strong>${safeGuest}</strong>,</p>
+        <p>This is a friendly reminder for your upcoming meeting: <strong>${safeEvent}</strong>.</p>
         <p>Time: ${formattedDate}</p>
         ${meetLink ? `<p><a href="${meetLink}">Join Meeting</a></p>` : ''}
       `;
 
-    return this.sendMail(email, subject, this.getBaseTemplate(eventTitle, bodyContent));
+    return this.sendMail(email, subject, this.getBaseTemplate(safeEvent, bodyContent));
   }
 
   async sendPasswordResetEmail(email: string, name: string, tokenUrl: string) {
+    const safeName = escapeHtml(name);
     const content = `
-      <p>Hello <strong>${name}</strong>,</p>
+      <p>Hello <strong>${safeName}</strong>,</p>
       <p>We received a request to reset your password. If you didn't make this request, you can safely ignore this email.</p>
       
       <p>Click the button below to set a new password. This link will expire in 1 hour.</p>
@@ -325,8 +337,9 @@ export class EmailService {
   }
 
   async sendVerificationEmail(email: string, name: string, tokenUrl: string) {
+    const safeName = escapeHtml(name);
     const content = `
-      <p>Hello <strong>${name}</strong>,</p>
+      <p>Hello <strong>${safeName}</strong>,</p>
       <p>Welcome to Meet! Please verify your email address to secure your account.</p>
       
       <p>Click the button below to verify your email. This link will expire in 24 hours.</p>
@@ -337,8 +350,9 @@ export class EmailService {
   }
 
   async sendWelcomeEmail(email: string, name: string) {
+    const safeName = escapeHtml(name);
     const content = `
-      <p>Hello <strong>${name}</strong>,</p>
+      <p>Hello <strong>${safeName}</strong>,</p>
       <p>You have successfully signed up in Meet!</p>
       <p>We're excited to have you on board. Start scheduling your meetings effortlessly.</p>
       <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard" class="button" target="_blank">Go to Dashboard</a>
@@ -347,17 +361,19 @@ export class EmailService {
   }
 
   async sendHostNotificationEmail(hostEmail: string, guestName: string, eventTitle: string, status: string, startTime?: string) {
+    const safeGuest = escapeHtml(guestName);
+    const safeEvent = escapeHtml(eventTitle);
     let subject = '';
     let message = '';
     
     switch (status) {
       case 'CANCELLED':
-        subject = `Canceled: ${eventTitle} with ${guestName}`;
-        message = `The booking for ${eventTitle} with ${guestName} has been canceled by the guest.`;
+        subject = `Canceled: ${safeEvent} with ${safeGuest}`;
+        message = `The booking for ${safeEvent} with ${safeGuest} has been canceled by the guest.`;
         break;
       case 'RESCHEDULED':
-        subject = `Rescheduled: ${eventTitle} with ${guestName}`;
-        message = `The booking for ${eventTitle} with ${guestName} has been rescheduled to ${new Date(startTime!).toLocaleString()}.`;
+        subject = `Rescheduled: ${safeEvent} with ${safeGuest}`;
+        message = `The booking for ${safeEvent} with ${safeGuest} has been rescheduled to ${new Date(startTime!).toLocaleString()}.`;
         break;
       default:
         return;
@@ -374,13 +390,14 @@ export class EmailService {
   }
 
   async sendTeamInvitationEmail(email: string, teamName: string, token: string) {
-    const subject = `You've been invited to join ${teamName} on Meet`;
+    const safeTeam = escapeHtml(teamName);
+    const subject = `You've been invited to join ${safeTeam} on Meet`;
     const acceptUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/guest/invitation?token=${token}`;
 
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
-        <h2>Join ${teamName}</h2>
-        <p>You have been invited to join the team <strong>${teamName}</strong>.</p>
+        <h2>Join ${safeTeam}</h2>
+        <p>You have been invited to join the team <strong>${safeTeam}</strong>.</p>
         <p>Click the button below to accept your invitation:</p>
         <div style="margin: 30px 0;">
           <a href="${acceptUrl}" style="background-color: #006bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Accept Invitation</a>

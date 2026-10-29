@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateWebhookDto } from './dto/create-webhook.dto';
 import { UpdateWebhookDto } from './dto/update-webhook.dto';
 import { WebhookDeliveryService } from './webhook-delivery.service';
+import { isSafeWebhookUrl } from '../common/security/security.util';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -13,6 +14,10 @@ export class WebhooksService {
   ) {}
 
   async create(userId: string, dto: CreateWebhookDto) {
+    if (!isSafeWebhookUrl(dto.url)) {
+      throw new BadRequestException('Webhook URL cannot target private, loopback, or cloud metadata addresses (SSRF Protection).');
+    }
+
     const secret = `whsec_${crypto.randomBytes(24).toString('hex')}`;
 
     const webhook = await this.prisma.webhook.create({
@@ -70,6 +75,12 @@ export class WebhooksService {
 
   async update(userId: string, id: string, dto: UpdateWebhookDto) {
     const webhook = await this.findOne(userId, id);
+
+    if (dto.url && !isSafeWebhookUrl(dto.url)) {
+      throw new BadRequestException(
+        'Webhook URL cannot target internal, private, loopback, or cloud metadata IP addresses',
+      );
+    }
 
     return this.prisma.webhook.update({
       where: { id: webhook.id },

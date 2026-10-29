@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { isSafeWebhookUrl } from '../common/security/security.util';
 import * as crypto from 'crypto';
 import axios from 'axios';
 
@@ -88,6 +89,21 @@ export class WebhookDeliveryService {
     let statusCode: number | null = null;
     let responseText: string | null = null;
     let isSuccess = false;
+
+    if (!isSafeWebhookUrl(webhook.url)) {
+      this.logger.warn(`SSRF Block: Webhook destination URL ${webhook.url} rejected`);
+      await this.prisma.webhookDelivery.update({
+        where: { id: deliveryId },
+        data: {
+          statusCode: 400,
+          response: 'Delivery aborted: Destination URL targets restricted private/metadata IP space',
+          success: false,
+          attempts: { increment: 1 },
+          nextAttemptAt: null, // Do not retry unsafe destinations
+        },
+      });
+      return false;
+    }
 
     try {
       const res = await axios.post(webhook.url, payloadString, {

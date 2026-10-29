@@ -6,6 +6,7 @@ import type { Request, Response } from 'express';
 import axios from 'axios';
 import * as crypto from 'crypto';
 import { getJwtSecret } from '../auth/jwt.config';
+import { encryptToken } from '../common/security/security.util';
 
 @Controller('integrations')
 export class IntegrationsController {
@@ -119,7 +120,7 @@ export class IntegrationsController {
       const oauth2Client = this.getOAuth2Client();
       const { tokens } = await oauth2Client.getToken(code);
       
-      // Upsert the integration
+      // Upsert the integration with AES-256-GCM encrypted tokens at rest
       await this.prisma.integration.upsert({
         where: {
           userId_provider: {
@@ -128,14 +129,14 @@ export class IntegrationsController {
           }
         },
         update: {
-          accessToken: tokens.access_token!,
-          refreshToken: tokens.refresh_token || undefined,
+          accessToken: encryptToken(tokens.access_token!),
+          refreshToken: tokens.refresh_token ? encryptToken(tokens.refresh_token) : undefined,
         },
         create: {
           userId: userId,
           provider: 'google',
-          accessToken: tokens.access_token!,
-          refreshToken: tokens.refresh_token || null,
+          accessToken: encryptToken(tokens.access_token!),
+          refreshToken: tokens.refresh_token ? encryptToken(tokens.refresh_token) : null,
         }
       });
 
@@ -205,8 +206,16 @@ export class IntegrationsController {
 
       await this.prisma.integration.upsert({
         where: { userId_provider: { userId: userId, provider: 'microsoft' } },
-        update: { accessToken, refreshToken },
-        create: { userId: userId, provider: 'microsoft', accessToken, refreshToken }
+        update: {
+          accessToken: encryptToken(accessToken),
+          refreshToken: refreshToken ? encryptToken(refreshToken) : null,
+        },
+        create: {
+          userId: userId,
+          provider: 'microsoft',
+          accessToken: encryptToken(accessToken),
+          refreshToken: refreshToken ? encryptToken(refreshToken) : null,
+        }
       });
 
       return res.redirect(this.getFrontendRedirect(customRedirectUrl, 'success=microsoft_connected'));
@@ -275,8 +284,8 @@ export class IntegrationsController {
 
       await this.prisma.integration.upsert({
         where: { userId_provider: { userId: userId, provider: 'slack' } },
-        update: { accessToken, refreshToken: null },
-        create: { userId: userId, provider: 'slack', accessToken, refreshToken: null }
+        update: { accessToken: encryptToken(accessToken), refreshToken: null },
+        create: { userId: userId, provider: 'slack', accessToken: encryptToken(accessToken), refreshToken: null }
       });
 
       return res.redirect(this.getFrontendRedirect(customRedirectUrl, 'success=slack_connected'));

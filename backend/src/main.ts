@@ -16,8 +16,34 @@ async function bootstrap() {
     prefix: '/public/',
   });
 
+  const allowedOrigins = [
+    'https://meet.alizesoftwareservices.com',
+    'capacitor://localhost',
+    'http://localhost',
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:5173',
+  ];
+
+  if (process.env.FRONTEND_URL) {
+    allowedOrigins.push(process.env.FRONTEND_URL);
+  }
+
   app.enableCors({
-    origin: true,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g. mobile APK native webview requests, cron jobs, server-to-server)
+      if (!origin) return callback(null, true);
+      if (process.env.NODE_ENV !== 'production') {
+        return callback(null, true);
+      }
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.endsWith('.alizesoftwareservices.com')
+      ) {
+        return callback(null, true);
+      }
+      return callback(new Error(`CORS blocked for origin: ${origin}`), false);
+    },
     credentials: true,
   });
 
