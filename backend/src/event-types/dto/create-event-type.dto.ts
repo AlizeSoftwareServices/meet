@@ -101,4 +101,22 @@ export class CreateEventTypeDto {
   @IsOptional()
   @IsString()
   currency?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  enableReminder24h?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['PERSONAL', 'ROUND_ROBIN', 'COLLECTIVE'])
+  schedulingType?: string;
+
+  @IsOptional()
+  @IsString()
+  teamId?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  hostIds?: string[];
 }

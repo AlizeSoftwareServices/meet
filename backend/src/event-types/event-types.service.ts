@@ -1,13 +1,14 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEventTypeDto } from './dto/create-event-type.dto';
+import { UpdateEventTypeDto } from './dto/update-event-type.dto';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class EventTypesService {
   constructor(private prisma: PrismaService) {}
 
-  async create(userId: string, dto: any) {
+  async create(userId: string, dto: CreateEventTypeDto) {
     const { enableReminder24h, customQuestions, schedulingType, teamId, hostIds, availabilityId, redirectUrl, ...data } = dto;
 
     const cleanTeamId = (teamId && typeof teamId === 'string' && teamId.trim() !== '') ? teamId.trim() : undefined;
@@ -135,7 +136,7 @@ export class EventTypesService {
     return eventType;
   }
 
-  async update(id: string, userId: string, dto: any) {
+  async update(id: string, userId: string, dto: UpdateEventTypeDto) {
     // Verify ownership
     const currentEvent = await this.findOne(id, userId);
     const { enableReminder24h, customQuestions, schedulingType, teamId, hostIds, availabilityId, redirectUrl, ...data } = dto;
@@ -220,7 +221,9 @@ export class EventTypesService {
     });
 
     if (customQuestions !== undefined) {
-      const incomingIds = customQuestions.map(q => q.id).filter(id => id);
+      const incomingIds: string[] = customQuestions
+        .map(q => q.id)
+        .filter((id): id is string => Boolean(id));
       
       await this.prisma.customQuestion.deleteMany({
         where: {

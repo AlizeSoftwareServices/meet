@@ -44,6 +44,7 @@ export class EventTypesController {
     return this.eventTypesService.duplicate(id, req.user.userId);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Delete(':id')
   remove(@Request() req, @Param('id') id: string) {
     return this.eventTypesService.remove(id, req.user.userId);
