@@ -318,9 +318,22 @@ export default function IntegrationsPage() {
               {loading ? (
                 <div className="w-24 h-10 bg-muted animate-pulse rounded-xl" />
               ) : slackIntegration ? (
-                <div className="px-4 py-2 bg-green-500/10 text-green-600 font-medium rounded-xl flex items-center gap-2 border border-green-500/20">
-                  <CheckCircle2 className="w-4 h-4" />
-                  Connected
+                <div className="flex flex-col gap-2 items-center">
+                  <div className="px-4 py-2 bg-green-500/10 text-green-600 font-medium rounded-xl flex items-center gap-2 border border-green-500/20">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Connected
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (confirm('Are you sure you want to disconnect Slack?')) {
+                        await api.patch('/integrations/slack/disconnect');
+                        setIntegrations(prev => prev.filter(i => i.provider !== 'slack'));
+                      }
+                    }}
+                    className="text-xs font-semibold text-destructive hover:underline"
+                  >
+                    Disconnect
+                  </button>
                 </div>
               ) : (
                 <button
@@ -373,6 +386,49 @@ export default function IntegrationsPage() {
                 className="inline-flex items-center px-6 py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 text-sm"
               >
                 Manage Webhooks
+              </a>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Zoom Integration */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-card border border-border p-6 rounded-3xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
+        >
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4">
+            <div className="flex gap-4">
+              <div className="w-16 h-16 bg-[#2D8CFF]/10 text-[#2D8CFF] rounded-2xl flex items-center justify-center shadow-sm flex-shrink-0">
+                <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M4.5 5.5A2.5 2.5 0 0 0 2 8v8a2.5 2.5 0 0 0 2.5 2.5h9a2.5 2.5 0 0 0 2.5-2.5V8A2.5 2.5 0 0 0 13.5 5.5h-9zm12.3 3.66 4.41-3.15A1 1 0 0 1 23 6.83v10.34a1 1 0 0 1-1.79.62l-4.41-3.15V9.16z" />
+                </svg>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xl font-bold mb-1">Zoom Meetings</h3>
+                  <span className="text-[11px] font-semibold bg-blue-500/10 text-blue-500 border border-blue-500/20 px-2 py-0.5 rounded-full">
+                    Custom Link Ready
+                  </span>
+                </div>
+                <p className="text-muted-foreground text-sm max-w-lg">
+                  Use your personal Zoom meeting room or vanity URL for event types by selecting Zoom as the location when creating or editing an event.
+                </p>
+                <div className="flex gap-4 mt-4">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
+                    <Video className="w-3.5 h-3.5" />
+                    Video Conferencing
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <a
+                href="/dashboard/events"
+                className="inline-flex items-center px-6 py-2.5 bg-secondary hover:bg-secondary/80 text-foreground font-medium rounded-xl shadow-sm transition-all active:scale-95 text-sm"
+              >
+                Configure in Events
               </a>
             </div>
           </div>

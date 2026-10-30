@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, Body, Req, Res, UseGuards, Query, InternalServerErrorException } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, Param, Body, Req, Res, UseGuards, Query, InternalServerErrorException } from '@nestjs/common';
 import { google } from 'googleapis';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -322,5 +322,29 @@ export class IntegrationsController {
       },
       data: { checkConflicts }
     });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':provider/disconnect')
+  async disconnectPatch(@Req() req: any, @Param('provider') provider: string) {
+    await this.prisma.integration.deleteMany({
+      where: {
+        userId: req.user.userId,
+        provider: provider
+      }
+    });
+    return { success: true, message: `${provider} integration disconnected successfully.` };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':provider')
+  async disconnectDelete(@Req() req: any, @Param('provider') provider: string) {
+    await this.prisma.integration.deleteMany({
+      where: {
+        userId: req.user.userId,
+        provider: provider
+      }
+    });
+    return { success: true, message: `${provider} integration disconnected successfully.` };
   }
 }
