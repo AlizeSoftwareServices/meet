@@ -38,7 +38,8 @@ async function bootstrap() {
       }
       if (
         allowedOrigins.includes(origin) ||
-        origin.endsWith('.alizesoftwareservices.com')
+        origin.endsWith('.alizesoftwareservices.com') ||
+        origin.endsWith('.vercel.app')
       ) {
         return callback(null, true);
       }

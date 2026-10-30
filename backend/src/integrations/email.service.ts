@@ -24,6 +24,9 @@ export class EmailService {
         port,
         secure: port === 465,
         auth: { user, pass },
+        tls: {
+          rejectUnauthorized: false
+        }
       });
       this.logger.log(`[EmailService] Initialized SMTP transporter with host: ${host}`);
     } else {
@@ -32,7 +35,10 @@ export class EmailService {
   }
 
   private getFromAddress(): string {
-    return process.env.EMAIL_FROM || process.env.GMAIL_USER || 'Meet <no-reply@meet.com>';
+    if (process.env.EMAIL_FROM) return process.env.EMAIL_FROM;
+    if (process.env.SMTP_USER) return `"Meet" <${process.env.SMTP_USER}>`;
+    if (process.env.GMAIL_USER) return `"Meet" <${process.env.GMAIL_USER}>`;
+    return 'Meet <no-reply@alizesoftwareservices.com>';
   }
 
   private async sendMail(to: string, subject: string, htmlContent: string, attachments?: any[]) {
