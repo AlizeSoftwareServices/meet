@@ -348,8 +348,8 @@ export class EventTypesService {
         confirmationMessage: eventType.confirmationMessage,
         redirectUrl: eventType.redirectUrl,
         availabilityId: eventType.availabilityId,
-        price: eventType.price,
-        currency: eventType.currency,
+        price: (eventType as any).price ?? null,
+        currency: (eventType as any).currency ?? 'usd',
         customQuestions: {
           create: eventType.customQuestions.map(q => ({
             type: q.type,
@@ -360,7 +360,7 @@ export class EventTypesService {
             order: q.order,
           }))
         }
-      }
+      } as any
     });
 
     if (eventType.schedulingType !== 'PERSONAL' && eventType.hosts && eventType.hosts.length > 0) {
