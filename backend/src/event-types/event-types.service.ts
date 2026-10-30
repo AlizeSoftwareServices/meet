@@ -8,10 +8,14 @@ export class EventTypesService {
   constructor(private prisma: PrismaService) {}
 
   async create(userId: string, dto: any) {
-    const { enableReminder24h, customQuestions, schedulingType, teamId, hostIds, ...data } = dto;
+    const { enableReminder24h, customQuestions, schedulingType, teamId, hostIds, availabilityId, redirectUrl, ...data } = dto;
+
+    const cleanTeamId = (teamId && typeof teamId === 'string' && teamId.trim() !== '') ? teamId.trim() : undefined;
+    const cleanAvailabilityId = (availabilityId && typeof availabilityId === 'string' && availabilityId.trim() !== '') ? availabilityId.trim() : undefined;
+    const cleanRedirectUrl = (redirectUrl && typeof redirectUrl === 'string' && redirectUrl.trim() !== '') ? redirectUrl.trim() : undefined;
     
     if (schedulingType && schedulingType !== 'PERSONAL') {
-      if (!teamId) {
+      if (!cleanTeamId) {
         throw new BadRequestException('Team ID is required for team events');
       }
       if (!hostIds || hostIds.length === 0) {
@@ -21,7 +25,7 @@ export class EventTypesService {
       // Verify hosts belong to the team
       const validMembers = await this.prisma.teamMember.count({
         where: {
-          teamId,
+          teamId: cleanTeamId,
           userId: { in: hostIds }
         }
       });
@@ -35,7 +39,9 @@ export class EventTypesService {
         ...data,
         userId,
         schedulingType: schedulingType || 'PERSONAL',
-        teamId: (schedulingType && schedulingType !== 'PERSONAL' && teamId) ? teamId : undefined,
+        teamId: (schedulingType && schedulingType !== 'PERSONAL') ? cleanTeamId : undefined,
+        availabilityId: cleanAvailabilityId,
+        redirectUrl: cleanRedirectUrl,
         customQuestions: {
           create: customQuestions?.map((q: any) => ({
             type: q.type,
@@ -132,9 +138,16 @@ export class EventTypesService {
   async update(id: string, userId: string, dto: any) {
     // Verify ownership
     const currentEvent = await this.findOne(id, userId);
-    const { enableReminder24h, customQuestions, schedulingType, teamId, hostIds, ...data } = dto;
+    const { enableReminder24h, customQuestions, schedulingType, teamId, hostIds, availabilityId, redirectUrl, ...data } = dto;
 
     const updatePayload: any = { ...data };
+
+    if (availabilityId !== undefined) {
+      updatePayload.availabilityId = (availabilityId && typeof availabilityId === 'string' && availabilityId.trim() !== '') ? availabilityId.trim() : null;
+    }
+    if (redirectUrl !== undefined) {
+      updatePayload.redirectUrl = (redirectUrl && typeof redirectUrl === 'string' && redirectUrl.trim() !== '') ? redirectUrl.trim() : null;
+    }
 
     if (schedulingType !== undefined) {
       if (schedulingType === 'PERSONAL') {
@@ -142,7 +155,7 @@ export class EventTypesService {
         updatePayload.teamId = null;
         await this.prisma.eventTypeHost.deleteMany({ where: { eventTypeId: id } });
       } else {
-        const effectiveTeamId = teamId || currentEvent.teamId;
+        const effectiveTeamId = (teamId && typeof teamId === 'string' && teamId.trim() !== '') ? teamId.trim() : currentEvent.teamId;
         if (!effectiveTeamId) {
           throw new BadRequestException('Team ID is required for team events');
         }
@@ -175,10 +188,10 @@ export class EventTypesService {
         }
       }
     } else if (teamId !== undefined || hostIds !== undefined) {
-      const effectiveTeamId = teamId || currentEvent.teamId;
+      const effectiveTeamId = (teamId && typeof teamId === 'string' && teamId.trim() !== '') ? teamId.trim() : currentEvent.teamId;
       if (currentEvent.schedulingType !== 'PERSONAL' && effectiveTeamId) {
         if (teamId !== undefined) {
-          updatePayload.teamId = teamId;
+          updatePayload.teamId = effectiveTeamId;
         }
         if (hostIds !== undefined && hostIds.length > 0) {
           const validMembers = await this.prisma.teamMember.count({
@@ -201,15 +214,9 @@ export class EventTypesService {
       }
     }
 
-    const eventType = await this.prisma.eventType.update({
+    await this.prisma.eventType.update({
       where: { id },
       data: updatePayload,
-      include: {
-        workflows: true,
-        customQuestions: { orderBy: { order: 'asc' } },
-        hosts: { include: { user: { include: { profile: true } } } },
-        team: true
-      }
     });
 
     if (customQuestions !== undefined) {
@@ -276,29 +283,30 @@ export class EventTypesService {
       }
     }
 
-    return eventType;
+    return this.findOne(id, userId);
   }
 
   async remove(id: string, userId: string) {
     // Verify ownership
     await this.findOne(id, userId);
 
-    const futureBookings = await this.prisma.booking.count({
-      where: {
-        eventTypeId: id,
-        status: { in: ['CONFIRMED', 'RESCHEDULED'] },
-        startTime: { gt: new Date() }
-      }
+    const totalBookings = await this.prisma.booking.count({
+      where: { eventTypeId: id }
     });
 
-    if (futureBookings > 0) {
-      // Soft archive
+    if (totalBookings > 0) {
+      // Soft archive to protect past booking records and FK integrity
       return this.prisma.eventType.update({
         where: { id },
         data: { isActive: false }
       });
     } else {
-      // Hard delete if safe
+      // Safe hard delete: cascade remove associated relations
+      await this.prisma.workflow.deleteMany({ where: { eventTypeId: id } }).catch(() => {});
+      await this.prisma.singleUseLink.deleteMany({ where: { eventTypeId: id } }).catch(() => {});
+      await this.prisma.eventTypeHost.deleteMany({ where: { eventTypeId: id } }).catch(() => {});
+      await this.prisma.customQuestion.deleteMany({ where: { eventTypeId: id } }).catch(() => {});
+
       return this.prisma.eventType.delete({
         where: { id },
       });
@@ -313,7 +321,7 @@ export class EventTypesService {
     const newSlug = `${eventType.slug}-${slugSuffix}`;
     const newTitle = `${eventType.title} (Copy)`;
 
-    return this.prisma.eventType.create({
+    const newEvent = await this.prisma.eventType.create({
       data: {
         userId,
         title: newTitle,
@@ -323,6 +331,8 @@ export class EventTypesService {
         slug: newSlug,
         color: eventType.color,
         isActive: true, // Default to active for new duplicated events
+        schedulingType: eventType.schedulingType,
+        teamId: eventType.teamId,
         maxDailyBookings: eventType.maxDailyBookings,
         minNotice: eventType.minNotice,
         maxAdvanceDays: eventType.maxAdvanceDays,
@@ -347,10 +357,18 @@ export class EventTypesService {
             order: q.order,
           }))
         }
-        // Workflows are not duplicated directly to avoid unwanted side effects,
-        // though we could duplicate the 24h reminder workflow if we want.
       }
     });
+
+    if (eventType.schedulingType !== 'PERSONAL' && eventType.hosts && eventType.hosts.length > 0) {
+      for (const h of eventType.hosts) {
+        await this.prisma.eventTypeHost.create({
+          data: { eventTypeId: newEvent.id, userId: h.userId }
+        }).catch(() => {});
+      }
+    }
+
+    return newEvent;
   }
 
   async generateSingleUseLink(id: string, userId: string) {
