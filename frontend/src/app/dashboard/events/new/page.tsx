@@ -28,6 +28,8 @@ const eventTypeSchema = z.object({
   maxInvitees: z.number().min(1).optional(),
   enableReminder24h: z.boolean().optional(),
   availabilityId: z.string().optional(),
+  price: z.number().optional(),
+  currency: z.string().optional(),
   confirmationMessage: z.string().optional(),
   redirectUrl: z.string().url('Must be a valid URL').or(z.literal('')).optional(),
   customQuestions: z.array(z.object({
@@ -74,6 +76,8 @@ export default function NewEventTypePage() {
       maxInvitees: 1,
       enableReminder24h: true,
       availabilityId: '',
+      price: 0,
+      currency: 'USD',
       confirmationMessage: '',
       redirectUrl: '',
       customQuestions: [],
@@ -244,6 +248,45 @@ export default function NewEventTypePage() {
                     placeholder="e.g. Google Meet, Zoom, Phone call"
                     {...form.register('location')}
                   />
+                </div>
+
+                {/* Paid Event / Consultation Fee (Optional) */}
+                <div className="p-4 rounded-2xl border border-emerald-500/20 bg-emerald-50/30 dark:bg-emerald-950/20 space-y-3">
+                  <div>
+                    <Label className="text-sm font-semibold text-emerald-900 dark:text-emerald-300 flex items-center gap-2">
+                      💰 Collect Payment (Optional)
+                    </Label>
+                    <p className="text-xs text-muted-foreground">Charge invitees before confirming this meeting (e.g. consulting fee).</p>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="price" className="text-xs font-medium text-muted-foreground mb-1 block">Price Amount (0 for free)</Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        className="h-[46px] rounded-xl bg-background shadow-xs"
+                        {...form.register('price', { valueAsNumber: true })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="currency" className="text-xs font-medium text-muted-foreground mb-1 block">Currency</Label>
+                      <select
+                        id="currency"
+                        className="w-full h-[46px] rounded-xl bg-background border border-border px-3 text-sm text-foreground focus:ring-2 focus:ring-primary/20 outline-none"
+                        {...form.register('currency')}
+                      >
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="GBP">GBP (£)</option>
+                        <option value="INR">INR (₹)</option>
+                        <option value="CAD">CAD ($)</option>
+                        <option value="AUD">AUD ($)</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-3">

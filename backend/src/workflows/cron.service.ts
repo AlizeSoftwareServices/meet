@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../integrations/email.service';
+import axios from 'axios';
 
 @Injectable()
 export class CronService {
@@ -14,77 +15,159 @@ export class CronService {
 
   @Cron(CronExpression.EVERY_MINUTE)
   async handleReminders() {
-    this.logger.debug('Running 24h reminder workflow check...');
     const now = new Date();
-    // Look for bookings exactly 24 hours from now (with a 5 minute margin to ensure we don't miss any if the cron skips a minute)
-    // Actually, it's safer to look for bookings starting in the next 24h + 1min, that haven't had this workflow executed yet.
+    const nowTime = now.getTime();
 
-    const targetTimeMin = new Date(now.getTime() + 24 * 60 * 60 * 1000 - 60000); // 23h 59m
-    const targetTimeMax = new Date(now.getTime() + 24 * 60 * 60 * 1000 + 5 * 60000); // 24h 5m
-
+    // Fetch all active automated workflows
     const workflows = await this.prisma.workflow.findMany({
-      where: {
-        triggerType: 'BEFORE_EVENT',
-        timeOffset: 1440, // 24 hours
-        actionType: 'EMAIL',
-      },
       include: {
-        eventType: true
-      }
+        eventType: true,
+      },
     });
 
-    if (workflows.length === 0) return;
+    if (!workflows || workflows.length === 0) return;
 
     for (const workflow of workflows) {
+      const offsetMinutes = Number(workflow.timeOffset) || 60;
+      const offsetMs = offsetMinutes * 60 * 1000;
+      const marginMs = 5 * 60 * 1000; // 5 min safety window for cron accuracy
+
+      let targetMin: Date;
+      let targetMax: Date;
+      let timeField: 'startTime' | 'endTime';
+
+      if (workflow.triggerType === 'AFTER_EVENT') {
+        // Event ended around (now - offset)
+        timeField = 'endTime';
+        targetMin = new Date(nowTime - offsetMs - marginMs);
+        targetMax = new Date(nowTime - offsetMs + 60000);
+      } else {
+        // Default BEFORE_EVENT: Event starts around (now + offset)
+        timeField = 'startTime';
+        targetMin = new Date(nowTime + offsetMs - 60000);
+        targetMax = new Date(nowTime + offsetMs + marginMs);
+      }
+
       const bookings = await this.prisma.booking.findMany({
         where: {
           eventTypeId: workflow.eventTypeId,
           status: { in: ['CONFIRMED', 'RESCHEDULED'] },
-          startTime: {
-            gte: targetTimeMin,
-            lte: targetTimeMax,
+          [timeField]: {
+            gte: targetMin,
+            lte: targetMax,
           },
           workflowExecutions: {
             none: {
-              workflowId: workflow.id
-            }
-          }
+              workflowId: workflow.id,
+            },
+          },
         },
         include: {
           host: true,
-          eventType: true
-        }
+          eventType: true,
+        },
       });
 
       for (const booking of bookings) {
         try {
-          // Record execution FIRST to prevent duplicate emails if email taking long
+          // Record execution FIRST to prevent duplicate delivery
           await this.prisma.workflowExecution.create({
             data: {
               bookingId: booking.id,
               workflowId: workflow.id,
-              executedAt: new Date()
-            }
+              executedAt: new Date(),
+            },
           });
 
-          await this.emailService.sendReminderEmail(
-            booking.guestEmail,
-            booking.guestName,
-            booking.eventType.title,
-            booking.startTime.toISOString(),
-            booking.meetLink || undefined
-          ).catch((e: any) => this.logger.error(`Failed to send reminder for booking ${booking.id}: ${e.message}`));
+          if (workflow.actionType === 'SMS') {
+            await this.dispatchSmsNotification(booking, workflow);
+          } else {
+            // Default: EMAIL
+            if (workflow.emailSubject || workflow.emailBody) {
+              await this.emailService.sendCustomWorkflowEmail(
+                booking.guestEmail,
+                booking.guestName,
+                booking.eventType.title,
+                booking.startTime.toISOString(),
+                booking.meetLink || undefined,
+                workflow.emailSubject,
+                workflow.emailBody,
+              );
+            } else if (workflow.triggerType === 'AFTER_EVENT') {
+              await this.emailService.sendFollowUpEmail(
+                booking.guestEmail,
+                booking.guestName,
+                booking.eventType.title,
+              );
+            } else {
+              await this.emailService.sendReminderEmail(
+                booking.guestEmail,
+                booking.guestName,
+                booking.eventType.title,
+                booking.startTime.toISOString(),
+                booking.meetLink || undefined,
+              );
+            }
+          }
 
-          this.logger.log(`Sent 24h reminder for booking ${booking.id}`);
+          this.logger.log(
+            `[Workflow Engine] Successfully executed workflow ${workflow.id} (${workflow.triggerType} ${workflow.timeOffset}m) for booking ${booking.id}`,
+          );
         } catch (e: any) {
           if (e.code === 'P2002') {
-            // Already executed (Unique constraint failed on bookingId_workflowId)
+            // Already executed constraint
             this.logger.debug(`Workflow already executed for booking ${booking.id}`);
           } else {
-            this.logger.error(`Error executing workflow for booking ${booking.id}: ${e.message}`);
+            this.logger.error(
+              `Error executing workflow ${workflow.id} for booking ${booking.id}: ${e.message}`,
+            );
           }
         }
       }
+    }
+  }
+
+  /**
+   * Dispatches SMS notification via Twilio REST API if configured, or logs clean debug output.
+   */
+  private async dispatchSmsNotification(booking: any, workflow: any): Promise<void> {
+    const guestPhone = booking.guestPhone;
+    if (!guestPhone) {
+      this.logger.debug(`Skipping SMS workflow for booking ${booking.id}: guest phone not provided.`);
+      return;
+    }
+
+    const sid = process.env.TWILIO_ACCOUNT_SID;
+    const token = process.env.TWILIO_AUTH_TOKEN;
+    const fromPhone = process.env.TWILIO_PHONE_NUMBER;
+
+    const messageBody = workflow.emailBody ||
+      `Reminder: Your meeting "${booking.eventType.title}" is scheduled for ${new Date(booking.startTime).toLocaleString()}. Link: ${booking.meetLink || 'meet.alizesoftwareservices.com'}`;
+
+    if (sid && token && fromPhone) {
+      try {
+        const auth = Buffer.from(`${sid}:${token}`).toString('base64');
+        const params = new URLSearchParams();
+        params.append('To', guestPhone);
+        params.append('From', fromPhone);
+        params.append('Body', messageBody);
+
+        await axios.post(
+          `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
+          params.toString(),
+          {
+            headers: {
+              Authorization: `Basic ${auth}`,
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+          },
+        );
+        this.logger.log(`[Twilio SMS] Dispatched SMS to ${guestPhone} for booking ${booking.id}`);
+      } catch (err: any) {
+        this.logger.error(`[Twilio SMS] Failed to dispatch SMS to ${guestPhone}: ${err.message}`);
+      }
+    } else {
+      this.logger.log(`[SMS Gateway Simulated] Sent to ${guestPhone}: "${messageBody}"`);
     }
   }
 }

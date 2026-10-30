@@ -1,4 +1,4 @@
-import { IsString, IsInt, IsOptional, IsBoolean, Min, IsArray, ValidateNested, IsIn, IsUrl, ValidateIf } from 'class-validator';
+import { IsString, IsInt, IsNumber, IsOptional, IsBoolean, Min, IsArray, ValidateNested, IsIn, IsUrl, ValidateIf } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CustomQuestionDto {
@@ -93,4 +93,12 @@ export class CreateEventTypeDto {
   @ValidateIf(o => o.redirectUrl !== '')
   @IsUrl({ require_protocol: true, protocols: ['http', 'https'] }, { message: 'Must be a valid HTTP/HTTPS URL' })
   redirectUrl?: string;
+
+  @IsOptional()
+  @IsNumber()
+  price?: number;
+
+  @IsOptional()
+  @IsString()
+  currency?: string;
 }

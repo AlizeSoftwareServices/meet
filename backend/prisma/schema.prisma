@@ -86,9 +86,8 @@ model EventType {
   team             Team?     @relation(fields: [teamId], references: [id], onDelete: SetNull)
   schedulingType   String    @default("PERSONAL") // 'PERSONAL', 'ROUND_ROBIN', 'COLLECTIVE'
   hosts            EventTypeHost[]
-  // Payment integration fields (uncomment when Stripe integration is enabled in future)
-  // price            Float?
-  // currency         String?   @default("usd")
+  price            Float?
+  currency         String?   @default("usd")
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
@@ -173,11 +172,10 @@ model Booking {
   teamId          String?    @db.ObjectId
   team            Team?      @relation(fields: [teamId], references: [id], onDelete: SetNull)
   assignedHosts   BookingHost[]
-  // Payment integration fields (uncomment when Stripe integration is enabled in future)
-  // price           Float?
-  // currency        String?
-  // stripePaymentIntentId String?
-  // paymentStatus   String?   @default("FREE")
+  price           Float?
+  currency        String?   @default("usd")
+  stripePaymentIntentId String?
+  paymentStatus   String?   @default("FREE")
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
   actionTokens    ActionToken[]

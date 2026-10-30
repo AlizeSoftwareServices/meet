@@ -47,6 +47,9 @@ export class BookingsService {
         startTime: typeof booking.startTime === 'string' ? booking.startTime : booking.startTime.toISOString(),
         endTime: typeof booking.endTime === 'string' ? booking.endTime : booking.endTime.toISOString(),
         status: booking.status,
+        price: booking.price ?? undefined,
+        currency: booking.currency ?? undefined,
+        paymentStatus: booking.paymentStatus ?? undefined,
         meetLink: booking.meetLink || undefined,
         cancelReason: cancelReason || booking.cancelReason || undefined,
       };
@@ -420,6 +423,10 @@ export class BookingsService {
                startTime: occ.startTime,
                endTime: occ.endTime,
                status: 'CONFIRMED',
+               price: eventType.price || null,
+               currency: eventType.currency || 'usd',
+               stripePaymentIntentId: dto.stripePaymentIntentId || null,
+               paymentStatus: eventType.price && eventType.price > 0 ? (dto.paymentStatus || (dto.stripePaymentIntentId ? 'PAID' : 'PENDING')) : 'FREE',
                bookingSeriesId: seriesId,
                seriesOccurrenceNumber: occ.occurrenceNumber,
                answers: {

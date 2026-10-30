@@ -211,6 +211,7 @@ export default function WorkflowsPage() {
                       className="w-full rounded-xl border border-input bg-background py-2 px-3 text-xs font-semibold focus:ring-2 focus:ring-primary focus:outline-none"
                     >
                       <option value="EMAIL">Send Email to Invitee</option>
+                      <option value="SMS">Send SMS to Invitee (Mobile)</option>
                     </select>
                   </div>
                 </div>

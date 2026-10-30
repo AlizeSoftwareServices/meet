@@ -69,4 +69,12 @@ export class CreateBookingDto {
   @IsOptional()
   @IsString()
   singleUseToken?: string;
+
+  @IsOptional()
+  @IsString()
+  stripePaymentIntentId?: string;
+
+  @IsOptional()
+  @IsString()
+  paymentStatus?: string;
 }

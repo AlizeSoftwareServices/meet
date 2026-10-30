@@ -335,6 +335,8 @@ export class EventTypesService {
         confirmationMessage: eventType.confirmationMessage,
         redirectUrl: eventType.redirectUrl,
         availabilityId: eventType.availabilityId,
+        price: eventType.price,
+        currency: eventType.currency,
         customQuestions: {
           create: eventType.customQuestions.map(q => ({
             type: q.type,

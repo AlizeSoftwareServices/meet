@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api, getApiBaseUrl } from '@/lib/api';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Clock, MapPin, ArrowLeft, Globe } from 'lucide-react';
+import { Clock, MapPin, ArrowLeft, Globe, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO } from 'date-fns';
@@ -27,6 +27,14 @@ export default function SchedulingPage() {
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
   const [selectedTime, setSelectedTime] = useState<{ startTime: string, endTime: string } | null>(null);
   const [timezone, setTimezone] = useState<string>('');
+  const [isEmbed, setIsEmbed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      setIsEmbed(searchParams.get('embed') === 'true');
+    }
+  }, []);
 
   // Guest details state
   const [guestName, setGuestName] = useState('');
@@ -143,9 +151,24 @@ export default function SchedulingPage() {
     },
     onSuccess: (data) => {
       triggerHaptic('success');
+      // Dispatch embed widget notification to parent frame (if embedded in customer website)
+      if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'meet:booking:confirmed',
+          data: {
+            host: username,
+            slug: slug,
+            startTime: selectedTime?.startTime,
+            endTime: selectedTime?.endTime,
+            guestName,
+            guestEmail,
+          }
+        }, '*');
+      }
+
       if (data && data.confirmationToken) {
         // Redirect to dedicated confirmation page securely
-        router.push(`/booking/confirmed?token=${data.confirmationToken}`);
+        router.push(`/booking/confirmed?token=${data.confirmationToken}${isEmbed ? '&embed=true' : ''}`);
       } else if (data && data.booking) {
         setBookingResult(data.booking);
       } else {
@@ -247,8 +270,8 @@ export default function SchedulingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-50 via-zinc-100/60 to-violet-50/30 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 flex flex-col items-center justify-center py-8 px-3 sm:px-6 lg:px-8">
-      {isOwner && (
+    <div className={isEmbed ? "w-full p-0 bg-transparent flex flex-col items-center justify-center" : "min-h-screen bg-gradient-to-br from-zinc-50 via-zinc-100/60 to-violet-50/30 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 flex flex-col items-center justify-center py-8 px-3 sm:px-6 lg:px-8"}>
+      {isOwner && !isEmbed && (
         <div className="max-w-6xl w-full mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center justify-between text-xs text-amber-700 dark:text-amber-300 backdrop-blur-md shadow-xs">
           <span className="font-semibold flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
@@ -322,6 +345,17 @@ export default function SchedulingPage() {
                         <MapPin className="w-4 h-4" />
                       </div>
                       <span>{eventType.location}</span>
+                    </div>
+                  )}
+
+                  {eventType.price && eventType.price > 0 && (
+                    <div className="flex items-center gap-2.5 text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                      <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
+                        <CreditCard className="w-4 h-4" />
+                      </div>
+                      <span>
+                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: eventType.currency || 'USD' }).format(eventType.price)}
+                      </span>
                     </div>
                   )}
                 </div>
