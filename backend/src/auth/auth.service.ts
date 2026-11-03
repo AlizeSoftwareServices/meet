@@ -3,8 +3,11 @@ import { UsersService } from '../users/users.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { SendOtpDto } from './dto/send-otp.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { SecureTokenService, TokenType } from './secure-token.service';
 import { EmailService } from '../integrations/email.service';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -25,10 +28,87 @@ export class AuthService {
     private emailService: EmailService,
   ) {}
 
+  async sendRegistrationOtp(dto: SendOtpDto) {
+    const cleanEmail = dto.email.toLowerCase().trim();
+    const existingUser = await this.usersService.findByEmail(cleanEmail);
+    if (existingUser) {
+      throw new BadRequestException('An account already exists with this email address. Please sign in.');
+    }
+
+    // Generate 6-digit random code
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const tokenHash = crypto.createHash('sha256').update(`REG_OTP:${cleanEmail}:${otp}`).digest('hex');
+
+    // Remove any existing registration OTPs for this email pattern if possible, or create with 5-min TTL
+    await this.prisma.actionToken.create({
+      data: {
+        tokenHash,
+        type: 'REGISTRATION_OTP',
+        expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
+      }
+    });
+
+    try {
+      await this.emailService.sendRegistrationOtp(cleanEmail, otp);
+      this.logger.log(`[sendRegistrationOtp] Verification code sent to ${cleanEmail}`);
+    } catch (err: any) {
+      this.logger.error(`[sendRegistrationOtp] Failed to deliver OTP email: ${err.message}`);
+      throw new BadRequestException('Failed to deliver verification email. Please check the email address.');
+    }
+
+    return {
+      success: true,
+      message: 'A 6-digit verification code has been sent to your email.'
+    };
+  }
+
+  async verifyRegistrationOtp(dto: VerifyOtpDto) {
+    const cleanEmail = dto.email.toLowerCase().trim();
+    const tokenHash = crypto.createHash('sha256').update(`REG_OTP:${cleanEmail}:${dto.otp.trim()}`).digest('hex');
+
+    const record = await this.prisma.actionToken.findUnique({
+      where: { tokenHash }
+    });
+
+    if (!record || record.type !== 'REGISTRATION_OTP' || new Date() > record.expiresAt) {
+      throw new BadRequestException('Invalid or expired verification code. Please request a new one.');
+    }
+
+    // Consume OTP so it cannot be re-used
+    await this.prisma.actionToken.delete({ where: { tokenHash } }).catch(() => {});
+
+    // Issue cryptographic proof of verification valid for 15 minutes
+    const verificationToken = await this.jwtService.signAsync(
+      { email: cleanEmail, purpose: 'REGISTRATION_EMAIL_VERIFIED' },
+      { expiresIn: '15m' }
+    );
+
+    return {
+      success: true,
+      message: 'Email verified successfully!',
+      verificationToken
+    };
+  }
+
   async register(dto: RegisterDto) {
-    const existingUser = await this.usersService.findByEmail(dto.email);
+    const cleanEmail = dto.email.toLowerCase().trim();
+    const existingUser = await this.usersService.findByEmail(cleanEmail);
     if (existingUser) {
       throw new BadRequestException('User with this email already exists');
+    }
+
+    // Verify email proof token
+    if (!dto.verificationToken) {
+      throw new BadRequestException('Please verify your email address before registering.');
+    }
+
+    try {
+      const decoded: any = await this.jwtService.verifyAsync(dto.verificationToken);
+      if (decoded.email !== cleanEmail || decoded.purpose !== 'REGISTRATION_EMAIL_VERIFIED') {
+        throw new BadRequestException('Invalid verification token for this email.');
+      }
+    } catch {
+      throw new BadRequestException('Email verification has expired or is invalid. Please verify again.');
     }
 
     const salt = await bcrypt.genSalt();
@@ -37,16 +117,16 @@ export class AuthService {
     // Create user and profile in a transaction
     const user = await this.prisma.user.create({
       data: {
-        email: dto.email,
+        email: cleanEmail,
         passwordHash,
         profile: {
           create: {
             name: dto.name,
-            username: dto.email.split('@')[0] + '-' + Math.random().toString(36).substring(2, 8),
+            username: cleanEmail.split('@')[0] + '-' + Math.random().toString(36).substring(2, 8),
             timezone: 'UTC', // Default, can be updated later
           },
         },
-        isVerified: true, // Auto-verify on signup as per request
+        isVerified: true, // Auto-verify on signup as verified via OTP
       },
       include: {
         profile: true,

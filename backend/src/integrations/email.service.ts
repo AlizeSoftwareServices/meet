@@ -414,4 +414,21 @@ export class EmailService {
 
     return this.sendMail(email, subject, htmlContent);
   }
+
+  async sendRegistrationOtp(email: string, otp: string) {
+    const subject = `Your Meet Verification Code: ${otp}`;
+    const content = `
+      <p>Hello,</p>
+      <p>Thank you for signing up for <strong>Meet</strong>. To verify your email address, please enter the following 6-digit verification code:</p>
+      
+      <div style="text-align: center; margin: 30px 0;">
+        <span style="font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #4338ca; background: #eef2ff; padding: 14px 28px; border-radius: 12px; display: inline-block; font-family: monospace; border: 1px solid #c7d2fe;">${otp}</span>
+      </div>
+
+      <p style="font-size: 14px; color: #475569; text-align: center;">This code will expire in <strong>5 minutes</strong>. For your security, never share this code with anyone.</p>
+      <p style="font-size: 12px; color: #94a3b8; text-align: center; margin-top: 25px;">If you did not initiate this request, you can safely ignore this email.</p>
+    `;
+
+    return this.sendMail(email, subject, this.getBaseTemplate('Email Verification Code', content));
+  }
 }
