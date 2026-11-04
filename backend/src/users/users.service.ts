@@ -11,7 +11,12 @@ export class UsersService {
   ) {}
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.prisma.user.findUnique({ where: { email } });
+    const clean = email.trim();
+    const exact = await this.prisma.user.findUnique({ where: { email: clean } });
+    if (exact) return exact;
+    return this.prisma.user.findFirst({
+      where: { email: { equals: clean, mode: 'insensitive' } },
+    });
   }
 
   async findById(id: string): Promise<User | null> {
