@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from './email.service';
+import { CalendarService } from './calendar.service';
 import { WebhookDeliveryService } from '../webhooks/webhook-delivery.service';
 
 @Injectable()
@@ -11,7 +12,7 @@ export class CronService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly emailService: EmailService,
-    // FIX #3: Inject webhook delivery service for retry processing
+    private readonly calendarService: CalendarService,
     private readonly webhookDeliveryService: WebhookDeliveryService,
   ) {}
 
@@ -121,5 +122,34 @@ export class CronService {
   async retryFailedWebhooks(): Promise<void> {
     this.logger.debug('Running webhook retry cron');
     await this.webhookDeliveryService.retryFailedDeliveries();
+  }
+
+  /**
+   * Background Two-Way Google Calendar Synchronization:
+   * Periodically checks Google Calendar for any changes (reschedules, cancellations)
+   * and reconciles them with Alize Meet bookings.
+   */
+  @Cron(CronExpression.EVERY_10_MINUTES)
+  async handleCalendarTwoWaySync(): Promise<void> {
+    this.logger.debug('Running background 2-way Google Calendar synchronization');
+    try {
+      const activeGoogleIntegrations = await this.prisma.integration.findMany({
+        where: {
+          provider: 'google',
+          autoSync: true,
+          accessToken: { not: 'EXPIRED' }
+        }
+      });
+
+      for (const integration of activeGoogleIntegrations) {
+        try {
+          await this.calendarService.syncGoogleCalendar(integration.userId);
+        } catch (err: any) {
+          this.logger.warn(`Background sync failed for user ${integration.userId}: ${err.message}`);
+        }
+      }
+    } catch (error: any) {
+      this.logger.error(`Error in handleCalendarTwoWaySync cron: ${error.message}`);
+    }
   }
 }

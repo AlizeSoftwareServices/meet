@@ -11,7 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Check, Save, Users, UsersRound, Bell, Shuffle, GitMerge } from 'lucide-react';
+import { ArrowLeft, Check, Save, Users, UsersRound, Bell, Shuffle, GitMerge, Video, Phone, MapPin } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Switch } from '@/components/ui/switch';
@@ -86,6 +86,8 @@ export default function EditEventTypePage({ params }: any) {
 
   const selectedTeam = teams?.find((t: any) => t.id === selectedTeamId);
   const teamMembers: any[] = selectedTeam?.members || [];
+  const [locationType, setLocationType] = useState<'Google Meet' | 'Phone Call' | 'In Person'>('Google Meet');
+  const [locationDetails, setLocationDetails] = useState('');
 
   const form = useForm<EventTypeFormValues>({
     resolver: zodResolver(eventTypeSchema),
@@ -116,7 +118,7 @@ export default function EditEventTypePage({ params }: any) {
         title: event.title,
         description: event.description || '',
         duration: event.duration,
-        location: event.location || '',
+        location: event.location || 'Google Meet',
         slug: event.slug,
         color: event.color || PRESET_COLORS[0],
         isGroupEvent: Boolean(event.isGroupEvent),
@@ -127,6 +129,19 @@ export default function EditEventTypePage({ params }: any) {
         redirectUrl: event.redirectUrl || '',
         customQuestions: event.customQuestions || [],
       });
+
+      if (event.location) {
+        if (event.location.startsWith('Phone Call')) {
+          setLocationType('Phone Call');
+          setLocationDetails(event.location.replace(/^Phone Call:\s*/, ''));
+        } else if (event.location.startsWith('In Person')) {
+          setLocationType('In Person');
+          setLocationDetails(event.location.replace(/^In Person:\s*/, ''));
+        } else {
+          setLocationType('Google Meet');
+          setLocationDetails('');
+        }
+      }
 
       if (event.schedulingType) {
         setSchedulingType(event.schedulingType);
@@ -282,13 +297,104 @@ export default function EditEventTypePage({ params }: any) {
                 </div>
 
                 <div className="space-y-3">
-                  <Label htmlFor="location" className="text-base font-semibold">Location</Label>
-                  <Input
-                    id="location"
-                    className="h-[50px] rounded-xl bg-background shadow-sm"
-                    placeholder="e.g. Google Meet, Zoom, Phone call"
-                    {...form.register('location')}
-                  />
+                  <Label className="text-base font-semibold">Meeting Location / Type</Label>
+                  <p className="text-xs text-muted-foreground">Select how and where this meeting will take place.</p>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Google Meet */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLocationType('Google Meet');
+                        form.setValue('location', 'Google Meet');
+                      }}
+                      className={`p-4 rounded-2xl border text-left flex flex-col gap-2 transition-all ${
+                        locationType === 'Google Meet'
+                          ? 'border-primary bg-primary/5 ring-2 ring-primary/20 shadow-xs'
+                          : 'border-border bg-card hover:bg-secondary/40'
+                      }`}
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
+                        <Video className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm text-foreground">Google Meet</p>
+                        <p className="text-xs text-muted-foreground">Auto-generates meeting link</p>
+                      </div>
+                    </button>
+
+                    {/* Phone Call */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLocationType('Phone Call');
+                        form.setValue('location', locationDetails ? `Phone Call: ${locationDetails}` : 'Phone Call');
+                      }}
+                      className={`p-4 rounded-2xl border text-left flex flex-col gap-2 transition-all ${
+                        locationType === 'Phone Call'
+                          ? 'border-primary bg-primary/5 ring-2 ring-primary/20 shadow-xs'
+                          : 'border-border bg-card hover:bg-secondary/40'
+                      }`}
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+                        <Phone className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm text-foreground">Phone Call</p>
+                        <p className="text-xs text-muted-foreground">Inbound or outbound call</p>
+                      </div>
+                    </button>
+
+                    {/* In Person */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLocationType('In Person');
+                        form.setValue('location', locationDetails ? `In Person: ${locationDetails}` : 'In Person');
+                      }}
+                      className={`p-4 rounded-2xl border text-left flex flex-col gap-2 transition-all ${
+                        locationType === 'In Person'
+                          ? 'border-primary bg-primary/5 ring-2 ring-primary/20 shadow-xs'
+                          : 'border-border bg-card hover:bg-secondary/40'
+                      }`}
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center">
+                        <MapPin className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="font-semibold text-sm text-foreground">In Person</p>
+                        <p className="text-xs text-muted-foreground">Face-to-face physical meeting</p>
+                      </div>
+                    </button>
+                  </div>
+
+                  {locationType === 'Phone Call' && (
+                    <div className="animate-in fade-in duration-200">
+                      <Input
+                        placeholder="e.g. Host will call guest at their provided phone number"
+                        value={locationDetails}
+                        onChange={(e) => {
+                          setLocationDetails(e.target.value);
+                          form.setValue('location', e.target.value ? `Phone Call: ${e.target.value}` : 'Phone Call');
+                        }}
+                        className="h-[48px] rounded-xl bg-background shadow-xs mt-2"
+                      />
+                    </div>
+                  )}
+
+                  {locationType === 'In Person' && (
+                    <div className="animate-in fade-in duration-200">
+                      <Input
+                        placeholder="e.g. Office Suite 402, Anna Salai, Chennai"
+                        value={locationDetails}
+                        onChange={(e) => {
+                          setLocationDetails(e.target.value);
+                          form.setValue('location', e.target.value ? `In Person: ${e.target.value}` : 'In Person');
+                        }}
+                        className="h-[48px] rounded-xl bg-background shadow-xs mt-2"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-3">

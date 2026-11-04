@@ -222,6 +222,12 @@ model Integration {
   accessToken  String
   refreshToken String?
   checkConflicts Boolean @default(true)
+  autoSync     Boolean  @default(true)
+  connectedEmail String?
+  lastSyncedAt DateTime?
+  channelId    String?  // Google webhook watch channel ID
+  resourceId   String?  // Google webhook watch resource ID
+  channelExpiry DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

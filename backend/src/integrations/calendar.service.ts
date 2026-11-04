@@ -42,9 +42,10 @@ export class CalendarService {
       }
     });
 
+    const decryptedRefresh = decryptToken(googleIntegration.refreshToken);
     oauth2Client.setCredentials({
       access_token: decryptToken(googleIntegration.accessToken),
-      refresh_token: decryptToken(googleIntegration.refreshToken),
+      refresh_token: decryptedRefresh || undefined,
     });
 
     return google.calendar({ version: 'v3', auth: oauth2Client });
@@ -128,41 +129,104 @@ export class CalendarService {
     }
   }
 
-  async createCalendarEvent(hostId: string, hostEmail: string, guestEmail: string, startTime: string, endTime: string, title: string) {
+  async createCalendarEvent(
+    hostId: string,
+    hostEmail: string,
+    guestEmail: string,
+    startTime: string,
+    endTime: string,
+    title: string,
+    options?: {
+      locationType?: string;
+      locationDetails?: string;
+      hostTimezone?: string;
+      existingEventId?: string;
+    }
+  ): Promise<{ meetLink: string | null; eventId: string | null }> {
     // 1. Try Google Integration First
     try {
+      const googleIntegration = await this.prisma.integration.findUnique({
+        where: { userId_provider: { userId: hostId, provider: 'google' } }
+      });
+
+      // If user disabled auto-sync, skip creating the event in Google Calendar
+      if (googleIntegration && googleIntegration.autoSync === false) {
+        this.logger.log(`[GOOGLE CALENDAR] Auto-sync is OFF for host ${hostId}. Skipping external event creation.`);
+        return { meetLink: null, eventId: null };
+      }
+
       const calendar = await this.getGoogleCalendarClient(hostId);
       if (calendar) {
-        const event = {
+        // CASE A: Group Event with Existing Google Calendar Event
+        // If an event already exists for this slot, append the new guest to attendees and reuse the Google Meet link!
+        if (options?.existingEventId) {
+          try {
+            const existing = await calendar.events.get({
+              calendarId: 'primary',
+              eventId: options.existingEventId,
+            });
+
+            const currentAttendees = existing.data.attendees || [];
+            const isAlreadyAttendee = currentAttendees.some(a => a.email?.toLowerCase() === guestEmail.toLowerCase());
+            
+            if (!isAlreadyAttendee) {
+              currentAttendees.push({ email: guestEmail });
+              await calendar.events.patch({
+                calendarId: 'primary',
+                eventId: options.existingEventId,
+                requestBody: { attendees: currentAttendees }
+              });
+              this.logger.log(`[GOOGLE CALENDAR] Added guest ${guestEmail} to existing group event ${options.existingEventId}`);
+            }
+
+            return {
+              meetLink: existing.data.hangoutLink || null,
+              eventId: options.existingEventId
+            };
+          } catch (patchErr: any) {
+            this.logger.warn(`Failed to patch existing group event ${options.existingEventId}: ${patchErr.message}. Creating fresh event.`);
+          }
+        }
+
+        // CASE B: New Event
+        const isGoogleMeet = !options?.locationType || options.locationType === 'Google Meet';
+        const tz = options?.hostTimezone || 'UTC';
+
+        const event: any = {
           summary: title,
-          start: { dateTime: startTime },
-          end: { dateTime: endTime },
+          start: { dateTime: startTime, timeZone: tz },
+          end: { dateTime: endTime, timeZone: tz },
           attendees: [{ email: guestEmail }, { email: hostEmail }],
-          conferenceData: {
+        };
+
+        if (isGoogleMeet) {
+          event.conferenceData = {
             createRequest: {
-              requestId: `MeetSync-${Date.now()}`,
+              requestId: `MeetSync-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
               conferenceSolutionKey: { type: 'hangoutsMeet' },
             },
-          },
-        };
+          };
+        } else if (options?.locationType === 'In Person') {
+          event.location = options.locationDetails || 'In Person';
+          event.description = `In-person meeting at: ${options.locationDetails || 'Location to be specified'}`;
+        } else if (options?.locationType === 'Phone Call') {
+          event.location = options.locationDetails || 'Phone Call';
+          event.description = `Phone call: ${options.locationDetails || 'Phone numbers exchanged upon booking'}`;
+        }
 
         const response = await calendar.events.insert({
           calendarId: 'primary',
           requestBody: event,
-          conferenceDataVersion: 1, 
+          conferenceDataVersion: isGoogleMeet ? 1 : 0, 
         });
 
-        this.logger.log(`[GOOGLE CALENDAR EVENT] Created for ${hostEmail} and ${guestEmail}`);
+        this.logger.log(`[GOOGLE CALENDAR EVENT] Created for ${hostEmail} and ${guestEmail} (${options?.locationType || 'Google Meet'})`);
         
-        const meetLink = response.data.hangoutLink;
-        const externalEventId = response.data.id;
-        
-        if (!meetLink || !externalEventId) {
-           throw new BadRequestException('Google Calendar created the event but failed to generate a Meet link or Event ID.');
-        }
+        const meetLink = isGoogleMeet ? (response.data.hangoutLink || null) : null;
+        const externalEventId = response.data.id || null;
 
         return { 
-          meetLink: meetLink,
+          meetLink,
           eventId: externalEventId
         };
       }
@@ -378,7 +442,116 @@ export class CalendarService {
     return busyPeriods;
   }
 
-  async getGoogleEvents(hostId: string, timeMin?: string, timeMax?: string) {
+  /**
+   * Two-Way Reconciliation Sync:
+   * Syncs Google Calendar changes (deletions, reschedules) back to Alize Meet.
+   */
+  async syncGoogleCalendar(hostId: string) {
+    try {
+      const googleIntegration = await this.prisma.integration.findUnique({
+        where: { userId_provider: { userId: hostId, provider: 'google' } }
+      });
+
+      if (!googleIntegration) {
+        throw new BadRequestException('Google Calendar integration not found.');
+      }
+
+      const calendar = await this.getGoogleCalendarClient(hostId);
+      if (!calendar) {
+        throw new BadRequestException('Could not authenticate with Google Calendar.');
+      }
+
+      const pastWindow = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000); // 14 days ago
+      const futureWindow = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000); // 60 days in future
+
+      // Fetch Google Calendar events (including cancelled/deleted ones)
+      const gResponse = await calendar.events.list({
+        calendarId: 'primary',
+        timeMin: pastWindow.toISOString(),
+        timeMax: futureWindow.toISOString(),
+        singleEvents: true,
+        showDeleted: true,
+      });
+
+      const googleItems = gResponse.data.items || [];
+      const googleItemsMap = new Map<string, any>();
+      for (const item of googleItems) {
+        if (item.id) googleItemsMap.set(item.id, item);
+      }
+
+      // Fetch active Alize Meet bookings in the same window that have externalEventId
+      const localBookings = await this.prisma.booking.findMany({
+        where: {
+          hostId,
+          externalEventId: { not: null },
+          startTime: { gte: pastWindow, lte: futureWindow },
+          status: { in: ['CONFIRMED', 'RESCHEDULED'] }
+        },
+        include: { eventType: true }
+      });
+
+      let cancelledCount = 0;
+      let rescheduledCount = 0;
+
+      for (const booking of localBookings) {
+        if (!booking.externalEventId) continue;
+        const gEvent = googleItemsMap.get(booking.externalEventId);
+
+        // 1. Deletion check in Google Calendar
+        if (!gEvent || gEvent.status === 'cancelled') {
+          await this.prisma.booking.update({
+            where: { id: booking.id },
+            data: {
+              status: 'CANCELLED',
+              cancelReason: 'Cancelled directly in Google Calendar'
+            }
+          });
+          cancelledCount++;
+          this.logger.log(`[SYNC RECONCILIATION] Marked booking ${booking.id} as CANCELLED (deleted in Google Calendar)`);
+        } 
+        // 2. Reschedule check in Google Calendar
+        else if (gEvent.start?.dateTime && gEvent.end?.dateTime) {
+          const gStart = new Date(gEvent.start.dateTime);
+          const gEnd = new Date(gEvent.end.dateTime);
+
+          // If start time shifted by more than 1 minute
+          if (Math.abs(gStart.getTime() - booking.startTime.getTime()) > 60000) {
+            await this.prisma.booking.update({
+              where: { id: booking.id },
+              data: {
+                startTime: gStart,
+                endTime: gEnd,
+                status: 'RESCHEDULED'
+              }
+            });
+            rescheduledCount++;
+            this.logger.log(`[SYNC RECONCILIATION] Updated booking ${booking.id} time to ${gStart.toISOString()}`);
+          }
+        }
+      }
+
+      const now = new Date();
+      await this.prisma.integration.update({
+        where: { userId_provider: { userId: hostId, provider: 'google' } },
+        data: { lastSyncedAt: now }
+      });
+
+      return {
+        success: true,
+        message: 'Google Calendar synchronized successfully.',
+        totalGoogleEvents: googleItems.length,
+        reconciledBookings: localBookings.length,
+        cancelledCount,
+        rescheduledCount,
+        lastSyncedAt: now
+      };
+    } catch (err: any) {
+      this.logger.error(`Failed to synchronize Google Calendar for host ${hostId}: ${err.message}`);
+      throw new BadRequestException(`Google Calendar synchronization failed: ${err.message}`);
+    }
+  }
+
+  async getGoogleEvents(hostId: string, timeMin?: string, timeMax?: string, excludeEventIds: string[] = []) {
     try {
       const calendar = await this.getGoogleCalendarClient(hostId);
       if (!calendar) return [];
@@ -395,22 +568,26 @@ export class CalendarService {
       });
 
       const items = response.data.items || [];
-      return items.map((evt) => ({
-        id: `google-${evt.id}`,
-        title: evt.summary || 'Google Calendar Event',
-        description: evt.description || '',
-        startTime: evt.start?.dateTime || evt.start?.date || '',
-        endTime: evt.end?.dateTime || evt.end?.date || '',
-        guestName: evt.organizer?.displayName || evt.organizer?.email || 'Google Calendar User',
-        guestEmail: evt.organizer?.email || '',
-        status: 'CONFIRMED',
-        meetingUrl: evt.hangoutLink || evt.htmlLink || '',
-        isExternal: true,
-        provider: 'google',
-        eventType: {
-          title: 'Google Calendar (Synced)',
-        },
-      }));
+      const excludeSet = new Set(excludeEventIds);
+
+      return items
+        .filter((evt) => evt.id && !excludeSet.has(evt.id))
+        .map((evt) => ({
+          id: `google-${evt.id}`,
+          title: evt.summary || 'Google Calendar Event',
+          description: evt.description || '',
+          startTime: evt.start?.dateTime || evt.start?.date || '',
+          endTime: evt.end?.dateTime || evt.end?.date || '',
+          guestName: evt.organizer?.displayName || evt.organizer?.email || 'Google Calendar User',
+          guestEmail: evt.organizer?.email || '',
+          status: 'CONFIRMED',
+          meetingUrl: evt.hangoutLink || evt.htmlLink || '',
+          isExternal: true,
+          provider: 'google',
+          eventType: {
+            title: 'Google Calendar (Synced)',
+          },
+        }));
     } catch (error: any) {
       this.logger.error(`Failed to fetch Google Calendar events: ${error.message}`);
       return [];

@@ -481,16 +481,45 @@ export class BookingsService {
       const endTimeIso = booking.endTime.toISOString();
 
       // Create external calendar events for all assigned hosts
-      // FIX #1: Capture meetLink + externalEventId and persist to DB
-      let storedMeetLink: string | null = booking.meetLink ?? null;
+      let existingGroupExternalEventId: string | undefined;
+      let existingGroupMeetLink: string | undefined;
+
+      if (booking.eventType.isGroupEvent) {
+        const existingGroupBooking = await this.prisma.booking.findFirst({
+          where: {
+            eventTypeId: booking.eventTypeId,
+            startTime: booking.startTime,
+            id: { not: booking.id },
+            status: { in: ['CONFIRMED', 'RESCHEDULED'] },
+            externalEventId: { not: null }
+          }
+        });
+        if (existingGroupBooking) {
+          existingGroupExternalEventId = existingGroupBooking.externalEventId || undefined;
+          existingGroupMeetLink = existingGroupBooking.meetLink || undefined;
+        }
+      }
+
+      let storedMeetLink: string | null = existingGroupMeetLink ?? booking.meetLink ?? null;
       for (const h of assignedHosts) {
         if (h.integrations && h.integrations.length > 0) {
           try {
             const calendarResult = await this.calendarService.createCalendarEvent(
-              h.id, h.email, guestEmail, startTimeIso, endTimeIso, eventTitle
+              h.id,
+              h.email,
+              guestEmail,
+              startTimeIso,
+              endTimeIso,
+              eventTitle,
+              {
+                locationType: booking.eventType.location || 'Google Meet',
+                locationDetails: booking.eventType.location || undefined,
+                hostTimezone: timezone,
+                existingEventId: existingGroupExternalEventId,
+              }
             );
-            const meetLink = calendarResult?.meetLink ?? null;
-            const externalEventId = calendarResult?.eventId ?? null;
+            const meetLink = calendarResult?.meetLink || existingGroupMeetLink || null;
+            const externalEventId = calendarResult?.eventId || existingGroupExternalEventId || null;
             if (meetLink || externalEventId) {
               await this.prisma.booking.update({
                 where: { id: booking.id },
@@ -594,7 +623,15 @@ export class BookingsService {
     });
 
     try {
-      const googleEvents = await this.calendarService.getGoogleEvents(hostId);
+      const existingExternalIds = dbBookings
+        .map(b => b.externalEventId)
+        .filter((id): id is string => Boolean(id));
+      const googleEvents = await this.calendarService.getGoogleEvents(
+        hostId,
+        undefined,
+        undefined,
+        existingExternalIds
+      );
       return [...dbBookings, ...googleEvents];
     } catch (err) {
       return dbBookings;

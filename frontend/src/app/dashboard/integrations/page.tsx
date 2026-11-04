@@ -41,6 +41,9 @@ export default function IntegrationsPage() {
     }
   };
 
+  const [syncingGoogle, setSyncingGoogle] = useState(false);
+  const [syncResult, setSyncResult] = useState<string | null>(null);
+
   const handleToggleConflicts = async (provider: string, currentVal: boolean) => {
     setUpdatingProvider(provider);
     try {
@@ -54,6 +57,37 @@ export default function IntegrationsPage() {
       alert('Failed to update calendar sync settings.');
     } finally {
       setUpdatingProvider(null);
+    }
+  };
+
+  const handleToggleAutoSync = async (provider: string, currentVal: boolean) => {
+    setUpdatingProvider(provider);
+    try {
+      const nextVal = !currentVal;
+      await api.patch(`/integrations/${provider}/auto-sync`, { autoSync: nextVal });
+      setIntegrations(prev =>
+        prev.map(item => (item.provider === provider ? { ...item, autoSync: nextVal } : item))
+      );
+    } catch (err) {
+      console.error('Failed to toggle auto sync', err);
+      alert('Failed to update auto-sync settings.');
+    } finally {
+      setUpdatingProvider(null);
+    }
+  };
+
+  const handleManualSync = async () => {
+    setSyncingGoogle(true);
+    setSyncResult(null);
+    try {
+      const { data } = await api.post('/integrations/google/sync');
+      setSyncResult(data.message || 'Synced successfully!');
+      fetchIntegrations();
+    } catch (err: any) {
+      console.error('Manual sync failed', err);
+      alert(err.response?.data?.message || 'Synchronization failed.');
+    } finally {
+      setSyncingGoogle(false);
     }
   };
 
@@ -112,7 +146,14 @@ export default function IntegrationsPage() {
                 </svg>
               </div>
               <div>
-                <h3 className="text-xl font-bold mb-1">Google Calendar & Meet</h3>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-xl font-bold">Google Calendar & Meet</h3>
+                  {googleIntegration?.connectedEmail && (
+                    <span className="text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                      {googleIntegration.connectedEmail}
+                    </span>
+                  )}
+                </div>
                 <p className="text-muted-foreground text-sm max-w-lg">
                   Automatically sync your events, check for conflicts in real-time, and generate Google Meet video links when someone books a meeting.
                 </p>
@@ -162,21 +203,65 @@ export default function IntegrationsPage() {
             </div>
           </div>
 
-          {/* Two-Way Conflict Check Toggle */}
+          {/* Connected Google Controls */}
           {googleIntegration && (
-            <div className="mt-6 pt-4 border-t border-border/50 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <ShieldCheck className="w-5 h-5 text-primary" />
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Check Google Calendar for conflicts</p>
-                  <p className="text-xs text-muted-foreground">Block busy times on your public booking page when you add events to Google Calendar.</p>
+            <div className="mt-6 pt-4 border-t border-border/50 space-y-4">
+              {/* 1. Auto Sync Toggle */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <RefreshCw className="w-5 h-5 text-primary" />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Auto-Sync Bookings: {googleIntegration.autoSync !== false ? 'ON' : 'OFF'}</p>
+                    <p className="text-xs text-muted-foreground">Automatically push newly booked meetings to your Google Calendar.</p>
+                  </div>
                 </div>
+                <Switch
+                  checked={googleIntegration.autoSync !== false}
+                  disabled={updatingProvider === 'google'}
+                  onCheckedChange={() => handleToggleAutoSync('google', googleIntegration.autoSync !== false)}
+                />
               </div>
-              <Switch
-                checked={googleIntegration.checkConflicts ?? true}
-                disabled={updatingProvider === 'google'}
-                onCheckedChange={() => handleToggleConflicts('google', googleIntegration.checkConflicts ?? true)}
-              />
+
+              {/* 2. Availability Conflict Check Toggle */}
+              <div className="flex items-center justify-between pt-2 border-t border-border/30">
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="w-5 h-5 text-primary" />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Availability Synchronization</p>
+                    <p className="text-xs text-muted-foreground">Block busy times on your public booking page when you add events to Google Calendar.</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={googleIntegration.checkConflicts ?? true}
+                  disabled={updatingProvider === 'google'}
+                  onCheckedChange={() => handleToggleConflicts('google', googleIntegration.checkConflicts ?? true)}
+                />
+              </div>
+
+              {/* 3. Manual Sync Button */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2 border-t border-border/30">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Two-Way Manual Sync</p>
+                  <p className="text-xs text-muted-foreground">
+                    {googleIntegration.lastSyncedAt
+                      ? `Last synchronized: ${new Date(googleIntegration.lastSyncedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                      : 'Reconcile changes made directly in Google Calendar (reschedules, cancellations).'}
+                  </p>
+                  {syncResult && (
+                    <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium mt-1 animate-in fade-in">
+                      ✓ {syncResult}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={handleManualSync}
+                  disabled={syncingGoogle}
+                  className="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-secondary/80 text-foreground text-xs font-semibold rounded-xl border border-border shadow-xs transition-all active:scale-95 disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${syncingGoogle ? 'animate-spin' : ''}`} />
+                  {syncingGoogle ? 'Synchronizing...' : 'Sync Now'}
+                </button>
+              </div>
             </div>
           )}
         </motion.div>

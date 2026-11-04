@@ -1,6 +1,7 @@
-import { Controller, Get, Patch, Delete, Param, Body, Req, Res, UseGuards, Query, InternalServerErrorException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Req, Res, Headers, UseGuards, Query, InternalServerErrorException } from '@nestjs/common';
 import { google } from 'googleapis';
 import { PrismaService } from '../prisma/prisma.service';
+import { CalendarService } from './calendar.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import type { Request, Response } from 'express';
 import axios from 'axios';
@@ -10,7 +11,10 @@ import { encryptToken } from '../common/security/security.util';
 
 @Controller('integrations')
 export class IntegrationsController {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private calendarService: CalendarService,
+  ) {}
 
   private getOAuth2Client() {
     if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REDIRECT_URI) {
@@ -119,6 +123,16 @@ export class IntegrationsController {
 
       const oauth2Client = this.getOAuth2Client();
       const { tokens } = await oauth2Client.getToken(code);
+      oauth2Client.setCredentials(tokens);
+
+      let connectedEmail: string | null = null;
+      try {
+        const cal = google.calendar({ version: 'v3', auth: oauth2Client });
+        const calList = await cal.calendars.get({ calendarId: 'primary' });
+        connectedEmail = calList.data.id || null;
+      } catch (err) {
+        console.warn('Could not fetch Google primary calendar email:', err);
+      }
       
       // Upsert the integration with AES-256-GCM encrypted tokens at rest
       await this.prisma.integration.upsert({
@@ -130,13 +144,17 @@ export class IntegrationsController {
         },
         update: {
           accessToken: encryptToken(tokens.access_token!),
-          refreshToken: tokens.refresh_token ? encryptToken(tokens.refresh_token) : undefined,
+          ...(tokens.refresh_token && { refreshToken: encryptToken(tokens.refresh_token) }),
+          ...(connectedEmail && { connectedEmail }),
+          lastSyncedAt: new Date(),
         },
         create: {
           userId: userId,
           provider: 'google',
           accessToken: encryptToken(tokens.access_token!),
           refreshToken: tokens.refresh_token ? encryptToken(tokens.refresh_token) : null,
+          connectedEmail: connectedEmail || null,
+          lastSyncedAt: new Date(),
         }
       });
 
@@ -300,11 +318,22 @@ export class IntegrationsController {
   async getIntegrations(@Req() req: any) {
     const integrations = await this.prisma.integration.findMany({
       where: { userId: req.user.userId },
-      select: { provider: true, checkConflicts: true, createdAt: true, accessToken: true }
+      select: {
+        provider: true,
+        checkConflicts: true,
+        autoSync: true,
+        connectedEmail: true,
+        lastSyncedAt: true,
+        createdAt: true,
+        accessToken: true
+      }
     });
     return integrations.map(i => ({
       provider: i.provider,
       checkConflicts: i.checkConflicts,
+      autoSync: i.autoSync,
+      connectedEmail: i.connectedEmail,
+      lastSyncedAt: i.lastSyncedAt,
       createdAt: i.createdAt,
       isExpired: i.accessToken === 'EXPIRED'
     }));
@@ -322,6 +351,43 @@ export class IntegrationsController {
       },
       data: { checkConflicts }
     });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':provider/auto-sync')
+  async toggleAutoSync(@Req() req: any, @Param('provider') provider: string, @Body('autoSync') autoSync: boolean) {
+    return this.prisma.integration.update({
+      where: {
+        userId_provider: {
+          userId: req.user.userId,
+          provider: provider
+        }
+      },
+      data: { autoSync }
+    });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('google/sync')
+  async triggerManualGoogleSync(@Req() req: any) {
+    return this.calendarService.syncGoogleCalendar(req.user.userId);
+  }
+
+  @Post('google/webhook')
+  async googleCalendarWebhook(
+    @Headers('x-goog-channel-id') channelId: string,
+    @Headers('x-goog-resource-state') state: string,
+    @Res() res: Response
+  ) {
+    if (state === 'exists' && channelId) {
+      const integration = await this.prisma.integration.findFirst({
+        where: { channelId }
+      });
+      if (integration) {
+        this.calendarService.syncGoogleCalendar(integration.userId).catch(() => {});
+      }
+    }
+    return res.status(200).send('OK');
   }
 
   @UseGuards(JwtAuthGuard)
