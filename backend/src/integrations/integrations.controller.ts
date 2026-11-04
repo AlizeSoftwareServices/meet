@@ -23,11 +23,12 @@ import * as crypto from 'crypto';
 import { getJwtSecret } from '../auth/jwt.config';
 import { encryptToken } from '../common/security/security.util';
 
-interface AuthenticatedRequest extends Request {
+export interface AuthenticatedRequest {
   user: {
     userId: string;
     email?: string;
   };
+  [key: string]: any;
 }
 
 @Controller('integrations')
