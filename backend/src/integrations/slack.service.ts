@@ -9,19 +9,27 @@ export class SlackService {
 
   constructor(private prisma: PrismaService) {}
 
-  async sendBookingNotification(hostId: string, guestName: string, guestEmail: string, startTime: string, eventTitle: string) {
+  async sendBookingNotification(
+    hostId: string,
+    guestName: string,
+    guestEmail: string,
+    startTime: string,
+    eventTitle: string,
+  ) {
     try {
       const integration = await this.prisma.integration.findUnique({
         where: {
           userId_provider: {
             userId: hostId,
-            provider: 'slack'
-          }
-        }
+            provider: 'slack',
+          },
+        },
       });
 
       if (!integration) {
-        this.logger.log(`No Slack integration found for host ${hostId}. Skipping notification.`);
+        this.logger.log(
+          `No Slack integration found for host ${hostId}. Skipping notification.`,
+        );
         return;
       }
 
@@ -36,79 +44,98 @@ export class SlackService {
       const message = {
         blocks: [
           {
-            type: "header",
+            type: 'header',
             text: {
-              type: "plain_text",
-              text: "🎉 New Meeting Booked!",
-              emoji: true
-            }
+              type: 'plain_text',
+              text: '🎉 New Meeting Booked!',
+              emoji: true,
+            },
           },
           {
-            type: "section",
+            type: 'section',
             fields: [
               {
-                type: "mrkdwn",
-                text: `*Event:*\n${eventTitle}`
+                type: 'mrkdwn',
+                text: `*Event:*\n${eventTitle}`,
               },
               {
-                type: "mrkdwn",
-                text: `*When:*\n${dateStr}`
-              }
-            ]
+                type: 'mrkdwn',
+                text: `*When:*\n${dateStr}`,
+              },
+            ],
           },
           {
-            type: "section",
+            type: 'section',
             fields: [
               {
-                type: "mrkdwn",
-                text: `*Guest:*\n${guestName}`
+                type: 'mrkdwn',
+                text: `*Guest:*\n${guestName}`,
               },
               {
-                type: "mrkdwn",
-                text: `*Email:*\n${guestEmail}`
-              }
-            ]
-          }
-        ]
+                type: 'mrkdwn',
+                text: `*Email:*\n${guestEmail}`,
+              },
+            ],
+          },
+        ],
       };
 
       await axios.post(webhookUrl, message);
       this.logger.log(`[SLACK] Sent booking notification for host ${hostId}`);
     } catch (error) {
-      this.logger.error(`[SLACK] Failed to send notification: ${error.message}`);
+      this.logger.error(
+        `[SLACK] Failed to send notification: ${error.message}`,
+      );
     }
   }
 
-  async sendCancellationNotification(hostId: string, guestName: string, eventTitle: string, reason: string) {
+  async sendCancellationNotification(
+    hostId: string,
+    guestName: string,
+    eventTitle: string,
+    reason: string,
+  ) {
     try {
       const integration = await this.prisma.integration.findUnique({
-        where: { userId_provider: { userId: hostId, provider: 'slack' } }
+        where: { userId_provider: { userId: hostId, provider: 'slack' } },
       });
 
       const webhookUrl = decryptToken(integration?.accessToken);
-      if (!integration || !webhookUrl.startsWith('https://hooks.slack.com/')) return;
+      if (!integration || !webhookUrl.startsWith('https://hooks.slack.com/'))
+        return;
 
       const message = {
         blocks: [
           {
-            type: "header",
-            text: { type: "plain_text", text: "❌ Meeting Canceled", emoji: true }
+            type: 'header',
+            text: {
+              type: 'plain_text',
+              text: '❌ Meeting Canceled',
+              emoji: true,
+            },
           },
           {
-            type: "section",
-            text: { type: "mrkdwn", text: `The meeting *${eventTitle}* with *${guestName}* has been canceled.` }
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: `The meeting *${eventTitle}* with *${guestName}* has been canceled.`,
+            },
           },
           {
-            type: "context",
-            elements: [ { type: "mrkdwn", text: `*Reason:* ${reason}` } ]
-          }
-        ]
+            type: 'context',
+            elements: [{ type: 'mrkdwn', text: `*Reason:* ${reason}` }],
+          },
+        ],
       };
 
       await axios.post(webhookUrl, message);
-      this.logger.log(`[SLACK] Sent cancellation notification for host ${hostId}`);
+      this.logger.log(
+        `[SLACK] Sent cancellation notification for host ${hostId}`,
+      );
     } catch (error) {
-      this.logger.error(`[SLACK] Failed to send cancellation: ${error.message}`);
+      this.logger.error(
+        `[SLACK] Failed to send cancellation: ${error.message}`,
+      );
     }
   }
 }

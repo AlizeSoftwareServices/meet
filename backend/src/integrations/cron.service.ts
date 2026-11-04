@@ -18,19 +18,21 @@ export class CronService {
 
   @Cron(CronExpression.EVERY_5_MINUTES)
   async handleWorkflows() {
-    this.logger.debug('Running cron job to execute event workflows and reminders');
+    this.logger.debug(
+      'Running cron job to execute event workflows and reminders',
+    );
 
     try {
       const workflows = await this.prisma.workflow.findMany({
-        include: { eventType: true }
+        include: { eventType: true },
       });
 
       const now = new Date();
-      
+
       for (const workflow of workflows) {
         // timeOffset is in minutes
         const msOffset = (workflow.timeOffset || 0) * 60 * 1000;
-        
+
         let targetStartMin: Date;
         let targetStartMax: Date;
         let timeField: 'startTime' | 'endTime';
@@ -48,7 +50,7 @@ export class CronService {
         } else {
           continue;
         }
-        
+
         const bookings = await this.prisma.booking.findMany({
           where: {
             eventTypeId: workflow.eventTypeId,
@@ -56,10 +58,10 @@ export class CronService {
             [timeField]: {
               gte: targetStartMin,
               lt: targetStartMax,
-            }
-          }
+            },
+          },
         });
-        
+
         for (const booking of bookings) {
           try {
             // Attempt to insert into WorkflowExecution to deduplicate
@@ -67,50 +69,77 @@ export class CronService {
               data: {
                 bookingId: booking.id,
                 workflowId: workflow.id,
-              }
+              },
             });
 
-            this.logger.debug(`Executing workflow ${workflow.triggerType} for booking ${booking.id} (${booking.guestEmail})`);
-            
+            this.logger.debug(
+              `Executing workflow ${workflow.triggerType} for booking ${booking.id} (${booking.guestEmail})`,
+            );
+
             if (workflow.actionType === 'EMAIL') {
               if (workflow.emailSubject || workflow.emailBody) {
-                await this.emailService.sendCustomWorkflowEmail(
-                  booking.guestEmail,
-                  booking.guestName,
-                  workflow.eventType.title,
-                  booking.startTime.toISOString(),
-                  booking.meetLink || undefined,
-                  workflow.emailSubject,
-                  workflow.emailBody
-                ).catch(e => this.logger.error(`Failed to send custom workflow email for booking ${booking.id}: ${e.message}`));
+                await this.emailService
+                  .sendCustomWorkflowEmail(
+                    booking.guestEmail,
+                    booking.guestName,
+                    workflow.eventType.title,
+                    booking.startTime.toISOString(),
+                    booking.meetLink || undefined,
+                    workflow.emailSubject,
+                    workflow.emailBody,
+                  )
+                  .catch((e: unknown) =>
+                    this.logger.error(
+                      `Failed to send custom workflow email for booking ${booking.id}: ${e instanceof Error ? e.message : String(e)}`,
+                    ),
+                  );
               } else if (workflow.triggerType === 'BEFORE_EVENT') {
-                await this.emailService.sendReminderEmail(
-                  booking.guestEmail,
-                  booking.guestName,
-                  workflow.eventType.title,
-                  booking.startTime.toISOString(),
-                  booking.meetLink || undefined
-                ).catch(e => this.logger.error(`Failed to send reminder for booking ${booking.id}: ${e.message}`));
+                await this.emailService
+                  .sendReminderEmail(
+                    booking.guestEmail,
+                    booking.guestName,
+                    workflow.eventType.title,
+                    booking.startTime.toISOString(),
+                    booking.meetLink || undefined,
+                  )
+                  .catch((e: unknown) =>
+                    this.logger.error(
+                      `Failed to send reminder for booking ${booking.id}: ${e instanceof Error ? e.message : String(e)}`,
+                    ),
+                  );
               } else if (workflow.triggerType === 'AFTER_EVENT') {
-                await this.emailService.sendFollowUpEmail(
-                  booking.guestEmail,
-                  booking.guestName,
-                  workflow.eventType.title
-                ).catch(e => this.logger.error(`Failed to send follow-up for booking ${booking.id}: ${e.message}`));
+                await this.emailService
+                  .sendFollowUpEmail(
+                    booking.guestEmail,
+                    booking.guestName,
+                    workflow.eventType.title,
+                  )
+                  .catch((e: unknown) =>
+                    this.logger.error(
+                      `Failed to send follow-up for booking ${booking.id}: ${e instanceof Error ? e.message : String(e)}`,
+                    ),
+                  );
               }
             }
-          } catch (executionError: any) {
+          } catch (executionError: unknown) {
+            const err = executionError as { code?: string; message?: string };
             // P2002 is the unique constraint violation code in Prisma
-            if (executionError.code === 'P2002') {
-              this.logger.debug(`Workflow for booking ${booking.id} and workflow ${workflow.id} already executed. Skipping.`);
+            if (err?.code === 'P2002') {
+              this.logger.debug(
+                `Workflow for booking ${booking.id} and workflow ${workflow.id} already executed. Skipping.`,
+              );
             } else {
-              this.logger.error(`Error checking workflow execution for booking ${booking.id}: ${executionError.message}`);
+              this.logger.error(
+                `Error checking workflow execution for booking ${booking.id}: ${err?.message || String(executionError)}`,
+              );
             }
           }
         }
       }
-    } catch (error: any) {
-      this.logger.error(`Error in CronService handleWorkflows: ${error.message}`);
+    } catch (error: unknown) {
+      this.logger.error(
+        `Error in CronService handleWorkflows: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -131,25 +160,31 @@ export class CronService {
    */
   @Cron(CronExpression.EVERY_10_MINUTES)
   async handleCalendarTwoWaySync(): Promise<void> {
-    this.logger.debug('Running background 2-way Google Calendar synchronization');
+    this.logger.debug(
+      'Running background 2-way Google Calendar synchronization',
+    );
     try {
       const activeGoogleIntegrations = await this.prisma.integration.findMany({
         where: {
           provider: 'google',
           autoSync: true,
-          accessToken: { not: 'EXPIRED' }
-        }
+          accessToken: { not: 'EXPIRED' },
+        },
       });
 
       for (const integration of activeGoogleIntegrations) {
         try {
           await this.calendarService.syncGoogleCalendar(integration.userId);
-        } catch (err: any) {
-          this.logger.warn(`Background sync failed for user ${integration.userId}: ${err.message}`);
+        } catch (err: unknown) {
+          this.logger.warn(
+            `Background sync failed for user ${integration.userId}: ${err instanceof Error ? err.message : String(err)}`,
+          );
         }
       }
-    } catch (error: any) {
-      this.logger.error(`Error in handleCalendarTwoWaySync cron: ${error.message}`);
+    } catch (error: unknown) {
+      this.logger.error(
+        `Error in handleCalendarTwoWaySync cron: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 }

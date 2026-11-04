@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -8,24 +12,24 @@ export class AvailabilityService {
   async getSchedules(userId: string) {
     let schedules = await this.prisma.availability.findMany({
       where: { userId },
-      include: { slots: true, overrides: true }
+      include: { slots: true, overrides: true },
     });
     if (schedules.length === 0) {
       const created = await this.prisma.availability.create({
         data: { userId, name: 'Working Hours', isDefault: true },
       });
       // Add default slots for Mon-Fri
-      const defaultSlots = [1, 2, 3, 4, 5].map(day => ({
+      const defaultSlots = [1, 2, 3, 4, 5].map((day) => ({
         availabilityId: created.id,
         dayOfWeek: day,
         startTime: '09:00',
-        endTime: '17:00'
+        endTime: '17:00',
       }));
       await this.prisma.availabilitySlot.createMany({ data: defaultSlots });
-      
+
       const fullCreated = await this.prisma.availability.findUnique({
         where: { id: created.id },
-        include: { slots: true, overrides: true }
+        include: { slots: true, overrides: true },
       });
       schedules = [fullCreated as any];
     }
@@ -35,7 +39,7 @@ export class AvailabilityService {
   async getSchedule(userId: string, id: string) {
     const schedule = await this.prisma.availability.findUnique({
       where: { id },
-      include: { slots: true, overrides: true }
+      include: { slots: true, overrides: true },
     });
     if (!schedule || schedule.userId !== userId) {
       throw new NotFoundException('Schedule not found');
@@ -46,15 +50,24 @@ export class AvailabilityService {
   async createSchedule(userId: string, name: string) {
     return this.prisma.availability.create({
       data: { userId, name, isDefault: false },
-      include: { slots: true, overrides: true }
+      include: { slots: true, overrides: true },
     });
   }
 
-  async updateSchedule(userId: string, id: string, name: string, isDefault: boolean, timezone: string, slots: any[], overrides: any[] = []) {
+  async updateSchedule(
+    userId: string,
+    id: string,
+    name: string,
+    isDefault: boolean,
+    timezone: string,
+    slots: any[],
+    overrides: any[] = [],
+  ) {
     const schedule = await this.getSchedule(userId, id);
 
     const finalName = name || schedule.name || 'Working Hours';
-    const finalIsDefault = typeof isDefault === 'boolean' ? isDefault : schedule.isDefault;
+    const finalIsDefault =
+      typeof isDefault === 'boolean' ? isDefault : schedule.isDefault;
     const finalTimezone = timezone || schedule.timezone || 'UTC';
     const finalSlots = Array.isArray(slots) ? slots : [];
     const finalOverrides = Array.isArray(overrides) ? overrides : [];
@@ -63,23 +76,31 @@ export class AvailabilityService {
       // Unset previous defaults
       await this.prisma.availability.updateMany({
         where: { userId, isDefault: true },
-        data: { isDefault: false }
+        data: { isDefault: false },
       });
     }
 
     await this.prisma.$transaction([
-      this.prisma.availabilitySlot.deleteMany({ where: { availabilityId: id } }),
-      this.prisma.availabilityOverride.deleteMany({ where: { availabilityId: id } }),
+      this.prisma.availabilitySlot.deleteMany({
+        where: { availabilityId: id },
+      }),
+      this.prisma.availabilityOverride.deleteMany({
+        where: { availabilityId: id },
+      }),
     ]);
 
     await this.prisma.availability.update({
       where: { id },
-      data: { name: finalName, isDefault: finalIsDefault, timezone: finalTimezone }
+      data: {
+        name: finalName,
+        isDefault: finalIsDefault,
+        timezone: finalTimezone,
+      },
     });
 
     if (finalSlots.length > 0) {
       await this.prisma.availabilitySlot.createMany({
-        data: finalSlots.map(slot => ({
+        data: finalSlots.map((slot) => ({
           availabilityId: id,
           dayOfWeek: Number(slot.dayOfWeek),
           startTime: slot.startTime,
@@ -90,7 +111,7 @@ export class AvailabilityService {
 
     if (finalOverrides.length > 0) {
       await this.prisma.availabilityOverride.createMany({
-        data: finalOverrides.map(override => ({
+        data: finalOverrides.map((override) => ({
           availabilityId: id,
           date: override.date,
           isAvailable: Boolean(override.isAvailable),
@@ -121,7 +142,7 @@ export class AvailabilityService {
     if (!availability) {
       availability = await this.prisma.availability.findFirst({
         where: { userId },
-        include: { slots: true, overrides: true }
+        include: { slots: true, overrides: true },
       });
     }
     if (!availability) {
@@ -135,6 +156,14 @@ export class AvailabilityService {
 
   async setAvailability(userId: string, slots: any[], overrides: any[] = []) {
     const availability = await this.getAvailability(userId);
-    return this.updateSchedule(userId, availability.id, availability.name, true, availability.timezone, slots, overrides);
+    return this.updateSchedule(
+      userId,
+      availability.id,
+      availability.name,
+      true,
+      availability.timezone,
+      slots,
+      overrides,
+    );
   }
 }

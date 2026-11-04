@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Param, Query, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Query,
+  BadRequestException,
+} from '@nestjs/common';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { PublicService } from './public.service';
 import { BookingsService } from '../bookings/bookings.service';
@@ -8,7 +16,7 @@ import { CreateBookingDto } from '../bookings/dto/create-booking.dto';
 export class PublicController {
   constructor(
     private readonly publicService: PublicService,
-    private readonly bookingsService: BookingsService
+    private readonly bookingsService: BookingsService,
   ) {}
 
   // FIX #4: Profile lookups — generous limit, mostly read-only
@@ -25,12 +33,19 @@ export class PublicController {
     @Param('username') username: string,
     @Param('eventSlug') eventSlug: string,
     @Query('date') date: string,
-    @Query('timezone') timezone: string
+    @Query('timezone') timezone: string,
   ) {
     if (!date) {
-      throw new BadRequestException('Date query parameter is required (YYYY-MM-DD)');
+      throw new BadRequestException(
+        'Date query parameter is required (YYYY-MM-DD)',
+      );
     }
-    return this.publicService.getAvailableSlots(username, eventSlug, date, timezone);
+    return this.publicService.getAvailableSlots(
+      username,
+      eventSlug,
+      date,
+      timezone,
+    );
   }
 
   @Throttle({ default: { limit: 60, ttl: 60000 } })
@@ -39,12 +54,19 @@ export class PublicController {
     @Param('username') username: string,
     @Param('eventSlug') eventSlug: string,
     @Query('month') month: string,
-    @Query('timezone') timezone: string
+    @Query('timezone') timezone: string,
   ) {
     if (!month) {
-      throw new BadRequestException('Month query parameter is required (YYYY-MM)');
+      throw new BadRequestException(
+        'Month query parameter is required (YYYY-MM)',
+      );
     }
-    return this.publicService.getAvailableDatesForMonth(username, eventSlug, month, timezone);
+    return this.publicService.getAvailableDatesForMonth(
+      username,
+      eventSlug,
+      month,
+      timezone,
+    );
   }
 
   // FIX #4: Booking creation — strict 10/min to prevent spam/abuse

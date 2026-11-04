@@ -1,4 +1,11 @@
-import { IsString, IsInt, Min, Max, IsArray, ValidateNested } from 'class-validator';
+import {
+  IsString,
+  IsInt,
+  Min,
+  Max,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class AvailabilitySlotDto {
@@ -11,7 +18,7 @@ export class AvailabilitySlotDto {
   startTime: string; // "09:00"
 
   @IsString()
-  endTime: string;   // "17:00"
+  endTime: string; // "17:00"
 }
 
 export class UpdateAvailabilityDto {

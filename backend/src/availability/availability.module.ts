@@ -8,6 +8,6 @@ import { IntegrationsModule } from '../integrations/integrations.module';
   imports: [IntegrationsModule],
   providers: [AvailabilityService, AvailabilityEngineService],
   controllers: [AvailabilityController],
-  exports: [AvailabilityService, AvailabilityEngineService]
+  exports: [AvailabilityService, AvailabilityEngineService],
 })
 export class AvailabilityModule {}

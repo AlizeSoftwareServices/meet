@@ -7,7 +7,7 @@ import { CalendarService } from '../integrations/calendar.service';
 export class UsersService {
   constructor(
     private prisma: PrismaService,
-    private calendarService: CalendarService
+    private calendarService: CalendarService,
   ) {}
 
   async findByEmail(email: string): Promise<User | null> {
@@ -25,7 +25,7 @@ export class UsersService {
   async getProfile(userId: string) {
     const profile = await this.prisma.profile.findUnique({
       where: { userId },
-      include: { user: { select: { email: true } } }
+      include: { user: { select: { email: true } } },
     });
     if (!profile) return null;
     return { ...profile, email: profile.user?.email };
@@ -33,7 +33,7 @@ export class UsersService {
 
   async updateProfile(userId: string, data: any) {
     const { email, ...profileData } = data;
-    
+
     const profile = await this.prisma.profile.update({
       where: { userId },
       data: profileData,
@@ -55,19 +55,21 @@ export class UsersService {
       where: {
         hostId: userId,
         startTime: { gte: new Date() },
-        status: 'CONFIRMED'
-      }
+        status: 'CONFIRMED',
+      },
     });
 
     for (const booking of futureBookings) {
       if (booking.externalEventId) {
-        await this.calendarService.deleteCalendarEvent(userId, booking.externalEventId).catch(() => {});
+        await this.calendarService
+          .deleteCalendarEvent(userId, booking.externalEventId)
+          .catch(() => {});
       }
     }
 
     // 2. Cascade delete will handle the rest (Tokens, Profile, Bookings, Contacts, Integrations)
     await this.prisma.user.delete({
-      where: { id: userId }
+      where: { id: userId },
     });
 
     return { success: true };

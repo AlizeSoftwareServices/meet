@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateWorkflowDto } from './dto/create-workflow.dto';
 import { UpdateWorkflowDto } from './dto/update-workflow.dto';
@@ -50,7 +54,11 @@ export class WorkflowsService {
     return workflow;
   }
 
-  async update(userId: string, id: string, updateWorkflowDto: UpdateWorkflowDto) {
+  async update(
+    userId: string,
+    id: string,
+    updateWorkflowDto: UpdateWorkflowDto,
+  ) {
     await this.findOne(userId, id); // validates ownership
 
     return this.prisma.workflow.update({

@@ -22,11 +22,11 @@ async function main() {
           timezone: 'America/New_York',
           brandColor: '#ff0000',
           bookingPageTitle: 'Book time with Phase4A Host',
-          bookingPageDescription: 'Welcome to my test page'
-        }
-      }
+          bookingPageDescription: 'Welcome to my test page',
+        },
+      },
     },
-    include: { profile: true }
+    include: { profile: true },
   });
   console.log('✅ Host created with branding');
 
@@ -38,8 +38,8 @@ async function main() {
       slug: 'phase4a-test',
       duration: 30,
       isActive: true,
-      isGroupEvent: false
-    }
+      isGroupEvent: false,
+    },
   });
   console.log('✅ Event type created');
 
@@ -51,12 +51,18 @@ async function main() {
       duration: 30,
       slots: {
         create: [
-          { startTime: new Date('2026-01-01T10:00:00Z'), endTime: new Date('2026-01-01T10:30:00Z') },
-          { startTime: new Date('2026-01-01T11:00:00Z'), endTime: new Date('2026-01-01T11:30:00Z') }
-        ]
-      }
+          {
+            startTime: new Date('2026-01-01T10:00:00Z'),
+            endTime: new Date('2026-01-01T10:30:00Z'),
+          },
+          {
+            startTime: new Date('2026-01-01T11:00:00Z'),
+            endTime: new Date('2026-01-01T11:30:00Z'),
+          },
+        ],
+      },
     },
-    include: { slots: true }
+    include: { slots: true },
   });
   console.log('✅ Meeting Poll created with slots');
 
@@ -66,8 +72,8 @@ async function main() {
       pollSlotId: poll.slots[0].id,
       guestName: 'Guest One',
       guestEmail: 'guest1@test.com',
-      status: 'YES'
-    }
+      status: 'YES',
+    },
   });
   console.log('✅ Guest voted on poll slot');
 
@@ -76,15 +82,15 @@ async function main() {
     data: {
       eventTypeId: eventType.id,
       tokenHash: 'test-single-use-token',
-      expiresAt: new Date(Date.now() + 86400000)
-    }
+      expiresAt: new Date(Date.now() + 86400000),
+    },
   });
   console.log('✅ Single-use link created');
 
   // 6. Test Book with Single Use Link (simulate)
   await prisma.singleUseLink.update({
     where: { tokenHash: singleUseLink.tokenHash },
-    data: { used: true }
+    data: { used: true },
   });
   console.log('✅ Single-use link consumed successfully');
 
@@ -92,7 +98,7 @@ async function main() {
 }
 
 main()
-  .catch(e => {
+  .catch((e) => {
     console.error(e);
     process.exit(1);
   })

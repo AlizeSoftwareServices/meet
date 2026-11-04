@@ -1,10 +1,28 @@
-import { IsString, IsNotEmpty, IsNumber, IsOptional, IsBoolean, IsIn, IsArray, ArrayMinSize, ValidateNested } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsBoolean,
+  IsIn,
+  IsArray,
+  ArrayMinSize,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 class CustomQuestionDto {
   @IsString()
   @IsNotEmpty()
-  @IsIn(['TEXT', 'LONG_TEXT', 'PHONE', 'NUMBER', 'DROPDOWN', 'MULTIPLE_CHOICE', 'CHECKBOX'])
+  @IsIn([
+    'TEXT',
+    'LONG_TEXT',
+    'PHONE',
+    'NUMBER',
+    'DROPDOWN',
+    'MULTIPLE_CHOICE',
+    'CHECKBOX',
+  ])
   type: string;
 
   @IsString()

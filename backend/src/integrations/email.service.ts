@@ -1,4 +1,8 @@
-import { Injectable, Logger, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { createEvent, EventAttributes } from 'ics';
 import { escapeHtml } from '../common/security/security.util';
@@ -13,7 +17,9 @@ export class EmailService {
   }
 
   private initTransporter() {
-    const host = process.env.SMTP_HOST || (process.env.GMAIL_USER ? 'smtp.gmail.com' : null);
+    const host =
+      process.env.SMTP_HOST ||
+      (process.env.GMAIL_USER ? 'smtp.gmail.com' : null);
     const port = Number(process.env.SMTP_PORT) || 587;
     const user = process.env.SMTP_USER || process.env.GMAIL_USER;
     const pass = process.env.SMTP_PASS || process.env.GMAIL_PASS;
@@ -25,12 +31,16 @@ export class EmailService {
         secure: port === 465,
         auth: { user, pass },
         tls: {
-          rejectUnauthorized: false
-        }
+          rejectUnauthorized: false,
+        },
       });
-      this.logger.log(`[EmailService] Initialized SMTP transporter with host: ${host}`);
+      this.logger.log(
+        `[EmailService] Initialized SMTP transporter with host: ${host}`,
+      );
     } else {
-      this.logger.warn(`[EmailService] No SMTP credentials provided. Email sending will fail.`);
+      this.logger.warn(
+        `[EmailService] No SMTP credentials provided. Email sending will fail.`,
+      );
     }
   }
 
@@ -41,9 +51,16 @@ export class EmailService {
     return 'Meet <no-reply@alizesoftwareservices.com>';
   }
 
-  private async sendMail(to: string, subject: string, htmlContent: string, attachments?: any[]) {
+  private async sendMail(
+    to: string,
+    subject: string,
+    htmlContent: string,
+    attachments?: any[],
+  ) {
     if (!this.transporter) {
-       throw new InternalServerErrorException('SMTP credentials are not configured. Cannot send email.');
+      throw new InternalServerErrorException(
+        'SMTP credentials are not configured. Cannot send email.',
+      );
     }
 
     try {
@@ -54,10 +71,14 @@ export class EmailService {
         html: htmlContent,
         attachments,
       });
-      this.logger.log(`[EmailService] Email sent successfully to ${to}. MessageId: ${info.messageId}`);
+      this.logger.log(
+        `[EmailService] Email sent successfully to ${to}. MessageId: ${info.messageId}`,
+      );
       return { success: true, messageId: info.messageId };
     } catch (error) {
-      this.logger.error(`[EmailService] Failed to send email via SMTP: ${error.message}`);
+      this.logger.error(
+        `[EmailService] Failed to send email via SMTP: ${error.message}`,
+      );
       throw new InternalServerErrorException('Failed to send email via SMTP');
     }
   }
@@ -103,7 +124,18 @@ export class EmailService {
     `;
   }
 
-  async sendBookingConfirmation(email: string, guestName: string, eventTitle: string, startTime: string, meetLink?: string, duration: number = 30, hostName: string = 'Host', hostEmail?: string, cancelToken?: string, rescheduleToken?: string) {
+  async sendBookingConfirmation(
+    email: string,
+    guestName: string,
+    eventTitle: string,
+    startTime: string,
+    meetLink?: string,
+    duration: number = 30,
+    hostName: string = 'Host',
+    hostEmail?: string,
+    cancelToken?: string,
+    rescheduleToken?: string,
+  ) {
     const safeGuest = escapeHtml(guestName);
     const safeEvent = escapeHtml(eventTitle);
     const safeHost = escapeHtml(hostName);
@@ -127,23 +159,31 @@ export class EmailService {
           <div class="label">Date & Time</div>
           <div class="value">${formattedDate}</div>
         </div>
-        ${meetLink ? `
+        ${
+          meetLink
+            ? `
         <div class="detail-item">
           <div class="label">Join Meeting</div>
           <div class="value"><a href="${meetLink}" target="_blank" style="color: #2563eb;">${meetLink}</a></div>
         </div>
-        ` : ''}
+        `
+            : ''
+        }
       </div>
 
       ${meetLink ? `<a href="${meetLink}" class="button" target="_blank">Join Meeting</a>` : ''}
 
-      ${cancelToken || rescheduleToken ? `
+      ${
+        cancelToken || rescheduleToken
+          ? `
         <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 13px;">
           <p style="margin-bottom: 8px;">Need to make changes?</p>
           ${rescheduleToken ? `<a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/guest/reschedule?token=${rescheduleToken}" style="color: #64748b; text-decoration: underline; margin-right: 12px;">Reschedule</a>` : ''}
           ${cancelToken ? `<a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/guest/cancel?token=${cancelToken}" style="color: #64748b; text-decoration: underline;">Cancel</a>` : ''}
         </div>
-      ` : ''}
+      `
+          : ''
+      }
     `;
 
     // Generate .ics attachment
@@ -151,26 +191,57 @@ export class EmailService {
     try {
       const icsPromise = new Promise<string>((resolve, reject) => {
         const event: EventAttributes = {
-          start: [start.getUTCFullYear(), start.getUTCMonth() + 1, start.getUTCDate(), start.getUTCHours(), start.getUTCMinutes()],
-          end: [end.getUTCFullYear(), end.getUTCMonth() + 1, end.getUTCDate(), end.getUTCHours(), end.getUTCMinutes()],
+          start: [
+            start.getUTCFullYear(),
+            start.getUTCMonth() + 1,
+            start.getUTCDate(),
+            start.getUTCHours(),
+            start.getUTCMinutes(),
+          ],
+          end: [
+            end.getUTCFullYear(),
+            end.getUTCMonth() + 1,
+            end.getUTCDate(),
+            end.getUTCHours(),
+            end.getUTCMinutes(),
+          ],
           title: `${eventTitle}: ${guestName}`,
           description: `Meeting with ${guestName}.${meetLink ? `\nJoin with Google Meet: ${meetLink}` : ''}`,
           location: meetLink || 'Google Meet',
-          organizer: { name: hostName, email: hostEmail || 'no-reply@meet.com' },
-          status: 'CONFIRMED'
+          organizer: {
+            name: hostName,
+            email: hostEmail || 'no-reply@meet.com',
+          },
+          status: 'CONFIRMED',
         };
         createEvent(event, (err, val) => (err ? reject(err) : resolve(val)));
       });
       const ics = await icsPromise;
-      attachments = [{ filename: 'invite.ics', content: ics, contentType: 'text/calendar; charset=utf-8; method=REQUEST' }];
+      attachments = [
+        {
+          filename: 'invite.ics',
+          content: ics,
+          contentType: 'text/calendar; charset=utf-8; method=REQUEST',
+        },
+      ];
     } catch (e) {
       this.logger.warn('Failed to generate .ics invite attachment');
     }
 
-    return this.sendMail(email, `Confirmed: ${eventTitle} with Meet`, this.getBaseTemplate('Meeting Confirmed', content), attachments);
+    return this.sendMail(
+      email,
+      `Confirmed: ${eventTitle} with Meet`,
+      this.getBaseTemplate('Meeting Confirmed', content),
+      attachments,
+    );
   }
 
-  async sendCancellationEmail(email: string, guestName: string, eventTitle: string, reason?: string) {
+  async sendCancellationEmail(
+    email: string,
+    guestName: string,
+    eventTitle: string,
+    reason?: string,
+  ) {
     const safeGuest = escapeHtml(guestName);
     const safeEvent = escapeHtml(eventTitle);
     const safeReason = reason ? escapeHtml(reason) : '';
@@ -183,21 +254,37 @@ export class EmailService {
           <div class="label">Event</div>
           <div class="value">${safeEvent}</div>
         </div>
-        ${safeReason ? `
+        ${
+          safeReason
+            ? `
         <div class="detail-item">
           <div class="label">Reason</div>
           <div class="value">${safeReason}</div>
         </div>
-        ` : ''}
+        `
+            : ''
+        }
       </div>
 
       <p style="font-size: 14px; color: #64748b;">If you wish to re-book, please visit the host's booking link.</p>
     `;
 
-    return this.sendMail(email, `Cancelled: ${eventTitle}`, this.getBaseTemplate('Meeting Cancelled', content));
+    return this.sendMail(
+      email,
+      `Cancelled: ${eventTitle}`,
+      this.getBaseTemplate('Meeting Cancelled', content),
+    );
   }
 
-  async sendRescheduleEmail(email: string, guestName: string, eventTitle: string, newStartTime: string, meetLink?: string, cancelToken?: string, rescheduleToken?: string) {
+  async sendRescheduleEmail(
+    email: string,
+    guestName: string,
+    eventTitle: string,
+    newStartTime: string,
+    meetLink?: string,
+    cancelToken?: string,
+    rescheduleToken?: string,
+  ) {
     const safeGuest = escapeHtml(guestName);
     const safeEvent = escapeHtml(eventTitle);
     const formattedDate = new Date(newStartTime).toLocaleString('en-US', {
@@ -218,29 +305,47 @@ export class EmailService {
           <div class="label">New Date & Time</div>
           <div class="value">${formattedDate}</div>
         </div>
-        ${meetLink ? `
+        ${
+          meetLink
+            ? `
         <div class="detail-item">
           <div class="label">Join Meeting</div>
           <div class="value"><a href="${meetLink}" target="_blank" style="color: #2563eb;">${meetLink}</a></div>
         </div>
-        ` : ''}
+        `
+            : ''
+        }
       </div>
 
       ${meetLink ? `<a href="${meetLink}" class="button" target="_blank">Join Meeting</a>` : ''}
 
-      ${cancelToken || rescheduleToken ? `
+      ${
+        cancelToken || rescheduleToken
+          ? `
         <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 13px;">
           <p style="margin-bottom: 8px;">Need to make changes?</p>
           ${rescheduleToken ? `<a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/guest/reschedule?token=${rescheduleToken}" style="color: #64748b; text-decoration: underline; margin-right: 12px;">Reschedule</a>` : ''}
           ${cancelToken ? `<a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/guest/cancel?token=${cancelToken}" style="color: #64748b; text-decoration: underline;">Cancel</a>` : ''}
         </div>
-      ` : ''}
+      `
+          : ''
+      }
     `;
 
-    return this.sendMail(email, `Rescheduled: ${eventTitle}`, this.getBaseTemplate('Meeting Rescheduled', content));
+    return this.sendMail(
+      email,
+      `Rescheduled: ${eventTitle}`,
+      this.getBaseTemplate('Meeting Rescheduled', content),
+    );
   }
 
-  async sendReminderEmail(email: string, guestName: string, eventTitle: string, startTime: string, meetLink?: string) {
+  async sendReminderEmail(
+    email: string,
+    guestName: string,
+    eventTitle: string,
+    startTime: string,
+    meetLink?: string,
+  ) {
     const safeGuest = escapeHtml(guestName);
     const safeEvent = escapeHtml(eventTitle);
     const formattedDate = new Date(startTime).toLocaleString('en-US', {
@@ -261,21 +366,33 @@ export class EmailService {
           <div class="label">Time</div>
           <div class="value">${formattedDate}</div>
         </div>
-        ${meetLink ? `
+        ${
+          meetLink
+            ? `
         <div class="detail-item">
           <div class="label">Join Link</div>
           <div class="value"><a href="${meetLink}" target="_blank" style="color: #2563eb;">${meetLink}</a></div>
         </div>
-        ` : ''}
+        `
+            : ''
+        }
       </div>
 
       ${meetLink ? `<a href="${meetLink}" class="button" target="_blank">Join Meeting</a>` : ''}
     `;
 
-    return this.sendMail(email, `Reminder: ${eventTitle} coming up soon`, this.getBaseTemplate('Meeting Reminder', content));
+    return this.sendMail(
+      email,
+      `Reminder: ${eventTitle} coming up soon`,
+      this.getBaseTemplate('Meeting Reminder', content),
+    );
   }
 
-  async sendFollowUpEmail(email: string, guestName: string, eventTitle: string) {
+  async sendFollowUpEmail(
+    email: string,
+    guestName: string,
+    eventTitle: string,
+  ) {
     const safeGuest = escapeHtml(guestName);
     const safeEvent = escapeHtml(eventTitle);
     const content = `
@@ -284,7 +401,11 @@ export class EmailService {
       <p>We hope it was productive. If you have any follow-up questions, feel free to reply or book another session.</p>
     `;
 
-    return this.sendMail(email, `Follow-up: ${eventTitle}`, this.getBaseTemplate('Thank You for Attending', content));
+    return this.sendMail(
+      email,
+      `Follow-up: ${eventTitle}`,
+      this.getBaseTemplate('Thank You for Attending', content),
+    );
   }
 
   async sendCustomWorkflowEmail(
@@ -294,7 +415,7 @@ export class EmailService {
     startTime: string,
     meetLink?: string,
     customSubject?: string | null,
-    customBody?: string | null
+    customBody?: string | null,
   ) {
     const safeGuest = escapeHtml(guestName);
     const safeEvent = escapeHtml(eventTitle);
@@ -326,7 +447,11 @@ export class EmailService {
         ${meetLink ? `<p><a href="${meetLink}">Join Meeting</a></p>` : ''}
       `;
 
-    return this.sendMail(email, subject, this.getBaseTemplate(safeEvent, bodyContent));
+    return this.sendMail(
+      email,
+      subject,
+      this.getBaseTemplate(safeEvent, bodyContent),
+    );
   }
 
   async sendPasswordResetEmail(email: string, name: string, tokenUrl: string) {
@@ -339,7 +464,11 @@ export class EmailService {
       
       <a href="${tokenUrl}" class="button" target="_blank">Reset Password</a>
     `;
-    return this.sendMail(email, `Reset Your Password`, this.getBaseTemplate('Password Reset', content));
+    return this.sendMail(
+      email,
+      `Reset Your Password`,
+      this.getBaseTemplate('Password Reset', content),
+    );
   }
 
   async sendVerificationEmail(email: string, name: string, tokenUrl: string) {
@@ -352,7 +481,11 @@ export class EmailService {
       
       <a href="${tokenUrl}" class="button" target="_blank">Verify Email</a>
     `;
-    return this.sendMail(email, `Verify Your Email`, this.getBaseTemplate('Email Verification', content));
+    return this.sendMail(
+      email,
+      `Verify Your Email`,
+      this.getBaseTemplate('Email Verification', content),
+    );
   }
 
   async sendWelcomeEmail(email: string, name: string) {
@@ -363,15 +496,25 @@ export class EmailService {
       <p>We're excited to have you on board. Start scheduling your meetings effortlessly.</p>
       <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard" class="button" target="_blank">Go to Dashboard</a>
     `;
-    return this.sendMail(email, 'Welcome to Meet!', this.getBaseTemplate('Registration Successful', content));
+    return this.sendMail(
+      email,
+      'Welcome to Meet!',
+      this.getBaseTemplate('Registration Successful', content),
+    );
   }
 
-  async sendHostNotificationEmail(hostEmail: string, guestName: string, eventTitle: string, status: string, startTime?: string) {
+  async sendHostNotificationEmail(
+    hostEmail: string,
+    guestName: string,
+    eventTitle: string,
+    status: string,
+    startTime?: string,
+  ) {
     const safeGuest = escapeHtml(guestName);
     const safeEvent = escapeHtml(eventTitle);
     let subject = '';
     let message = '';
-    
+
     switch (status) {
       case 'CANCELLED':
         subject = `Canceled: ${safeEvent} with ${safeGuest}`;
@@ -395,7 +538,11 @@ export class EmailService {
     return this.sendMail(hostEmail, subject, htmlContent);
   }
 
-  async sendTeamInvitationEmail(email: string, teamName: string, token: string) {
+  async sendTeamInvitationEmail(
+    email: string,
+    teamName: string,
+    token: string,
+  ) {
     const safeTeam = escapeHtml(teamName);
     const subject = `You've been invited to join ${safeTeam} on Meet`;
     const acceptUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/guest/invitation?token=${token}`;
@@ -429,6 +576,10 @@ export class EmailService {
       <p style="font-size: 12px; color: #94a3b8; text-align: center; margin-top: 25px;">If you did not initiate this request, you can safely ignore this email.</p>
     `;
 
-    return this.sendMail(email, subject, this.getBaseTemplate('Email Verification Code', content));
+    return this.sendMail(
+      email,
+      subject,
+      this.getBaseTemplate('Email Verification Code', content),
+    );
   }
 }

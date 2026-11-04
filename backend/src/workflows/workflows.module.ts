@@ -7,6 +7,6 @@ import { CronService } from './cron.service';
 @Module({
   imports: [PrismaModule],
   controllers: [WorkflowsController],
-  providers: [WorkflowsService, CronService]
+  providers: [WorkflowsService, CronService],
 })
 export class WorkflowsModule {}

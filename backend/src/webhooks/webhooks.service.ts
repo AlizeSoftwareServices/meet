@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateWebhookDto } from './dto/create-webhook.dto';
 import { UpdateWebhookDto } from './dto/update-webhook.dto';
@@ -15,7 +20,9 @@ export class WebhooksService {
 
   async create(userId: string, dto: CreateWebhookDto) {
     if (!isSafeWebhookUrl(dto.url)) {
-      throw new BadRequestException('Webhook URL cannot target private, loopback, or cloud metadata addresses (SSRF Protection).');
+      throw new BadRequestException(
+        'Webhook URL cannot target private, loopback, or cloud metadata addresses (SSRF Protection).',
+      );
     }
 
     const secret = `whsec_${crypto.randomBytes(24).toString('hex')}`;

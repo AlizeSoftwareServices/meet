@@ -18,7 +18,9 @@ export class PushNotificationService {
     const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
 
     if (!projectId || !clientEmail || !privateKey) {
-      this.logger.warn('Firebase Admin credentials not fully provided. Push notifications are disabled.');
+      this.logger.warn(
+        'Firebase Admin credentials not fully provided. Push notifications are disabled.',
+      );
       return;
     }
 
@@ -35,13 +37,22 @@ export class PushNotificationService {
       this.initialized = true;
       this.logger.log('Firebase Admin SDK initialized successfully.');
     } catch (error: any) {
-      this.logger.error(`Failed to initialize Firebase Admin: ${error.message}`);
+      this.logger.error(
+        `Failed to initialize Firebase Admin: ${error.message}`,
+      );
     }
   }
 
-  async sendToToken(token: string, title: string, body: string, data?: Record<string, string>) {
+  async sendToToken(
+    token: string,
+    title: string,
+    body: string,
+    data?: Record<string, string>,
+  ) {
     if (!this.initialized) {
-      this.logger.warn(`Push notifications are disabled. Failed to send to token ${token.substring(0, 10)}...: ${title}`);
+      this.logger.warn(
+        `Push notifications are disabled. Failed to send to token ${token.substring(0, 10)}...: ${title}`,
+      );
       return;
     }
 
@@ -51,7 +62,9 @@ export class PushNotificationService {
         notification: { title, body },
         data: data || {},
       });
-      this.logger.log(`Push notification sent successfully to token ${token.substring(0, 10)}...`);
+      this.logger.log(
+        `Push notification sent successfully to token ${token.substring(0, 10)}...`,
+      );
     } catch (error: any) {
       this.logger.error(`Failed to send push notification: ${error.message}`);
       if (
@@ -63,10 +76,15 @@ export class PushNotificationService {
     }
   }
 
-  async sendToUser(userId: string, title: string, body: string, data?: Record<string, string>) {
+  async sendToUser(
+    userId: string,
+    title: string,
+    body: string,
+    data?: Record<string, string>,
+  ) {
     try {
       const pushTokens = await this.prisma.pushToken.findMany({
-        where: { userId }
+        where: { userId },
       });
 
       if (!pushTokens || pushTokens.length === 0) {
@@ -74,8 +92,10 @@ export class PushNotificationService {
       }
 
       for (const pt of pushTokens) {
-        await this.sendToToken(pt.token, title, body, data).catch(e => {
-           this.logger.error(`Error sending push to user ${userId} token: ${e.message}`);
+        await this.sendToToken(pt.token, title, body, data).catch((e) => {
+          this.logger.error(
+            `Error sending push to user ${userId} token: ${e.message}`,
+          );
         });
       }
     } catch (error: any) {
@@ -86,9 +106,11 @@ export class PushNotificationService {
   private async removeInvalidToken(token: string) {
     try {
       await this.prisma.pushToken.delete({
-        where: { token }
+        where: { token },
       });
-      this.logger.log(`Removed invalid/expired FCM token: ${token.substring(0, 10)}...`);
+      this.logger.log(
+        `Removed invalid/expired FCM token: ${token.substring(0, 10)}...`,
+      );
     } catch (error: any) {
       this.logger.error(`Failed to remove invalid token: ${error.message}`);
     }

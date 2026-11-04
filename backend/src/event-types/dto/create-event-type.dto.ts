@@ -1,4 +1,16 @@
-import { IsString, IsInt, IsNumber, IsOptional, IsBoolean, Min, IsArray, ValidateNested, IsIn, IsUrl, ValidateIf } from 'class-validator';
+import {
+  IsString,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsBoolean,
+  Min,
+  IsArray,
+  ValidateNested,
+  IsIn,
+  IsUrl,
+  ValidateIf,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CustomQuestionDto {
@@ -7,7 +19,15 @@ export class CustomQuestionDto {
   id?: string;
 
   @IsString()
-  @IsIn(['TEXT', 'LONG_TEXT', 'PHONE', 'NUMBER', 'DROPDOWN', 'MULTIPLE_CHOICE', 'CHECKBOX'])
+  @IsIn([
+    'TEXT',
+    'LONG_TEXT',
+    'PHONE',
+    'NUMBER',
+    'DROPDOWN',
+    'MULTIPLE_CHOICE',
+    'CHECKBOX',
+  ])
   type: string;
 
   @IsString()
@@ -90,8 +110,11 @@ export class CreateEventTypeDto {
   confirmationMessage?: string;
 
   @IsOptional()
-  @ValidateIf(o => o.redirectUrl !== '')
-  @IsUrl({ require_protocol: true, protocols: ['http', 'https'] }, { message: 'Must be a valid HTTP/HTTPS URL' })
+  @ValidateIf((o) => o.redirectUrl !== '')
+  @IsUrl(
+    { require_protocol: true, protocols: ['http', 'https'] },
+    { message: 'Must be a valid HTTP/HTTPS URL' },
+  )
   redirectUrl?: string;
 
   @IsOptional()

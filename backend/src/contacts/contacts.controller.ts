@@ -1,4 +1,15 @@
-import { Controller, Get, UseGuards, Request, Query, Post, Body, Param, Patch, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  UseGuards,
+  Request,
+  Query,
+  Post,
+  Body,
+  Param,
+  Patch,
+  Delete,
+} from '@nestjs/common';
 import { ContactsService } from './contacts.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -14,7 +25,13 @@ export class ContactsController {
 
   @Post()
   createContact(@Request() req, @Body() data: any) {
-    return this.contactsService.createOrUpdateContact(req.user.userId, data.name, data.email, data.phone, data.company);
+    return this.contactsService.createOrUpdateContact(
+      req.user.userId,
+      data.name,
+      data.email,
+      data.phone,
+      data.company,
+    );
   }
 
   @Patch(':id')

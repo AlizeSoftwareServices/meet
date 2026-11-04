@@ -24,9 +24,13 @@ async function bootstrap() {
         email: 'test_phase4c@example.com',
         passwordHash: 'dummy',
         profile: {
-          create: { name: 'Test Phase 4C Host', username: 'test_phase4c', timezone: 'UTC' }
-        }
-      }
+          create: {
+            name: 'Test Phase 4C Host',
+            username: 'test_phase4c',
+            timezone: 'UTC',
+          },
+        },
+      },
     });
 
     // Cleanup previous test data
@@ -47,9 +51,9 @@ async function bootstrap() {
             { dayOfWeek: 3, startTime: '09:00', endTime: '17:00' },
             { dayOfWeek: 4, startTime: '09:00', endTime: '17:00' },
             { dayOfWeek: 5, startTime: '09:00', endTime: '17:00' },
-          ]
-        }
-      }
+          ],
+        },
+      },
     });
 
     const eventType = await prisma.eventType.create({
@@ -62,7 +66,7 @@ async function bootstrap() {
         bufferBefore: 15,
         bufferAfter: 15,
         isActive: true,
-      }
+      },
     });
 
     const eventTypeDestination = await prisma.eventType.create({
@@ -73,7 +77,7 @@ async function bootstrap() {
         slug: 'routing-destination',
         duration: 30,
         isActive: true,
-      }
+      },
     });
 
     console.log('✅ Setup complete');
@@ -86,34 +90,57 @@ async function bootstrap() {
       isActive: true,
       fallbackDestination: 'default-slug',
       questions: [
-        { label: 'Issue Type', type: 'DROPDOWN', required: true, options: ['Billing', 'Technical'], order: 0 }
+        {
+          label: 'Issue Type',
+          type: 'DROPDOWN',
+          required: true,
+          options: ['Billing', 'Technical'],
+          order: 0,
+        },
       ],
-      rules: []
+      rules: [],
     });
 
-    const formWithRules = await routingService.updateForm(form.id, testHost.id, {
-      rules: [
-        { questionId: form.questions[0].id, operator: 'EQUALS', value: 'Technical', destination: eventTypeDestination.slug }
-      ]
-    });
+    const formWithRules = await routingService.updateForm(
+      form.id,
+      testHost.id,
+      {
+        rules: [
+          {
+            questionId: form.questions[0].id,
+            operator: 'EQUALS',
+            value: 'Technical',
+            destination: eventTypeDestination.slug,
+          },
+        ],
+      },
+    );
 
     // Valid Route submission
-    const result = await routingService.submitRoutingForm(testHost.id, 'support-route', [
-      { questionId: form.questions[0].id, value: 'Technical' }
-    ]);
+    const result = await routingService.submitRoutingForm(
+      testHost.id,
+      'support-route',
+      [{ questionId: form.questions[0].id, value: 'Technical' }],
+    );
     if (result.destination === eventTypeDestination.slug) {
-      console.log('✅ Routing form correctly evaluated rule and returned destination');
+      console.log(
+        '✅ Routing form correctly evaluated rule and returned destination',
+      );
     } else {
-      throw new Error(`Routing failed. Expected ${eventTypeDestination.slug}, got ${result.destination}`);
+      throw new Error(
+        `Routing failed. Expected ${eventTypeDestination.slug}, got ${result.destination}`,
+      );
     }
 
     // Inactive Route submission
     await routingService.updateForm(form.id, testHost.id, { isActive: false });
     try {
       await routingService.submitRoutingForm(testHost.id, 'support-route', [
-        { questionId: form.questions[0].id, value: 'Technical' }
+        { questionId: form.questions[0].id, value: 'Technical' },
       ]);
-      throw new Error('Routing form should have blocked submission on inactive form');
+      throw new Error(
+        'Routing form should have blocked submission on inactive form',
+      );
     } catch (e: any) {
       if (e.message.includes('inactive')) {
         console.log('✅ Routing form blocked inactive submission');
@@ -124,10 +151,12 @@ async function bootstrap() {
 
     // 3. Test Buffer Enforcement
     console.log('\n--- Testing Buffer Enforcement ---');
-    
+
     // Create a base booking on a Wednesday to ensure it hits the availability
     const baseStart = new Date();
-    baseStart.setUTCDate(baseStart.getUTCDate() + ((3 + 7 - baseStart.getUTCDay()) % 7 || 7));
+    baseStart.setUTCDate(
+      baseStart.getUTCDate() + ((3 + 7 - baseStart.getUTCDay()) % 7 || 7),
+    );
     baseStart.setUTCHours(10, 0, 0, 0); // 10:00 AM UTC
     const baseEnd = new Date(baseStart.getTime() + 30 * 60000); // 10:30 AM UTC
 
@@ -139,8 +168,8 @@ async function bootstrap() {
         guestEmail: 'base@example.com',
         startTime: baseStart,
         endTime: baseEnd,
-        status: 'CONFIRMED'
-      }
+        status: 'CONFIRMED',
+      },
     });
 
     // Attempt to book exactly at 10:30 AM (Should FAIL because of 15m bufferAfter on previous booking AND 15m bufferBefore on new booking)
@@ -155,28 +184,38 @@ async function bootstrap() {
         guestEmail: 'overlap@example.com',
         startTime: nextStart.toISOString(),
         endTime: nextEnd.toISOString(),
-        answers: []
+        answers: [],
       });
       throw new Error('Booking should have failed due to buffer overlap');
     } catch (e: any) {
-      if (e.message.includes('Time slot is no longer available') || e.message.includes('Host is already booked')) {
-         console.log('✅ Buffer enforcement successfully blocked back-to-back booking');
+      if (
+        e.message.includes('Time slot is no longer available') ||
+        e.message.includes('Host is already booked')
+      ) {
+        console.log(
+          '✅ Buffer enforcement successfully blocked back-to-back booking',
+        );
       } else {
-         throw e;
+        throw e;
       }
     }
 
     // 4. Rate Limiting Check
     console.log('\n--- Testing Throttling Structure ---');
-    const appModuleContents = await require('fs').promises.readFile(__dirname + '/app.module.ts', 'utf-8');
-    if (appModuleContents.includes('ThrottlerGuard') && appModuleContents.includes('APP_GUARD')) {
+    const appModuleContents = await require('fs').promises.readFile(
+      __dirname + '/app.module.ts',
+      'utf-8',
+    );
+    if (
+      appModuleContents.includes('ThrottlerGuard') &&
+      appModuleContents.includes('APP_GUARD')
+    ) {
       console.log('✅ Global ThrottlerGuard is configured in AppModule');
     } else {
       throw new Error('ThrottlerGuard not found in AppModule');
     }
 
     console.log('\n=== All Phase 4C Verifications Passed! ===\n');
-
   } catch (error) {
     console.error('\n❌ Verification Failed:', error);
     process.exit(1);

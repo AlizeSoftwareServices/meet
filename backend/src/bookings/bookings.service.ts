@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, ConflictException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
@@ -26,14 +31,21 @@ export class BookingsService {
     private webhookDeliveryService: WebhookDeliveryService,
   ) {}
 
-  private async dispatchBookingWebhook(event: string, booking: any, cancelReason?: string) {
+  private async dispatchBookingWebhook(
+    event: string,
+    booking: any,
+    cancelReason?: string,
+  ) {
     try {
-      const assignedHostIds = booking.assignedHosts?.map((ah: any) => ah.userId || ah.user?.id) || [booking.hostId];
-      const assignedHostDetails = booking.assignedHosts?.map((ah: any) => ({
-        userId: ah.userId || ah.user?.id,
-        name: ah.user?.profile?.name || ah.user?.email || 'Host',
-        role: ah.role || 'HOST',
-      })) || [];
+      const assignedHostIds = booking.assignedHosts?.map(
+        (ah: any) => ah.userId || ah.user?.id,
+      ) || [booking.hostId];
+      const assignedHostDetails =
+        booking.assignedHosts?.map((ah: any) => ({
+          userId: ah.userId || ah.user?.id,
+          name: ah.user?.profile?.name || ah.user?.email || 'Host',
+          role: ah.role || 'HOST',
+        })) || [];
 
       const payload = {
         bookingId: booking.id,
@@ -44,8 +56,14 @@ export class BookingsService {
         assignedHosts: assignedHostDetails,
         guestName: booking.guestName,
         guestEmail: booking.guestEmail,
-        startTime: typeof booking.startTime === 'string' ? booking.startTime : booking.startTime.toISOString(),
-        endTime: typeof booking.endTime === 'string' ? booking.endTime : booking.endTime.toISOString(),
+        startTime:
+          typeof booking.startTime === 'string'
+            ? booking.startTime
+            : booking.startTime.toISOString(),
+        endTime:
+          typeof booking.endTime === 'string'
+            ? booking.endTime
+            : booking.endTime.toISOString(),
         status: booking.status,
         price: booking.price ?? undefined,
         currency: booking.currency ?? undefined,
@@ -54,42 +72,65 @@ export class BookingsService {
         cancelReason: cancelReason || booking.cancelReason || undefined,
       };
 
-      const uniqueHostIds = Array.from(new Set([booking.hostId, ...assignedHostIds].filter(Boolean)));
+      const uniqueHostIds = Array.from(
+        new Set([booking.hostId, ...assignedHostIds].filter(Boolean)),
+      );
       for (const hId of uniqueHostIds) {
-        await this.webhookDeliveryService.dispatch(hId, event, payload, booking.id);
+        await this.webhookDeliveryService.dispatch(
+          hId,
+          event,
+          payload,
+          booking.id,
+        );
       }
     } catch (err: any) {
-      this.logger.error(`Error dispatching webhook ${event} for booking ${booking?.id}: ${err.message}`);
+      this.logger.error(
+        `Error dispatching webhook ${event} for booking ${booking?.id}: ${err.message}`,
+      );
     }
   }
 
-    private calculateOccurrences(startTimeIso: string, endTimeIso: string, timezone: string, recurrence: any, maxOccurrences: number) {
+  private calculateOccurrences(
+    startTimeIso: string,
+    endTimeIso: string,
+    timezone: string,
+    recurrence: any,
+    maxOccurrences: number,
+  ) {
     const start = new Date(startTimeIso);
     const end = new Date(endTimeIso);
     const durationMs = end.getTime() - start.getTime();
 
     const zonedStart = toZonedTime(start, timezone);
-    const occurrences: { startTime: Date; endTime: Date; occurrenceNumber: number; }[] = [];
+    const occurrences: {
+      startTime: Date;
+      endTime: Date;
+      occurrenceNumber: number;
+    }[] = [];
 
     const limit = Math.min(recurrence.count, maxOccurrences || 10);
-    
+
     for (let i = 0; i < limit; i++) {
-      let nextZoned = new Date(zonedStart.getTime());
-      
+      const nextZoned = new Date(zonedStart.getTime());
+
       if (i > 0) {
         if (recurrence.frequency === 'DAILY') {
-          nextZoned.setDate(zonedStart.getDate() + (i * recurrence.interval));
+          nextZoned.setDate(zonedStart.getDate() + i * recurrence.interval);
         } else if (recurrence.frequency === 'WEEKLY') {
-          nextZoned.setDate(zonedStart.getDate() + (i * recurrence.interval * 7));
+          nextZoned.setDate(zonedStart.getDate() + i * recurrence.interval * 7);
         } else if (recurrence.frequency === 'MONTHLY') {
-          nextZoned.setMonth(zonedStart.getMonth() + (i * recurrence.interval));
+          nextZoned.setMonth(zonedStart.getMonth() + i * recurrence.interval);
         }
       }
 
       const nextUtcStart = fromZonedTime(nextZoned, timezone);
       const nextUtcEnd = new Date(nextUtcStart.getTime() + durationMs);
-      
-      occurrences.push({ startTime: nextUtcStart, endTime: nextUtcEnd, occurrenceNumber: i + 1 });
+
+      occurrences.push({
+        startTime: nextUtcStart,
+        endTime: nextUtcEnd,
+        occurrenceNumber: i + 1,
+      });
     }
 
     return occurrences;
@@ -97,18 +138,22 @@ export class BookingsService {
 
   async createBooking(dto: CreateBookingDto) {
     // 1. Fetch Event Type
-    let eventType: any = dto.eventTypeId ? await this.prisma.eventType.findUnique({
-      where: { id: dto.eventTypeId },
-      include: { customQuestions: true, hosts: true }
-    }) : null;
+    let eventType: any = dto.eventTypeId
+      ? await this.prisma.eventType.findUnique({
+          where: { id: dto.eventTypeId },
+          include: { customQuestions: true, hosts: true },
+        })
+      : null;
 
     if (!eventType) {
       if (!dto.hostId) {
-        throw new BadRequestException('Host ID is required to create a booking');
+        throw new BadRequestException(
+          'Host ID is required to create a booking',
+        );
       }
       let defaultEvent: any = await this.prisma.eventType.findFirst({
         where: { userId: dto.hostId, slug: '30min' },
-        include: { customQuestions: true, hosts: true }
+        include: { customQuestions: true, hosts: true },
       });
       if (!defaultEvent) {
         defaultEvent = await this.prisma.eventType.create({
@@ -121,7 +166,7 @@ export class BookingsService {
             location: 'Google Meet',
             isActive: true,
           },
-          include: { customQuestions: true, hosts: true }
+          include: { customQuestions: true, hosts: true },
         });
       }
       eventType = defaultEvent;
@@ -130,13 +175,15 @@ export class BookingsService {
 
     if (dto.singleUseToken) {
       const link = await this.prisma.singleUseLink.findUnique({
-        where: { tokenHash: dto.singleUseToken }
+        where: { tokenHash: dto.singleUseToken },
       });
       if (!link) {
         throw new BadRequestException('Invalid single-use link token');
       }
       if (link.used) {
-        throw new BadRequestException('This single-use link has already been used');
+        throw new BadRequestException(
+          'This single-use link has already been used',
+        );
       }
       if (link.expiresAt && link.expiresAt < new Date()) {
         throw new BadRequestException('This single-use link has expired');
@@ -151,19 +198,22 @@ export class BookingsService {
     let targetHostIds: string[] = [];
     if (schedulingType === 'PERSONAL') {
       const hId = dto.hostId || eventType.userId;
-      if (!hId) throw new BadRequestException('Host ID is required for personal events');
+      if (!hId)
+        throw new BadRequestException(
+          'Host ID is required for personal events',
+        );
       targetHostIds = [hId];
     } else {
       if (!eventType.hosts || eventType.hosts.length === 0) {
         throw new BadRequestException('Team event has no assigned hosts');
       }
-      targetHostIds = eventType.hosts.map(h => h.userId);
+      targetHostIds = eventType.hosts.map((h) => h.userId);
     }
 
     // Load hosts to get timezones and versions
     const hosts = await this.prisma.user.findMany({
       where: { id: { in: targetHostIds } },
-      include: { profile: true }
+      include: { profile: true },
     });
     if (hosts.length !== targetHostIds.length) {
       throw new BadRequestException('One or more hosts not found');
@@ -171,10 +221,15 @@ export class BookingsService {
 
     // Use primary host's timezone (for Personal/RR fallback) or assume collective handles all
     // Fallback timezone to primary host
-    const primaryHost = hosts.find(h => h.id === (dto.hostId || eventType.userId)) || hosts[0];
+    const primaryHost =
+      hosts.find((h) => h.id === (dto.hostId || eventType.userId)) || hosts[0];
     const timezone = primaryHost.profile?.timezone || 'UTC';
 
-    let dbAnswers: { customQuestionId: string; questionLabel: string; value: string }[] = [];
+    const dbAnswers: {
+      customQuestionId: string;
+      questionLabel: string;
+      value: string;
+    }[] = [];
     if (eventType.customQuestions && eventType.customQuestions.length > 0) {
       const answersMap = new Map<string, string>();
       const submittedIds = new Set<string>();
@@ -182,17 +237,21 @@ export class BookingsService {
       if (dto.answers) {
         for (const ans of dto.answers) {
           if (submittedIds.has(ans.questionId)) {
-             throw new BadRequestException(`Duplicate answer submitted for question ${ans.questionId}`);
+            throw new BadRequestException(
+              `Duplicate answer submitted for question ${ans.questionId}`,
+            );
           }
           submittedIds.add(ans.questionId);
           answersMap.set(ans.questionId, ans.value);
         }
       }
 
-      const validQuestionIds = new Set(eventType.customQuestions.map(q => q.id));
+      const validQuestionIds = new Set(
+        eventType.customQuestions.map((q) => q.id),
+      );
       for (const id of submittedIds) {
         if (!validQuestionIds.has(id)) {
-           throw new BadRequestException(`Unknown questionId submitted: ${id}`);
+          throw new BadRequestException(`Unknown questionId submitted: ${id}`);
         }
       }
 
@@ -201,82 +260,110 @@ export class BookingsService {
         const hasValue = val !== undefined && val !== null && val.trim() !== '';
 
         if (q.required && !hasValue) {
-           throw new BadRequestException(`Question "${q.label}" is required.`);
+          throw new BadRequestException(`Question "${q.label}" is required.`);
         }
 
         if (hasValue) {
-           if ((q.type === 'DROPDOWN' || q.type === 'MULTIPLE_CHOICE') && !q.options.includes(val)) {
-              try {
-                const parsed = JSON.parse(val);
-                if (Array.isArray(parsed)) {
-                  for (const p of parsed) {
-                    if (!q.options.includes(p)) {
-                      throw new BadRequestException(`Invalid option "${p}" for question "${q.label}"`);
-                    }
+          if (
+            (q.type === 'DROPDOWN' || q.type === 'MULTIPLE_CHOICE') &&
+            !q.options.includes(val)
+          ) {
+            try {
+              const parsed = JSON.parse(val);
+              if (Array.isArray(parsed)) {
+                for (const p of parsed) {
+                  if (!q.options.includes(p)) {
+                    throw new BadRequestException(
+                      `Invalid option "${p}" for question "${q.label}"`,
+                    );
                   }
-                } else {
-                  throw new BadRequestException(`Invalid option "${val}" for question "${q.label}"`);
                 }
-              } catch (e) {
-                if (e instanceof BadRequestException) throw e;
-                throw new BadRequestException(`Invalid option "${val}" for question "${q.label}"`);
+              } else {
+                throw new BadRequestException(
+                  `Invalid option "${val}" for question "${q.label}"`,
+                );
               }
-           } else if (q.type === 'NUMBER') {
-              if (isNaN(Number(val))) {
-                 throw new BadRequestException(`Question "${q.label}" must be a valid number.`);
-              }
-           } else if (q.type === 'PHONE') {
-              if (!/^\+?[0-9\s\-\(\)]+$/.test(val)) {
-                 throw new BadRequestException(`Question "${q.label}" must be a valid phone number.`);
-              }
-           }
-           
-           dbAnswers.push({
-             customQuestionId: q.id,
-             questionLabel: q.label,
-             value: val,
-           });
+            } catch (e) {
+              if (e instanceof BadRequestException) throw e;
+              throw new BadRequestException(
+                `Invalid option "${val}" for question "${q.label}"`,
+              );
+            }
+          } else if (q.type === 'NUMBER') {
+            if (isNaN(Number(val))) {
+              throw new BadRequestException(
+                `Question "${q.label}" must be a valid number.`,
+              );
+            }
+          } else if (q.type === 'PHONE') {
+            if (!/^\+?[0-9\s\-\(\)]+$/.test(val)) {
+              throw new BadRequestException(
+                `Question "${q.label}" must be a valid phone number.`,
+              );
+            }
+          }
+
+          dbAnswers.push({
+            customQuestionId: q.id,
+            questionLabel: q.label,
+            value: val,
+          });
         }
       }
     } else if (dto.answers && dto.answers.length > 0) {
-       throw new BadRequestException(`This event type does not accept custom answers.`);
+      throw new BadRequestException(
+        `This event type does not accept custom answers.`,
+      );
     }
 
-    let occurrencesToAttempt = [{ startTime: new Date(dto.startTime), endTime: new Date(dto.endTime), occurrenceNumber: 1 }];
+    let occurrencesToAttempt = [
+      {
+        startTime: new Date(dto.startTime),
+        endTime: new Date(dto.endTime),
+        occurrenceNumber: 1,
+      },
+    ];
 
     if (dto.recurrence && eventType.allowRecurring) {
-       occurrencesToAttempt = this.calculateOccurrences(
-          dto.startTime, 
-          dto.endTime, 
-          timezone, 
-          dto.recurrence, 
-          eventType.recurringMaxOccurrences || 10
-       );
+      occurrencesToAttempt = this.calculateOccurrences(
+        dto.startTime,
+        dto.endTime,
+        timezone,
+        dto.recurrence,
+        eventType.recurringMaxOccurrences || 10,
+      );
     } else if (dto.recurrence && !eventType.allowRecurring) {
-       throw new BadRequestException('This event type does not allow recurring bookings.');
+      throw new BadRequestException(
+        'This event type does not allow recurring bookings.',
+      );
     }
 
     let transactionResult;
     try {
       // 1. Evaluate availability of all requested slots using unified engine BEFORE transaction
-      const evaluatedOccurrences = await this.availabilityEngine.evaluateTeamSlots(
-        targetHostIds, 
-        dto.eventTypeId,
-        schedulingType,
-        occurrencesToAttempt
-      );
+      const evaluatedOccurrences =
+        await this.availabilityEngine.evaluateTeamSlots(
+          targetHostIds,
+          dto.eventTypeId,
+          schedulingType,
+          occurrencesToAttempt,
+        );
 
       // If it's a single booking and it's invalid, throw immediately
       if (!dto.recurrence) {
         const singleResult = evaluatedOccurrences[0];
         if (!singleResult.isAvailable) {
-          throw new BadRequestException(singleResult.reason || 'Time slot is no longer available');
+          throw new BadRequestException(
+            singleResult.reason || 'Time slot is no longer available',
+          );
         }
       }
 
       // If it's recurring and NO slots are available, throw immediately
-      if (dto.recurrence && evaluatedOccurrences.every(o => !o.isAvailable)) {
-         throw new BadRequestException('All requested occurrences are unavailable or blocked.');
+      if (dto.recurrence && evaluatedOccurrences.every((o) => !o.isAvailable)) {
+        throw new BadRequestException(
+          'All requested occurrences are unavailable or blocked.',
+        );
       }
 
       transactionResult = await this.prisma.$transaction(async (tx) => {
@@ -284,192 +371,253 @@ export class BookingsService {
         for (const h of hosts) {
           await tx.user.update({
             where: { id: h.id, bookingVersion: h.bookingVersion },
-            data: { bookingVersion: { increment: 1 } }
+            data: { bookingVersion: { increment: 1 } },
           });
         }
 
         let seriesId: string | undefined = undefined;
         if (dto.recurrence && eventType.allowRecurring) {
-           const series = await tx.bookingSeries.create({
-             data: {
-               hostId: primaryHost.id,
-               eventTypeId: dto.eventTypeId,
-               frequency: dto.recurrence.frequency,
-               interval: dto.recurrence.interval,
-               count: occurrencesToAttempt.length,
-               timezone: timezone
-             }
-           });
-           seriesId = series.id;
+          const series = await tx.bookingSeries.create({
+            data: {
+              hostId: primaryHost.id,
+              eventTypeId: dto.eventTypeId,
+              frequency: dto.recurrence.frequency,
+              interval: dto.recurrence.interval,
+              count: occurrencesToAttempt.length,
+              timezone: timezone,
+            },
+          });
+          seriesId = series.id;
         }
 
         const successfulOccurrences: any[] = [];
         const skippedOccurrences: any[] = [];
 
         for (const occ of evaluatedOccurrences) {
-           if (!occ.isAvailable) {
-              skippedOccurrences.push({ ...occ, reason: occ.reason });
+          if (!occ.isAvailable) {
+            skippedOccurrences.push({ ...occ, reason: occ.reason });
+            continue;
+          }
+
+          let assignedHostIds = occ.availableHostIds || [];
+
+          if (schedulingType === 'ROUND_ROBIN') {
+            // Determine least busy host
+            let leastBusyHost = null;
+            let minCount = Infinity;
+
+            for (const hId of assignedHostIds) {
+              const count = await tx.booking.count({
+                where: { hostId: hId, status: 'CONFIRMED' },
+              });
+              if (
+                count < minCount ||
+                (count === minCount && (!leastBusyHost || hId < leastBusyHost))
+              ) {
+                minCount = count;
+                leastBusyHost = hId;
+              }
+            }
+
+            if (!leastBusyHost) {
+              skippedOccurrences.push({
+                ...occ,
+                reason: 'No host available due to concurrency.',
+              });
               continue;
-           }
+            }
+            assignedHostIds = [leastBusyHost];
+          }
 
-           let assignedHostIds = occ.availableHostIds || [];
+          const occBufferBefore = eventType.bufferBefore || 0;
+          const occBufferAfter = eventType.bufferAfter || 0;
+          const effectiveOccStart = new Date(
+            occ.startTime.getTime() - occBufferBefore * 60000,
+          );
+          const effectiveOccEnd = new Date(
+            occ.endTime.getTime() + occBufferAfter * 60000,
+          );
 
-           if (schedulingType === 'ROUND_ROBIN') {
-              // Determine least busy host
-              let leastBusyHost = null;
-              let minCount = Infinity;
-              
-              for (const hId of assignedHostIds) {
-                const count = await tx.booking.count({
-                  where: { hostId: hId, status: 'CONFIRMED' }
-                });
-                if (count < minCount || (count === minCount && (!leastBusyHost || hId < leastBusyHost))) {
-                  minCount = count;
-                  leastBusyHost = hId;
-                }
-              }
+          if (!eventType.isGroupEvent) {
+            const potentialOverlaps = await tx.booking.findMany({
+              where: {
+                status: { in: ['CONFIRMED', 'RESCHEDULED'] },
+                OR: [
+                  { hostId: { in: assignedHostIds } },
+                  {
+                    assignedHosts: {
+                      some: { userId: { in: assignedHostIds } },
+                    },
+                  },
+                ],
+                startTime: {
+                  gte: new Date(
+                    effectiveOccStart.getTime() - 24 * 60 * 60 * 1000,
+                  ),
+                },
+                endTime: {
+                  lte: new Date(
+                    effectiveOccEnd.getTime() + 24 * 60 * 60 * 1000,
+                  ),
+                },
+              },
+              include: { eventType: true },
+            });
 
-              if (!leastBusyHost) {
-                skippedOccurrences.push({ ...occ, reason: 'No host available due to concurrency.' });
-                continue;
-              }
-              assignedHostIds = [leastBusyHost];
-           }
+            const overlapping = potentialOverlaps.find((b) => {
+              const bBufferBefore = b.eventType?.bufferBefore || 0;
+              const bBufferAfter = b.eventType?.bufferAfter || 0;
+              const bStart = new Date(
+                b.startTime.getTime() - bBufferBefore * 60000,
+              );
+              const bEnd = new Date(b.endTime.getTime() + bBufferAfter * 60000);
+              return (
+                bStart.getTime() < effectiveOccEnd.getTime() &&
+                bEnd.getTime() > effectiveOccStart.getTime()
+              );
+            });
 
-           const occBufferBefore = eventType.bufferBefore || 0;
-           const occBufferAfter = eventType.bufferAfter || 0;
-           const effectiveOccStart = new Date(occ.startTime.getTime() - occBufferBefore * 60000);
-           const effectiveOccEnd = new Date(occ.endTime.getTime() + occBufferAfter * 60000);
-           
-           if (!eventType.isGroupEvent) {
-             const potentialOverlaps = await tx.booking.findMany({
-               where: {
-                 status: { in: ['CONFIRMED', 'RESCHEDULED'] },
-                 OR: [
-                   { hostId: { in: assignedHostIds } },
-                   { assignedHosts: { some: { userId: { in: assignedHostIds } } } }
-                 ],
-                 startTime: { gte: new Date(effectiveOccStart.getTime() - 24 * 60 * 60 * 1000) },
-                 endTime: { lte: new Date(effectiveOccEnd.getTime() + 24 * 60 * 60 * 1000) }
-               },
-               include: { eventType: true }
-             });
+            if (overlapping) {
+              throw new ConflictException(
+                'Time slot is no longer available. It was booked concurrently.',
+              );
+            }
+          } else {
+            // Collective Group Events are theoretically possible but logically complex.
+            // We'll assume the primary host count dictates group sizes.
+            const groupBookingsCount = await tx.booking.count({
+              where: {
+                hostId: assignedHostIds[0],
+                eventTypeId: dto.eventTypeId,
+                status: { in: ['CONFIRMED', 'RESCHEDULED'] },
+                startTime: occ.startTime,
+                endTime: occ.endTime,
+              },
+            });
+            if (groupBookingsCount >= eventType.maxInvitees) {
+              throw new ConflictException(
+                'Group event time slot is fully booked.',
+              );
+            }
 
-             const overlapping = potentialOverlaps.find(b => {
-               const bBufferBefore = b.eventType?.bufferBefore || 0;
-               const bBufferAfter = b.eventType?.bufferAfter || 0;
-               const bStart = new Date(b.startTime.getTime() - bBufferBefore * 60000);
-               const bEnd = new Date(b.endTime.getTime() + bBufferAfter * 60000);
-               return bStart.getTime() < effectiveOccEnd.getTime() && bEnd.getTime() > effectiveOccStart.getTime();
-             });
-             
-             if (overlapping) {
-               throw new ConflictException('Time slot is no longer available. It was booked concurrently.');
-             }
-           } else {
-             // Collective Group Events are theoretically possible but logically complex.
-             // We'll assume the primary host count dictates group sizes.
-             const groupBookingsCount = await tx.booking.count({
-               where: {
-                 hostId: assignedHostIds[0],
-                 eventTypeId: dto.eventTypeId,
-                 status: { in: ['CONFIRMED', 'RESCHEDULED'] },
-                 startTime: occ.startTime,
-                 endTime: occ.endTime
-               }
-             });
-             if (groupBookingsCount >= eventType.maxInvitees) {
-                throw new ConflictException('Group event time slot is fully booked.');
-             }
-             
-             const potentialOtherOverlaps = await tx.booking.findMany({
-               where: {
-                 eventTypeId: { not: dto.eventTypeId },
-                 status: { in: ['CONFIRMED', 'RESCHEDULED'] },
-                 OR: [
-                   { hostId: { in: assignedHostIds } },
-                   { assignedHosts: { some: { userId: { in: assignedHostIds } } } }
-                 ],
-                 startTime: { gte: new Date(effectiveOccStart.getTime() - 24 * 60 * 60 * 1000) },
-                 endTime: { lte: new Date(effectiveOccEnd.getTime() + 24 * 60 * 60 * 1000) }
-               },
-               include: { eventType: true }
-             });
-             
-             const otherEventOverlap = potentialOtherOverlaps.find(b => {
-               const bBufferBefore = b.eventType?.bufferBefore || 0;
-               const bBufferAfter = b.eventType?.bufferAfter || 0;
-               const bStart = new Date(b.startTime.getTime() - bBufferBefore * 60000);
-               const bEnd = new Date(b.endTime.getTime() + bBufferAfter * 60000);
-               return bStart.getTime() < effectiveOccEnd.getTime() && bEnd.getTime() > effectiveOccStart.getTime();
-             });
-             if (otherEventOverlap) {
-                throw new ConflictException('Host is busy with another event.');
-             }
-           }
+            const potentialOtherOverlaps = await tx.booking.findMany({
+              where: {
+                eventTypeId: { not: dto.eventTypeId },
+                status: { in: ['CONFIRMED', 'RESCHEDULED'] },
+                OR: [
+                  { hostId: { in: assignedHostIds } },
+                  {
+                    assignedHosts: {
+                      some: { userId: { in: assignedHostIds } },
+                    },
+                  },
+                ],
+                startTime: {
+                  gte: new Date(
+                    effectiveOccStart.getTime() - 24 * 60 * 60 * 1000,
+                  ),
+                },
+                endTime: {
+                  lte: new Date(
+                    effectiveOccEnd.getTime() + 24 * 60 * 60 * 1000,
+                  ),
+                },
+              },
+              include: { eventType: true },
+            });
 
-           const selectedPrimaryHostId = assignedHostIds[0];
+            const otherEventOverlap = potentialOtherOverlaps.find((b) => {
+              const bBufferBefore = b.eventType?.bufferBefore || 0;
+              const bBufferAfter = b.eventType?.bufferAfter || 0;
+              const bStart = new Date(
+                b.startTime.getTime() - bBufferBefore * 60000,
+              );
+              const bEnd = new Date(b.endTime.getTime() + bBufferAfter * 60000);
+              return (
+                bStart.getTime() < effectiveOccEnd.getTime() &&
+                bEnd.getTime() > effectiveOccStart.getTime()
+              );
+            });
+            if (otherEventOverlap) {
+              throw new ConflictException('Host is busy with another event.');
+            }
+          }
 
-           const booking = await tx.booking.create({
-             data: {
-               hostId: selectedPrimaryHostId,
-               teamId: eventType.teamId,
-               eventTypeId: dto.eventTypeId,
-               guestName: dto.guestName,
-               guestEmail: dto.guestEmail,
-               guestPhone: dto.guestPhone,
-               guestCompany: dto.guestCompany,
-               guestNotes: dto.guestNotes,
-               startTime: occ.startTime,
-               endTime: occ.endTime,
-               status: 'CONFIRMED',
-               price: eventType.price || null,
-               currency: eventType.currency || 'usd',
-               stripePaymentIntentId: dto.stripePaymentIntentId || null,
-               paymentStatus: eventType.price && eventType.price > 0 ? (dto.paymentStatus || (dto.stripePaymentIntentId ? 'PAID' : 'PENDING')) : 'FREE',
-               bookingSeriesId: seriesId,
-               seriesOccurrenceNumber: occ.occurrenceNumber,
-               answers: {
-                 create: dbAnswers
-               },
-               assignedHosts: {
-                 create: assignedHostIds.map(uId => ({
-                   userId: uId,
-                   role: uId === selectedPrimaryHostId ? 'ORGANIZER' : 'HOST'
-                 }))
-               }
-             },
-             include: {
-               eventType: true,
-               host: { include: { profile: true } },
-               assignedHosts: { include: { user: { include: { profile: true, integrations: true } } } }
-             }
-           });
-           
-           successfulOccurrences.push(booking);
+          const selectedPrimaryHostId = assignedHostIds[0];
+
+          const booking = await tx.booking.create({
+            data: {
+              hostId: selectedPrimaryHostId,
+              teamId: eventType.teamId,
+              eventTypeId: dto.eventTypeId,
+              guestName: dto.guestName,
+              guestEmail: dto.guestEmail,
+              guestPhone: dto.guestPhone,
+              guestCompany: dto.guestCompany,
+              guestNotes: dto.guestNotes,
+              startTime: occ.startTime,
+              endTime: occ.endTime,
+              status: 'CONFIRMED',
+              price: eventType.price || null,
+              currency: eventType.currency || 'usd',
+              stripePaymentIntentId: dto.stripePaymentIntentId || null,
+              paymentStatus:
+                eventType.price && eventType.price > 0
+                  ? dto.paymentStatus ||
+                    (dto.stripePaymentIntentId ? 'PAID' : 'PENDING')
+                  : 'FREE',
+              bookingSeriesId: seriesId,
+              seriesOccurrenceNumber: occ.occurrenceNumber,
+              answers: {
+                create: dbAnswers,
+              },
+              assignedHosts: {
+                create: assignedHostIds.map((uId) => ({
+                  userId: uId,
+                  role: uId === selectedPrimaryHostId ? 'ORGANIZER' : 'HOST',
+                })),
+              },
+            },
+            include: {
+              eventType: true,
+              host: { include: { profile: true } },
+              assignedHosts: {
+                include: {
+                  user: { include: { profile: true, integrations: true } },
+                },
+              },
+            },
+          });
+
+          successfulOccurrences.push(booking);
         }
 
         if (successfulOccurrences.length === 0) {
-           throw new BadRequestException('All requested time slots are unavailable.');
+          throw new BadRequestException(
+            'All requested time slots are unavailable.',
+          );
         }
 
         if (dto.singleUseToken) {
-           await tx.singleUseLink.update({
-             where: { tokenHash: dto.singleUseToken },
-             data: { used: true }
-           });
+          await tx.singleUseLink.update({
+            where: { tokenHash: dto.singleUseToken },
+            data: { used: true },
+          });
         }
 
         return { successfulOccurrences, skippedOccurrences, seriesId };
       });
     } catch (error) {
       if (error.code === 'P2025') {
-        throw new ConflictException('Concurrent booking detected. Please try again.');
+        throw new ConflictException(
+          'Concurrent booking detected. Please try again.',
+        );
       }
       throw error;
     }
 
-    const { successfulOccurrences, skippedOccurrences, seriesId } = transactionResult;
+    const { successfulOccurrences, skippedOccurrences, seriesId } =
+      transactionResult;
 
     // After transaction succeeds, fire off side effects
     for (const booking of successfulOccurrences) {
@@ -491,35 +639,40 @@ export class BookingsService {
             startTime: booking.startTime,
             id: { not: booking.id },
             status: { in: ['CONFIRMED', 'RESCHEDULED'] },
-            externalEventId: { not: null }
-          }
+            externalEventId: { not: null },
+          },
         });
         if (existingGroupBooking) {
-          existingGroupExternalEventId = existingGroupBooking.externalEventId || undefined;
+          existingGroupExternalEventId =
+            existingGroupBooking.externalEventId || undefined;
           existingGroupMeetLink = existingGroupBooking.meetLink || undefined;
         }
       }
 
-      let storedMeetLink: string | null = existingGroupMeetLink ?? booking.meetLink ?? null;
+      let storedMeetLink: string | null =
+        existingGroupMeetLink ?? booking.meetLink ?? null;
       for (const h of assignedHosts) {
         if (h.integrations && h.integrations.length > 0) {
           try {
-            const calendarResult = await this.calendarService.createCalendarEvent(
-              h.id,
-              h.email,
-              guestEmail,
-              startTimeIso,
-              endTimeIso,
-              eventTitle,
-              {
-                locationType: booking.eventType.location || 'Google Meet',
-                locationDetails: booking.eventType.location || undefined,
-                hostTimezone: timezone,
-                existingEventId: existingGroupExternalEventId,
-              }
-            );
-            const meetLink = calendarResult?.meetLink || existingGroupMeetLink || null;
-            const externalEventId = calendarResult?.eventId || existingGroupExternalEventId || null;
+            const calendarResult =
+              await this.calendarService.createCalendarEvent(
+                h.id,
+                h.email,
+                guestEmail,
+                startTimeIso,
+                endTimeIso,
+                eventTitle,
+                {
+                  locationType: booking.eventType.location || 'Google Meet',
+                  locationDetails: booking.eventType.location || undefined,
+                  hostTimezone: timezone,
+                  existingEventId: existingGroupExternalEventId,
+                },
+              );
+            const meetLink =
+              calendarResult?.meetLink || existingGroupMeetLink || null;
+            const externalEventId =
+              calendarResult?.eventId || existingGroupExternalEventId || null;
             if (meetLink || externalEventId) {
               await this.prisma.booking.update({
                 where: { id: booking.id },
@@ -532,7 +685,10 @@ export class BookingsService {
               if (meetLink) storedMeetLink = meetLink;
             }
           } catch (error: any) {
-            this.logger.error(`Failed to create external calendar event for host ${h.id}`, error.stack);
+            this.logger.error(
+              `Failed to create external calendar event for host ${h.id}`,
+              error.stack,
+            );
           }
         }
       }
@@ -556,7 +712,10 @@ export class BookingsService {
           booking.id,
         );
       } catch (error: any) {
-        this.logger.error(`Failed to generate guest tokens for booking ${booking.id}`, error.stack);
+        this.logger.error(
+          `Failed to generate guest tokens for booking ${booking.id}`,
+          error.stack,
+        );
       }
 
       // 4. Send Confirmation Emails to guest and all hosts
@@ -571,28 +730,50 @@ export class BookingsService {
             booking.eventType.duration,
             h.profile?.name || 'Host',
             h.email,
-            guestCancelToken,      // FIX #2: was undefined
-            guestRescheduleToken   // FIX #2: was undefined
+            guestCancelToken, // FIX #2: was undefined
+            guestRescheduleToken, // FIX #2: was undefined
           );
         } catch (error: any) {
-          this.logger.error(`Failed to send confirmation email for booking ${booking.id}`, error.stack);
+          this.logger.error(
+            `Failed to send confirmation email for booking ${booking.id}`,
+            error.stack,
+          );
         }
       }
 
       // 5. Send Slack Notification to all hosts if configured
       for (const h of assignedHosts) {
         try {
-          await this.slackService.sendBookingNotification(h.id, guestName, guestEmail, startTimeIso, eventTitle);
+          await this.slackService.sendBookingNotification(
+            h.id,
+            guestName,
+            guestEmail,
+            startTimeIso,
+            eventTitle,
+          );
         } catch (error: any) {
-          this.logger.error(`Failed to send Slack notification for booking ${booking.id}`, error.stack);
+          this.logger.error(
+            `Failed to send Slack notification for booking ${booking.id}`,
+            error.stack,
+          );
         }
       }
 
       // Create Contact record for guest
       try {
-        await this.contactsService.createOrUpdateContact(booking.hostId, guestName, guestEmail, booking.guestPhone, booking.guestCompany, booking.startTime);
+        await this.contactsService.createOrUpdateContact(
+          booking.hostId,
+          guestName,
+          guestEmail,
+          booking.guestPhone,
+          booking.guestCompany,
+          booking.startTime,
+        );
       } catch (error: any) {
-         this.logger.error(`Failed to create contact for booking ${booking.id}`, error.stack);
+        this.logger.error(
+          `Failed to create contact for booking ${booking.id}`,
+          error.stack,
+        );
       }
 
       // Dispatch Developer Webhook
@@ -603,34 +784,31 @@ export class BookingsService {
       message: 'Booking(s) created successfully',
       bookings: successfulOccurrences,
       skipped: skippedOccurrences,
-      seriesId
+      seriesId,
     };
   }
   async getHostBookings(hostId: string) {
     const dbBookings = await this.prisma.booking.findMany({
       where: {
-        OR: [
-          { hostId },
-          { assignedHosts: { some: { userId: hostId } } }
-        ]
+        OR: [{ hostId }, { assignedHosts: { some: { userId: hostId } } }],
       },
       orderBy: { startTime: 'desc' },
       include: {
         eventType: true,
         assignedHosts: { include: { user: { include: { profile: true } } } },
-        host: { include: { profile: true } }
-      }
+        host: { include: { profile: true } },
+      },
     });
 
     try {
       const existingExternalIds = dbBookings
-        .map(b => b.externalEventId)
+        .map((b) => b.externalEventId)
         .filter((id): id is string => Boolean(id));
       const googleEvents = await this.calendarService.getGoogleEvents(
         hostId,
         undefined,
         undefined,
-        existingExternalIds
+        existingExternalIds,
       );
       return [...dbBookings, ...googleEvents];
     } catch (err) {
@@ -641,14 +819,16 @@ export class BookingsService {
   async markNoShow(bookingId: string, hostId: string) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
-      include: { assignedHosts: true }
+      include: { assignedHosts: true },
     });
 
     if (!booking) {
       throw new BadRequestException('Booking not found');
     }
 
-    const isAssigned = booking.hostId === hostId || booking.assignedHosts.some(h => h.userId === hostId);
+    const isAssigned =
+      booking.hostId === hostId ||
+      booking.assignedHosts.some((h) => h.userId === hostId);
     if (!isAssigned) {
       throw new BadRequestException('Unauthorized');
     }
@@ -658,13 +838,15 @@ export class BookingsService {
     }
 
     if (booking.status !== 'CONFIRMED' && booking.status !== 'RESCHEDULED') {
-      throw new BadRequestException('Only confirmed or rescheduled bookings can be marked as no-show');
+      throw new BadRequestException(
+        'Only confirmed or rescheduled bookings can be marked as no-show',
+      );
     }
 
     const updatedBooking = await this.prisma.booking.update({
       where: { id: bookingId },
       data: { status: 'NO_SHOW' },
-      include: { eventType: true }
+      include: { eventType: true },
     });
 
     // Dispatch Webhook
@@ -673,17 +855,19 @@ export class BookingsService {
     return updatedBooking;
   }
 
-async cancelBooking(bookingId: string, hostId: string, reason: string) {
-    const booking = await this.prisma.booking.findUnique({ 
+  async cancelBooking(bookingId: string, hostId: string, reason: string) {
+    const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
-      include: { assignedHosts: { include: { user: true } }, host: true }
+      include: { assignedHosts: { include: { user: true } }, host: true },
     });
-    
+
     if (!booking) {
       throw new BadRequestException('Booking not found');
     }
 
-    const isAssigned = booking.hostId === hostId || booking.assignedHosts.some(h => h.userId === hostId);
+    const isAssigned =
+      booking.hostId === hostId ||
+      booking.assignedHosts.some((h) => h.userId === hostId);
     if (!isAssigned) {
       throw new BadRequestException('Unauthorized');
     }
@@ -695,51 +879,67 @@ async cancelBooking(bookingId: string, hostId: string, reason: string) {
     });
 
     // Trigger cancel email via EmailService
-    await this.emailService.sendCancellationEmail(
-      booking.guestEmail,
-      booking.guestName,
-      updatedBooking.eventType.title,
-      reason
-    ).catch(e => console.error('Failed to send cancellation email:', e));
+    await this.emailService
+      .sendCancellationEmail(
+        booking.guestEmail,
+        booking.guestName,
+        updatedBooking.eventType.title,
+        reason,
+      )
+      .catch((e) => console.error('Failed to send cancellation email:', e));
 
-    const hostsToNotify = booking.assignedHosts.length > 0 
-      ? booking.assignedHosts.map(h => h.user) 
-      : [booking.host];
+    const hostsToNotify =
+      booking.assignedHosts.length > 0
+        ? booking.assignedHosts.map((h) => h.user)
+        : [booking.host];
 
     for (const h of hostsToNotify) {
       // Slack Notification
-      await this.slackService.sendCancellationNotification(
-        h.id,
-        booking.guestName,
-        updatedBooking.eventType.title,
-        reason
-      ).catch(e => console.error('Failed to send Slack cancellation notification:', e));
+      await this.slackService
+        .sendCancellationNotification(
+          h.id,
+          booking.guestName,
+          updatedBooking.eventType.title,
+          reason,
+        )
+        .catch((e) =>
+          console.error('Failed to send Slack cancellation notification:', e),
+        );
 
       // Update external calendar
       if (booking.externalEventId) {
-        await this.calendarService.deleteCalendarEvent(h.id, booking.externalEventId)
-          .catch(e => console.error('Failed to delete external calendar event:', e));
+        await this.calendarService
+          .deleteCalendarEvent(h.id, booking.externalEventId)
+          .catch((e) =>
+            console.error('Failed to delete external calendar event:', e),
+          );
       }
 
       // Push Notification
       await this.pushService.sendToUser(
         h.id,
         'Booking Cancelled',
-        `Booking with ${booking.guestName} for ${updatedBooking.eventType.title} was cancelled.`
+        `Booking with ${booking.guestName} for ${updatedBooking.eventType.title} was cancelled.`,
       );
     }
 
-    const guestUser = await this.prisma.user.findUnique({ where: { email: booking.guestEmail } });
+    const guestUser = await this.prisma.user.findUnique({
+      where: { email: booking.guestEmail },
+    });
     if (guestUser) {
       await this.pushService.sendToUser(
         guestUser.id,
         'Booking Cancelled',
-        `Your booking for ${updatedBooking.eventType.title} was cancelled.`
+        `Your booking for ${updatedBooking.eventType.title} was cancelled.`,
       );
     }
 
     // Dispatch Developer Webhook
-    await this.dispatchBookingWebhook('booking.canceled', updatedBooking, reason);
+    await this.dispatchBookingWebhook(
+      'booking.canceled',
+      updatedBooking,
+      reason,
+    );
 
     return updatedBooking;
   }
@@ -747,7 +947,7 @@ async cancelBooking(bookingId: string, hostId: string, reason: string) {
   async cancelSeries(seriesId: string, hostId: string, reason: string) {
     const series = await this.prisma.bookingSeries.findUnique({
       where: { id: seriesId },
-      include: { bookings: true }
+      include: { bookings: true },
     });
 
     if (!series) {
@@ -764,58 +964,74 @@ async cancelBooking(bookingId: string, hostId: string, reason: string) {
         bookingSeriesId: seriesId,
         hostId,
         startTime: { gt: now },
-        status: { in: ['CONFIRMED', 'RESCHEDULED'] }
+        status: { in: ['CONFIRMED', 'RESCHEDULED'] },
       },
-      include: { eventType: true }
+      include: { eventType: true },
     });
 
     if (futureBookings.length === 0) {
-      throw new BadRequestException('No active future bookings to cancel in this series');
+      throw new BadRequestException(
+        'No active future bookings to cancel in this series',
+      );
     }
 
     const updatedBookings: any[] = [];
     const transactionResult = await this.prisma.$transaction(async (tx) => {
-       for (const booking of futureBookings) {
-          const updated = await tx.booking.update({
-             where: { id: booking.id },
-             data: { status: 'CANCELLED', cancelReason: reason },
-             include: { eventType: true }
-          });
-          updatedBookings.push(updated);
-       }
-       return updatedBookings;
+      for (const booking of futureBookings) {
+        const updated = await tx.booking.update({
+          where: { id: booking.id },
+          data: { status: 'CANCELLED', cancelReason: reason },
+          include: { eventType: true },
+        });
+        updatedBookings.push(updated);
+      }
+      return updatedBookings;
     });
 
     // Handle external effects safely outside the transaction
     for (const booking of updatedBookings) {
       // Trigger cancel email via EmailService
-      await this.emailService.sendCancellationEmail(
-        booking.guestEmail,
-        booking.guestName,
-        booking.eventType.title,
-        reason
-      ).catch(e => console.error('Failed to send series cancellation email:', e));
+      await this.emailService
+        .sendCancellationEmail(
+          booking.guestEmail,
+          booking.guestName,
+          booking.eventType.title,
+          reason,
+        )
+        .catch((e) =>
+          console.error('Failed to send series cancellation email:', e),
+        );
 
       // Slack Notification
-      await this.slackService.sendCancellationNotification(
-        hostId,
-        booking.guestName,
-        booking.eventType.title,
-        reason
-      ).catch(e => console.error('Failed to send Slack notification:', e));
+      await this.slackService
+        .sendCancellationNotification(
+          hostId,
+          booking.guestName,
+          booking.eventType.title,
+          reason,
+        )
+        .catch((e) => console.error('Failed to send Slack notification:', e));
 
       // Update external calendar
       if (booking.externalEventId) {
-        await this.calendarService.deleteCalendarEvent(hostId, booking.externalEventId)
-          .catch(e => console.error('Failed to delete calendar event for series cancellation:', e));
+        await this.calendarService
+          .deleteCalendarEvent(hostId, booking.externalEventId)
+          .catch((e) =>
+            console.error(
+              'Failed to delete calendar event for series cancellation:',
+              e,
+            ),
+          );
       }
-      
-      const guestUser = await this.prisma.user.findUnique({ where: { email: booking.guestEmail } });
+
+      const guestUser = await this.prisma.user.findUnique({
+        where: { email: booking.guestEmail },
+      });
       if (guestUser) {
         await this.pushService.sendToUser(
           guestUser.id,
           'Series Cancelled',
-          `Your upcoming booking for ${booking.eventType.title} was cancelled.`
+          `Your upcoming booking for ${booking.eventType.title} was cancelled.`,
         );
       }
 
@@ -826,23 +1042,30 @@ async cancelBooking(bookingId: string, hostId: string, reason: string) {
     await this.pushService.sendToUser(
       hostId,
       'Series Cancelled',
-      `Cancelled ${updatedBookings.length} upcoming occurrences.`
+      `Cancelled ${updatedBookings.length} upcoming occurrences.`,
     );
 
     return { success: true, count: updatedBookings.length };
   }
 
-async rescheduleBooking(bookingId: string, hostId: string, newStartTime: Date, newEndTime: Date) {
-    const booking = await this.prisma.booking.findUnique({ 
+  async rescheduleBooking(
+    bookingId: string,
+    hostId: string,
+    newStartTime: Date,
+    newEndTime: Date,
+  ) {
+    const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
-      include: { eventType: { include: { hosts: true } }, assignedHosts: true }
+      include: { eventType: { include: { hosts: true } }, assignedHosts: true },
     });
-    
+
     if (!booking) {
       throw new BadRequestException('Booking not found');
     }
 
-    const isAssigned = booking.hostId === hostId || booking.assignedHosts.some(h => h.userId === hostId);
+    const isAssigned =
+      booking.hostId === hostId ||
+      booking.assignedHosts.some((h) => h.userId === hostId);
     if (!isAssigned) {
       throw new BadRequestException('Unauthorized');
     }
@@ -855,16 +1078,20 @@ async rescheduleBooking(bookingId: string, hostId: string, newStartTime: Date, n
       targetHostIds = booking.eventType.hosts.map((h: any) => h.userId);
     }
 
-    const occurrencesToAttempt = [{ startTime: newStartTime, endTime: newEndTime, occurrenceNumber: 1 }];
+    const occurrencesToAttempt = [
+      { startTime: newStartTime, endTime: newEndTime, occurrenceNumber: 1 },
+    ];
     const evaluated = await this.availabilityEngine.evaluateTeamSlots(
       targetHostIds,
       booking.eventTypeId,
       schedulingType,
-      occurrencesToAttempt
+      occurrencesToAttempt,
     );
 
     if (!evaluated[0].isAvailable) {
-      throw new BadRequestException(evaluated[0].reason || 'Time slot is not available');
+      throw new BadRequestException(
+        evaluated[0].reason || 'Time slot is not available',
+      );
     }
 
     let finalHostIds = evaluated[0].availableHostIds || [];
@@ -873,9 +1100,12 @@ async rescheduleBooking(bookingId: string, hostId: string, newStartTime: Date, n
       let minCount = Infinity;
       for (const hId of finalHostIds) {
         const count = await this.prisma.booking.count({
-          where: { hostId: hId, status: 'CONFIRMED' }
+          where: { hostId: hId, status: 'CONFIRMED' },
         });
-        if (count < minCount || (count === minCount && (!leastBusyHost || hId < leastBusyHost))) {
+        if (
+          count < minCount ||
+          (count === minCount && (!leastBusyHost || hId < leastBusyHost))
+        ) {
           minCount = count;
           leastBusyHost = hId;
         }
@@ -894,9 +1124,9 @@ async rescheduleBooking(bookingId: string, hostId: string, newStartTime: Date, n
           status: 'CONFIRMED',
           id: { not: booking.id },
           OR: [
-            { startTime: { lt: newEndTime }, endTime: { gt: newStartTime } }
-          ]
-        }
+            { startTime: { lt: newEndTime }, endTime: { gt: newStartTime } },
+          ],
+        },
       });
 
       if (overlappingBooking) {
@@ -913,13 +1143,17 @@ async rescheduleBooking(bookingId: string, hostId: string, newStartTime: Date, n
           endTime: newEndTime,
           hostId: selectedPrimaryHostId,
           assignedHosts: {
-            create: finalHostIds.map(uId => ({
+            create: finalHostIds.map((uId) => ({
               userId: uId,
-              role: uId === selectedPrimaryHostId ? 'ORGANIZER' : 'HOST'
-            }))
-          }
+              role: uId === selectedPrimaryHostId ? 'ORGANIZER' : 'HOST',
+            })),
+          },
         },
-        include: { eventType: true, host: true, assignedHosts: { include: { user: true } } }
+        include: {
+          eventType: true,
+          host: true,
+          assignedHosts: { include: { user: true } },
+        },
       });
 
       return updated;
@@ -928,22 +1162,38 @@ async rescheduleBooking(bookingId: string, hostId: string, newStartTime: Date, n
     const updatedBooking = transactionResult;
 
     // Send emails and external calendar updates
-    const assignedHosts = updatedBooking.assignedHosts.map(ah => ah.user);
-    
+    const assignedHosts = updatedBooking.assignedHosts.map((ah) => ah.user);
+
     // Update external calendar event (Google / Microsoft)
     if (booking.externalEventId) {
-      await this.calendarService.updateCalendarEvent(
-        selectedPrimaryHostId,
-        booking.externalEventId,
-        newStartTime.toISOString(),
-        newEndTime.toISOString()
-      ).catch(e => this.logger.error(`Failed to update calendar event on reschedule: ${e.message}`));
+      await this.calendarService
+        .updateCalendarEvent(
+          selectedPrimaryHostId,
+          booking.externalEventId,
+          newStartTime.toISOString(),
+          newEndTime.toISOString(),
+        )
+        .catch((e) =>
+          this.logger.error(
+            `Failed to update calendar event on reschedule: ${e.message}`,
+          ),
+        );
     }
 
     // Generate tokens and send reschedule email to guest
     try {
-      const rescheduleToken = await this.secureTokenService.generateToken(TokenType.GUEST_RESCHEDULE, 168, booking.hostId, booking.id);
-      const cancelToken = await this.secureTokenService.generateToken(TokenType.GUEST_CANCEL, 168, booking.hostId, booking.id);
+      const rescheduleToken = await this.secureTokenService.generateToken(
+        TokenType.GUEST_RESCHEDULE,
+        168,
+        booking.hostId,
+        booking.id,
+      );
+      const cancelToken = await this.secureTokenService.generateToken(
+        TokenType.GUEST_CANCEL,
+        168,
+        booking.hostId,
+        booking.id,
+      );
 
       await this.emailService.sendRescheduleEmail(
         booking.guestEmail,
@@ -952,26 +1202,30 @@ async rescheduleBooking(bookingId: string, hostId: string, newStartTime: Date, n
         newStartTime.toISOString(),
         booking.meetLink || undefined,
         cancelToken,
-        rescheduleToken
+        rescheduleToken,
       );
     } catch (e: any) {
-      this.logger.error(`Failed to send reschedule email for booking ${booking.id}: ${e.message}`);
+      this.logger.error(
+        `Failed to send reschedule email for booking ${booking.id}: ${e.message}`,
+      );
     }
 
     for (const h of assignedHosts) {
-       await this.pushService.sendToUser(
-         h.id,
-         'Booking Rescheduled',
-         `Booking with ${booking.guestName} was rescheduled to ${newStartTime.toLocaleString()}.`
-       );
+      await this.pushService.sendToUser(
+        h.id,
+        'Booking Rescheduled',
+        `Booking with ${booking.guestName} was rescheduled to ${newStartTime.toLocaleString()}.`,
+      );
     }
-    
-    const guestUser = await this.prisma.user.findUnique({ where: { email: booking.guestEmail } });
+
+    const guestUser = await this.prisma.user.findUnique({
+      where: { email: booking.guestEmail },
+    });
     if (guestUser) {
       await this.pushService.sendToUser(
         guestUser.id,
         'Booking Rescheduled',
-        `Your booking for ${updatedBooking.eventType.title} was rescheduled to ${newStartTime.toLocaleString()}.`
+        `Your booking for ${updatedBooking.eventType.title} was rescheduled to ${newStartTime.toLocaleString()}.`,
       );
     }
 
@@ -982,12 +1236,18 @@ async rescheduleBooking(bookingId: string, hostId: string, newStartTime: Date, n
   }
 
   async guestCancel(token: string) {
-    const tokenRecord = await this.secureTokenService.verifyAndConsumeToken(token, TokenType.GUEST_CANCEL);
+    const tokenRecord = await this.secureTokenService.verifyAndConsumeToken(
+      token,
+      TokenType.GUEST_CANCEL,
+    );
     if (!tokenRecord || !tokenRecord.bookingId || !tokenRecord.userId) {
       throw new BadRequestException('Invalid or expired cancellation token');
     }
 
-    const booking = await this.prisma.booking.findUnique({ where: { id: tokenRecord.bookingId }, include: { eventType: true } });
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: tokenRecord.bookingId },
+      include: { eventType: true },
+    });
     if (!booking) {
       throw new BadRequestException('Booking not found');
     }
@@ -999,88 +1259,114 @@ async rescheduleBooking(bookingId: string, hostId: string, newStartTime: Date, n
     const updatedBooking = await this.prisma.booking.update({
       where: { id: booking.id },
       data: { status: 'CANCELLED', cancelReason: 'Cancelled by Guest' },
-      include: { eventType: true, host: true }
+      include: { eventType: true, host: true },
     });
 
     await this.emailService.sendCancellationEmail(
       booking.guestEmail,
       booking.guestName,
       updatedBooking.eventType.title,
-      'Cancelled by Guest'
+      'Cancelled by Guest',
     );
 
-    await this.emailService.sendHostNotificationEmail(
-      updatedBooking.host.email,
-      booking.guestName,
-      updatedBooking.eventType.title,
-      'CANCELLED'
-    ).catch(() => {});
+    await this.emailService
+      .sendHostNotificationEmail(
+        updatedBooking.host.email,
+        booking.guestName,
+        updatedBooking.eventType.title,
+        'CANCELLED',
+      )
+      .catch(() => {});
 
-    await this.slackService.sendCancellationNotification(
-      tokenRecord.userId,
-      booking.guestName,
-      updatedBooking.eventType.title,
-      'Cancelled by Guest'
-    ).catch(() => {});
+    await this.slackService
+      .sendCancellationNotification(
+        tokenRecord.userId,
+        booking.guestName,
+        updatedBooking.eventType.title,
+        'Cancelled by Guest',
+      )
+      .catch(() => {});
 
     if (booking.externalEventId) {
-      await this.calendarService.deleteCalendarEvent(tokenRecord.userId, booking.externalEventId).catch(() => {});
+      await this.calendarService
+        .deleteCalendarEvent(tokenRecord.userId, booking.externalEventId)
+        .catch(() => {});
     }
 
     await this.pushService.sendToUser(
       tokenRecord.userId,
       'Booking Cancelled by Guest',
-      `Booking with ${booking.guestName} for ${updatedBooking.eventType.title} was cancelled.`
+      `Booking with ${booking.guestName} for ${updatedBooking.eventType.title} was cancelled.`,
     );
-    const guestUser = await this.prisma.user.findUnique({ where: { email: booking.guestEmail } });
+    const guestUser = await this.prisma.user.findUnique({
+      where: { email: booking.guestEmail },
+    });
     if (guestUser) {
       await this.pushService.sendToUser(
         guestUser.id,
         'Booking Cancelled',
-        `Your booking for ${updatedBooking.eventType.title} was cancelled successfully.`
+        `Your booking for ${updatedBooking.eventType.title} was cancelled successfully.`,
       );
     }
 
     // Invalidate reschedule tokens
-    await this.secureTokenService.revokeTokensForBooking(booking.id, TokenType.GUEST_RESCHEDULE);
+    await this.secureTokenService.revokeTokensForBooking(
+      booking.id,
+      TokenType.GUEST_RESCHEDULE,
+    );
 
     // Dispatch Developer Webhook
-    await this.dispatchBookingWebhook('booking.canceled', updatedBooking, 'Cancelled by Guest');
+    await this.dispatchBookingWebhook(
+      'booking.canceled',
+      updatedBooking,
+      'Cancelled by Guest',
+    );
 
     return { success: true };
   }
 
   async guestReschedule(token: string, newStartTime: string) {
-    const tokenRecord = await this.secureTokenService.verifyAndConsumeToken(token, TokenType.GUEST_RESCHEDULE);
+    const tokenRecord = await this.secureTokenService.verifyAndConsumeToken(
+      token,
+      TokenType.GUEST_RESCHEDULE,
+    );
     if (!tokenRecord || !tokenRecord.bookingId || !tokenRecord.userId) {
       throw new BadRequestException('Invalid or expired reschedule token');
     }
 
-    const booking = await this.prisma.booking.findUnique({ where: { id: tokenRecord.bookingId } });
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: tokenRecord.bookingId },
+    });
     if (!booking) {
       throw new BadRequestException('Booking not found');
     }
-    
+
     if (booking.status === 'CANCELLED') {
       throw new BadRequestException('Cannot reschedule a cancelled booking');
     }
 
-    const eventType = await this.prisma.eventType.findUnique({ where: { id: booking.eventTypeId } });
+    const eventType = await this.prisma.eventType.findUnique({
+      where: { id: booking.eventTypeId },
+    });
     if (!eventType) throw new BadRequestException('EventType not found');
 
     const start = new Date(newStartTime);
     const end = new Date(start.getTime() + eventType.duration * 60000);
 
-    const occurrencesToAttempt = [{ startTime: start, endTime: end, occurrenceNumber: 1 }];
+    const occurrencesToAttempt = [
+      { startTime: start, endTime: end, occurrenceNumber: 1 },
+    ];
 
     const evaluated = await this.availabilityEngine.evaluateSlots(
       tokenRecord.userId,
       booking.eventTypeId,
-      occurrencesToAttempt
+      occurrencesToAttempt,
     );
 
     if (!evaluated[0].isAvailable) {
-      throw new BadRequestException(evaluated[0].reason || 'Time slot is not available');
+      throw new BadRequestException(
+        evaluated[0].reason || 'Time slot is not available',
+      );
     }
 
     // Check overlap again directly
@@ -1089,10 +1375,8 @@ async rescheduleBooking(bookingId: string, hostId: string, newStartTime: Date, n
         hostId: tokenRecord.userId,
         status: 'CONFIRMED',
         id: { not: booking.id },
-        OR: [
-          { startTime: { lt: end }, endTime: { gt: start } }
-        ]
-      }
+        OR: [{ startTime: { lt: end }, endTime: { gt: start } }],
+      },
     });
 
     if (overlapping) {
@@ -1104,52 +1388,70 @@ async rescheduleBooking(bookingId: string, hostId: string, newStartTime: Date, n
       data: {
         status: 'RESCHEDULED',
         startTime: start,
-        endTime: end
+        endTime: end,
       },
-      include: { eventType: true, host: true }
+      include: { eventType: true, host: true },
     });
 
     if (booking.externalEventId) {
-      await this.calendarService.updateCalendarEvent(
-        tokenRecord.userId,
-        booking.externalEventId,
-        start.toISOString(),
-        end.toISOString()
-      ).catch(() => {});
+      await this.calendarService
+        .updateCalendarEvent(
+          tokenRecord.userId,
+          booking.externalEventId,
+          start.toISOString(),
+          end.toISOString(),
+        )
+        .catch(() => {});
     }
-    
-    const rescheduleToken = await this.secureTokenService.generateToken(TokenType.GUEST_RESCHEDULE, 168, booking.hostId, booking.id);
-    const cancelToken = await this.secureTokenService.generateToken(TokenType.GUEST_CANCEL, 168, booking.hostId, booking.id);
 
-    await this.emailService.sendRescheduleEmail(
-      booking.guestEmail,
-      booking.guestName,
-      updatedBooking.eventType.title,
-      start.toISOString(),
-      booking.meetLink || undefined,
-      cancelToken,
-      rescheduleToken
-    ).catch(() => {});
-    
-    await this.emailService.sendHostNotificationEmail(
-      updatedBooking.host.email,
-      booking.guestName,
-      updatedBooking.eventType.title,
-      'RESCHEDULED',
-      start.toISOString()
-    ).catch(() => {});
+    const rescheduleToken = await this.secureTokenService.generateToken(
+      TokenType.GUEST_RESCHEDULE,
+      168,
+      booking.hostId,
+      booking.id,
+    );
+    const cancelToken = await this.secureTokenService.generateToken(
+      TokenType.GUEST_CANCEL,
+      168,
+      booking.hostId,
+      booking.id,
+    );
+
+    await this.emailService
+      .sendRescheduleEmail(
+        booking.guestEmail,
+        booking.guestName,
+        updatedBooking.eventType.title,
+        start.toISOString(),
+        booking.meetLink || undefined,
+        cancelToken,
+        rescheduleToken,
+      )
+      .catch(() => {});
+
+    await this.emailService
+      .sendHostNotificationEmail(
+        updatedBooking.host.email,
+        booking.guestName,
+        updatedBooking.eventType.title,
+        'RESCHEDULED',
+        start.toISOString(),
+      )
+      .catch(() => {});
 
     await this.pushService.sendToUser(
       tokenRecord.userId,
       'Booking Rescheduled by Guest',
-      `Booking with ${booking.guestName} was rescheduled to ${start.toLocaleString()}.`
+      `Booking with ${booking.guestName} was rescheduled to ${start.toLocaleString()}.`,
     );
-    const guestUsr = await this.prisma.user.findUnique({ where: { email: booking.guestEmail } });
+    const guestUsr = await this.prisma.user.findUnique({
+      where: { email: booking.guestEmail },
+    });
     if (guestUsr) {
       await this.pushService.sendToUser(
         guestUsr.id,
         'Booking Rescheduled',
-        `Your booking for ${updatedBooking.eventType.title} was rescheduled successfully.`
+        `Your booking for ${updatedBooking.eventType.title} was rescheduled successfully.`,
       );
     }
 
@@ -1160,7 +1462,10 @@ async rescheduleBooking(bookingId: string, hostId: string, newStartTime: Date, n
   }
 
   async getConfirmationDetails(token: string) {
-    const tokenRecord = await this.secureTokenService.verifyToken(token, TokenType.BOOKING_CONFIRMATION);
+    const tokenRecord = await this.secureTokenService.verifyToken(
+      token,
+      TokenType.BOOKING_CONFIRMATION,
+    );
     if (!tokenRecord || !tokenRecord.bookingId) {
       throw new BadRequestException('Invalid or expired confirmation token');
     }
@@ -1170,9 +1475,9 @@ async rescheduleBooking(bookingId: string, hostId: string, newStartTime: Date, n
       include: {
         eventType: true,
         host: {
-          include: { profile: true }
-        }
-      }
+          include: { profile: true },
+        },
+      },
     });
 
     if (!booking) {
@@ -1193,7 +1498,7 @@ async rescheduleBooking(bookingId: string, hostId: string, newStartTime: Date, n
       cancelReason: booking.cancelReason,
       isGroupEvent: booking.eventType.isGroupEvent,
       confirmationMessage: booking.eventType.confirmationMessage,
-      redirectUrl: booking.eventType.redirectUrl
+      redirectUrl: booking.eventType.redirectUrl,
     };
   }
 }

@@ -49,7 +49,9 @@ export function isSafeWebhookUrl(rawUrl: string): boolean {
       return false;
     }
     // Carrier Grade NAT 100.64.0.0/10
-    if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
+    if (
+      /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}$/.test(hostname)
+    ) {
       return false;
     }
 
@@ -76,7 +78,10 @@ export function escapeHtml(str: string | null | undefined): string {
  * Derives a 32-byte encryption key from environment variables.
  */
 function getEncryptionKey(): Buffer {
-  const secret = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET || 'meet-secure-vault-encryption-key-32b!';
+  const secret =
+    process.env.ENCRYPTION_KEY ||
+    process.env.JWT_SECRET ||
+    'meet-secure-vault-encryption-key-32b!';
   return crypto.createHash('sha256').update(secret).digest();
 }
 
@@ -93,7 +98,10 @@ export function encryptToken(plainText: string): string {
   const iv = crypto.randomBytes(12); // Standard 96-bit IV for GCM
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
 
-  const encrypted = Buffer.concat([cipher.update(plainText, 'utf8'), cipher.final()]);
+  const encrypted = Buffer.concat([
+    cipher.update(plainText, 'utf8'),
+    cipher.final(),
+  ]);
   const authTag = cipher.getAuthTag();
 
   return `${ENCRYPTION_PREFIX}${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted.toString('hex')}`;
@@ -121,11 +129,13 @@ export function decryptToken(cipherText: string | null | undefined): string {
     const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
     decipher.setAuthTag(authTag);
 
-    const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+    const decrypted = Buffer.concat([
+      decipher.update(encrypted),
+      decipher.final(),
+    ]);
     return decrypted.toString('utf8');
   } catch (err) {
     console.error('Failed to decrypt token:', err);
     return cipherText;
   }
 }
-

@@ -1,4 +1,14 @@
-import { Controller, Get, Put, Post, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Put,
+  Post,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { AvailabilityService } from './availability.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -14,7 +24,10 @@ export class AvailabilityController {
 
   @Post('schedules')
   createSchedule(@Request() req, @Body('name') name: string) {
-    return this.availabilityService.createSchedule(req.user.userId, name || 'New Schedule');
+    return this.availabilityService.createSchedule(
+      req.user.userId,
+      name || 'New Schedule',
+    );
   }
 
   @Get('schedules/:id')
@@ -30,9 +43,17 @@ export class AvailabilityController {
     @Body('isDefault') isDefault: boolean,
     @Body('timezone') timezone: string,
     @Body('slots') slots: any[],
-    @Body('overrides') overrides: any[] = []
+    @Body('overrides') overrides: any[] = [],
   ) {
-    return this.availabilityService.updateSchedule(req.user.userId, id, name, isDefault, timezone, slots, overrides);
+    return this.availabilityService.updateSchedule(
+      req.user.userId,
+      id,
+      name,
+      isDefault,
+      timezone,
+      slots,
+      overrides,
+    );
   }
 
   @Delete('schedules/:id')
@@ -50,8 +71,12 @@ export class AvailabilityController {
   updateAvailability(
     @Request() req,
     @Body('slots') slots: any[],
-    @Body('overrides') overrides: any[] = []
+    @Body('overrides') overrides: any[] = [],
   ) {
-    return this.availabilityService.setAvailability(req.user.userId, slots, overrides);
+    return this.availabilityService.setAvailability(
+      req.user.userId,
+      slots,
+      overrides,
+    );
   }
 }

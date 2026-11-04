@@ -1,11 +1,19 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class RoutingService {
   constructor(private prisma: PrismaService) {}
 
-  private async resolveHostId(identifier: string): Promise<{ hostId: string; username: string }> {
+  private async resolveHostId(
+    identifier: string,
+  ): Promise<{ hostId: string; username: string }> {
     // If identifier is 24 hex characters, check user id first
     if (/^[0-9a-fA-F]{24}$/.test(identifier)) {
       const user = await this.prisma.user.findUnique({
@@ -41,13 +49,13 @@ export class RoutingService {
           isActive: data.isActive ?? true,
           fallbackDestination: data.fallbackDestination,
           questions: {
-            create: data.questions || []
+            create: data.questions || [],
           },
           rules: {
-            create: data.rules || []
-          }
+            create: data.rules || [],
+          },
         },
-        include: { questions: true, rules: true }
+        include: { questions: true, rules: true },
       });
     } catch (e: any) {
       if (e.code === 'P2002') {
@@ -61,14 +69,14 @@ export class RoutingService {
     return this.prisma.routingForm.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-      include: { questions: true, rules: true }
+      include: { questions: true, rules: true },
     });
   }
 
   async getFormById(id: string, userId: string) {
     const form = await this.prisma.routingForm.findFirst({
       where: { id, userId },
-      include: { questions: true, rules: true }
+      include: { questions: true, rules: true },
     });
     if (!form) throw new NotFoundException('Routing form not found');
     return form;
@@ -86,23 +94,28 @@ export class RoutingService {
           slug: data.slug,
           isActive: data.isActive,
           fallbackDestination: data.fallbackDestination,
-          ...(data.questions ? {
-            questions: {
-              deleteMany: {},
-              create: data.questions
-            }
-          } : {}),
-          ...(data.rules ? {
-            rules: {
-              deleteMany: {},
-              create: data.rules
-            }
-          } : {})
+          ...(data.questions
+            ? {
+                questions: {
+                  deleteMany: {},
+                  create: data.questions,
+                },
+              }
+            : {}),
+          ...(data.rules
+            ? {
+                rules: {
+                  deleteMany: {},
+                  create: data.rules,
+                },
+              }
+            : {}),
         },
-        include: { questions: true, rules: true }
+        include: { questions: true, rules: true },
       });
     } catch (e: any) {
-      if (e.code === 'P2002') throw new ConflictException('A form with this slug already exists.');
+      if (e.code === 'P2002')
+        throw new ConflictException('A form with this slug already exists.');
       throw e;
     }
   }
@@ -110,7 +123,7 @@ export class RoutingService {
   async duplicateForm(id: string, userId: string) {
     const form = await this.getFormById(id, userId);
     const newSlug = `${form.slug}-copy-${Math.random().toString(36).substring(2, 6)}`;
-    
+
     return this.prisma.routingForm.create({
       data: {
         userId,
@@ -153,7 +166,7 @@ export class RoutingService {
   async deleteForm(id: string, userId: string) {
     const form = await this.getFormById(id, userId);
     return this.prisma.routingForm.delete({
-      where: { id: form.id }
+      where: { id: form.id },
     });
   }
 
@@ -201,12 +214,16 @@ export class RoutingService {
     };
   }
 
-  async submitRoutingForm(identifier: string, slug: string, answers: { questionId: string; value: string }[]) {
+  async submitRoutingForm(
+    identifier: string,
+    slug: string,
+    answers: { questionId: string; value: string }[],
+  ) {
     const { hostId, username } = await this.resolveHostId(identifier);
 
     const form = await this.prisma.routingForm.findUnique({
       where: { userId_slug: { userId: hostId, slug } },
-      include: { questions: true, rules: true }
+      include: { questions: true, rules: true },
     });
 
     if (!form) {
@@ -217,16 +234,20 @@ export class RoutingService {
     }
 
     // Validate answers
-    const answersMap = new Map(answers.map(a => [a.questionId, a.value]));
+    const answersMap = new Map(answers.map((a) => [a.questionId, a.value]));
 
     for (const q of form.questions) {
       const val = answersMap.get(q.id);
       if (q.required && (!val || val.trim() === '')) {
-        throw new BadRequestException(`Missing required answer for question: ${q.label}`);
+        throw new BadRequestException(
+          `Missing required answer for question: ${q.label}`,
+        );
       }
       if (val && q.options && q.options.length > 0) {
         if (!q.options.includes(val)) {
-          throw new BadRequestException(`Invalid option selected for question: ${q.label}`);
+          throw new BadRequestException(
+            `Invalid option selected for question: ${q.label}`,
+          );
         }
       }
     }
@@ -252,13 +273,30 @@ export class RoutingService {
         matched = true;
       } else if (rule.operator === 'ENDS_WITH' && aLower.endsWith(rLower)) {
         matched = true;
-      } else if (rule.operator === 'IN_LIST' && rule.value.split(',').map(v => v.trim().toLowerCase()).includes(aLower)) {
+      } else if (
+        rule.operator === 'IN_LIST' &&
+        rule.value
+          .split(',')
+          .map((v) => v.trim().toLowerCase())
+          .includes(aLower)
+      ) {
         matched = true;
-      } else if (rule.operator === 'IS_EMPTY' && (!answerVal || answerVal.trim() === '')) {
+      } else if (
+        rule.operator === 'IS_EMPTY' &&
+        (!answerVal || answerVal.trim() === '')
+      ) {
         matched = true;
-      } else if (rule.operator === 'GREATER_THAN' && !isNaN(Number(answerVal)) && Number(answerVal) > Number(rule.value)) {
+      } else if (
+        rule.operator === 'GREATER_THAN' &&
+        !isNaN(Number(answerVal)) &&
+        Number(answerVal) > Number(rule.value)
+      ) {
         matched = true;
-      } else if (rule.operator === 'LESS_THAN' && !isNaN(Number(answerVal)) && Number(answerVal) < Number(rule.value)) {
+      } else if (
+        rule.operator === 'LESS_THAN' &&
+        !isNaN(Number(answerVal)) &&
+        Number(answerVal) < Number(rule.value)
+      ) {
         matched = true;
       }
 
@@ -269,21 +307,28 @@ export class RoutingService {
     }
 
     if (!destination) {
-      throw new BadRequestException('No matching route found and no fallback destination provided.');
+      throw new BadRequestException(
+        'No matching route found and no fallback destination provided.',
+      );
     }
 
     // Verify destination exists and is active
-    if (destination.startsWith('http://') || destination.startsWith('https://')) {
+    if (
+      destination.startsWith('http://') ||
+      destination.startsWith('https://')
+    ) {
       return { destination, isExternal: true, username };
     }
 
     const targetEventType = await this.prisma.eventType.findUnique({
-      where: { userId_slug: { userId: hostId, slug: destination } }
+      where: { userId_slug: { userId: hostId, slug: destination } },
     });
 
     if (!targetEventType || !targetEventType.isActive) {
       if (destination !== 'profile') {
-        throw new BadRequestException('The routed destination event is unavailable or inactive.');
+        throw new BadRequestException(
+          'The routed destination event is unavailable or inactive.',
+        );
       }
     }
 

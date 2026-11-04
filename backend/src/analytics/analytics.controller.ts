@@ -1,4 +1,12 @@
-import { Controller, Get, UseGuards, Request, Query, Header, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  UseGuards,
+  Request,
+  Query,
+  Header,
+  Res,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { AnalyticsService } from './analytics.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -12,9 +20,13 @@ export class AnalyticsController {
   getDashboardAnalytics(
     @Request() req,
     @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string
+    @Query('endDate') endDate?: string,
   ) {
-    return this.analyticsService.getDashboardAnalytics(req.user.userId, startDate, endDate);
+    return this.analyticsService.getDashboardAnalytics(
+      req.user.userId,
+      startDate,
+      endDate,
+    );
   }
 
   @Get('export')
@@ -24,9 +36,13 @@ export class AnalyticsController {
     @Request() req,
     @Res() res: Response,
     @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string
+    @Query('endDate') endDate?: string,
   ) {
-    const csvData = await this.analyticsService.exportBookingsCsv(req.user.userId, startDate, endDate);
+    const csvData = await this.analyticsService.exportBookingsCsv(
+      req.user.userId,
+      startDate,
+      endDate,
+    );
     res.send(csvData);
   }
 
@@ -34,8 +50,12 @@ export class AnalyticsController {
   getEventTypeAnalytics(
     @Request() req,
     @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string
+    @Query('endDate') endDate?: string,
   ) {
-    return this.analyticsService.getEventTypeAnalytics(req.user.userId, startDate, endDate);
+    return this.analyticsService.getEventTypeAnalytics(
+      req.user.userId,
+      startDate,
+      endDate,
+    );
   }
 }

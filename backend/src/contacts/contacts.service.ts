@@ -10,7 +10,7 @@ export class ContactsService {
     if (search) {
       whereClause.OR = [
         { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } }
+        { email: { contains: search, mode: 'insensitive' } },
       ];
     }
     return this.prisma.contact.findMany({
@@ -19,14 +19,21 @@ export class ContactsService {
     });
   }
 
-  async createOrUpdateContact(hostId: string, name: string, email: string, phone?: string, company?: string, meetingDate?: Date) {
+  async createOrUpdateContact(
+    hostId: string,
+    name: string,
+    email: string,
+    phone?: string,
+    company?: string,
+    meetingDate?: Date,
+  ) {
     const existing = await this.prisma.contact.findUnique({
       where: {
         hostId_email: {
           hostId,
           email,
-        }
-      }
+        },
+      },
     });
 
     if (existing) {
@@ -38,7 +45,7 @@ export class ContactsService {
           company: company || existing.company,
           lastMeetingDate: meetingDate || existing.lastMeetingDate,
           totalMeetings: { increment: meetingDate ? 1 : 0 },
-        }
+        },
       });
     }
 
@@ -51,7 +58,7 @@ export class ContactsService {
         company,
         lastMeetingDate: meetingDate,
         totalMeetings: meetingDate ? 1 : 0,
-      }
+      },
     });
   }
 

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateEventTypeDto } from './dto/create-event-type.dto';
 import { UpdateEventTypeDto } from './dto/update-event-type.dto';
@@ -9,29 +13,55 @@ export class EventTypesService {
   constructor(private prisma: PrismaService) {}
 
   async create(userId: string, dto: CreateEventTypeDto) {
-    const { enableReminder24h, customQuestions, schedulingType, teamId, hostIds, availabilityId, redirectUrl, ...data } = dto;
+    const {
+      enableReminder24h,
+      customQuestions,
+      schedulingType,
+      teamId,
+      hostIds,
+      availabilityId,
+      redirectUrl,
+      ...data
+    } = dto;
 
-    const cleanTeamId = (teamId && typeof teamId === 'string' && teamId.trim() !== '') ? teamId.trim() : undefined;
-    const cleanAvailabilityId = (availabilityId && typeof availabilityId === 'string' && availabilityId.trim() !== '') ? availabilityId.trim() : undefined;
-    const cleanRedirectUrl = (redirectUrl && typeof redirectUrl === 'string' && redirectUrl.trim() !== '') ? redirectUrl.trim() : undefined;
-    
+    const cleanTeamId =
+      teamId && typeof teamId === 'string' && teamId.trim() !== ''
+        ? teamId.trim()
+        : undefined;
+    const cleanAvailabilityId =
+      availabilityId &&
+      typeof availabilityId === 'string' &&
+      availabilityId.trim() !== ''
+        ? availabilityId.trim()
+        : undefined;
+    const cleanRedirectUrl =
+      redirectUrl &&
+      typeof redirectUrl === 'string' &&
+      redirectUrl.trim() !== ''
+        ? redirectUrl.trim()
+        : undefined;
+
     if (schedulingType && schedulingType !== 'PERSONAL') {
       if (!cleanTeamId) {
         throw new BadRequestException('Team ID is required for team events');
       }
       if (!hostIds || hostIds.length === 0) {
-        throw new BadRequestException('At least one host must be selected for team events');
+        throw new BadRequestException(
+          'At least one host must be selected for team events',
+        );
       }
-      
+
       // Verify hosts belong to the team
       const validMembers = await this.prisma.teamMember.count({
         where: {
           teamId: cleanTeamId,
-          userId: { in: hostIds }
-        }
+          userId: { in: hostIds },
+        },
       });
       if (validMembers !== hostIds.length) {
-        throw new BadRequestException('One or more selected hosts are not active members of this team');
+        throw new BadRequestException(
+          'One or more selected hosts are not active members of this team',
+        );
       }
     }
 
@@ -40,24 +70,33 @@ export class EventTypesService {
         ...data,
         userId,
         schedulingType: schedulingType || 'PERSONAL',
-        teamId: (schedulingType && schedulingType !== 'PERSONAL') ? cleanTeamId : undefined,
+        teamId:
+          schedulingType && schedulingType !== 'PERSONAL'
+            ? cleanTeamId
+            : undefined,
         availabilityId: cleanAvailabilityId,
         redirectUrl: cleanRedirectUrl,
         customQuestions: {
-          create: customQuestions?.map((q: any) => ({
-            type: q.type,
-            label: q.label,
-            placeholder: q.placeholder,
-            required: q.required,
-            options: q.options || [],
-            order: q.order,
-          })) || []
-        }
+          create:
+            customQuestions?.map((q: any) => ({
+              type: q.type,
+              label: q.label,
+              placeholder: q.placeholder,
+              required: q.required,
+              options: q.options || [],
+              order: q.order,
+            })) || [],
+        },
       },
     });
 
     // Create EventTypeHost records for team events
-    if (schedulingType && schedulingType !== 'PERSONAL' && hostIds && hostIds.length > 0) {
+    if (
+      schedulingType &&
+      schedulingType !== 'PERSONAL' &&
+      hostIds &&
+      hostIds.length > 0
+    ) {
       for (const uId of hostIds) {
         try {
           await this.prisma.eventTypeHost.create({
@@ -90,7 +129,7 @@ export class EventTypesService {
         workflows: true,
         customQuestions: { orderBy: { order: 'asc' } },
         hosts: { include: { user: { include: { profile: true } } } },
-        team: true
+        team: true,
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -103,7 +142,7 @@ export class EventTypesService {
         workflows: true,
         customQuestions: { orderBy: { order: 'asc' } },
         hosts: { include: { user: { include: { profile: true } } } },
-        team: true
+        team: true,
       },
     });
 
@@ -120,13 +159,13 @@ export class EventTypesService {
         userId_slug: {
           userId: hostId,
           slug,
-        }
+        },
       },
       include: {
         workflows: true,
         customQuestions: { orderBy: { order: 'asc' } },
         hosts: { include: { user: { include: { profile: true } } } },
-        team: true
+        team: true,
       },
     });
 
@@ -139,24 +178,48 @@ export class EventTypesService {
   async update(id: string, userId: string, dto: UpdateEventTypeDto) {
     // Verify ownership
     const currentEvent = await this.findOne(id, userId);
-    const { enableReminder24h, customQuestions, schedulingType, teamId, hostIds, availabilityId, redirectUrl, ...data } = dto;
+    const {
+      enableReminder24h,
+      customQuestions,
+      schedulingType,
+      teamId,
+      hostIds,
+      availabilityId,
+      redirectUrl,
+      ...data
+    } = dto;
 
     const updatePayload: any = { ...data };
 
     if (availabilityId !== undefined) {
-      updatePayload.availabilityId = (availabilityId && typeof availabilityId === 'string' && availabilityId.trim() !== '') ? availabilityId.trim() : null;
+      updatePayload.availabilityId =
+        availabilityId &&
+        typeof availabilityId === 'string' &&
+        availabilityId.trim() !== ''
+          ? availabilityId.trim()
+          : null;
     }
     if (redirectUrl !== undefined) {
-      updatePayload.redirectUrl = (redirectUrl && typeof redirectUrl === 'string' && redirectUrl.trim() !== '') ? redirectUrl.trim() : null;
+      updatePayload.redirectUrl =
+        redirectUrl &&
+        typeof redirectUrl === 'string' &&
+        redirectUrl.trim() !== ''
+          ? redirectUrl.trim()
+          : null;
     }
 
     if (schedulingType !== undefined) {
       if (schedulingType === 'PERSONAL') {
         updatePayload.schedulingType = 'PERSONAL';
         updatePayload.teamId = null;
-        await this.prisma.eventTypeHost.deleteMany({ where: { eventTypeId: id } });
+        await this.prisma.eventTypeHost.deleteMany({
+          where: { eventTypeId: id },
+        });
       } else {
-        const effectiveTeamId = (teamId && typeof teamId === 'string' && teamId.trim() !== '') ? teamId.trim() : currentEvent.teamId;
+        const effectiveTeamId =
+          teamId && typeof teamId === 'string' && teamId.trim() !== ''
+            ? teamId.trim()
+            : currentEvent.teamId;
         if (!effectiveTeamId) {
           throw new BadRequestException('Team ID is required for team events');
         }
@@ -166,30 +229,41 @@ export class EventTypesService {
 
         if (hostIds !== undefined) {
           if (!hostIds || hostIds.length === 0) {
-            throw new BadRequestException('At least one host must be selected for team events');
+            throw new BadRequestException(
+              'At least one host must be selected for team events',
+            );
           }
 
           // Verify hosts belong to the team
           const validMembers = await this.prisma.teamMember.count({
             where: {
               teamId: effectiveTeamId,
-              userId: { in: hostIds }
-            }
+              userId: { in: hostIds },
+            },
           });
           if (validMembers !== hostIds.length) {
-            throw new BadRequestException('One or more selected hosts are not active members of this team');
+            throw new BadRequestException(
+              'One or more selected hosts are not active members of this team',
+            );
           }
 
-          await this.prisma.eventTypeHost.deleteMany({ where: { eventTypeId: id } });
+          await this.prisma.eventTypeHost.deleteMany({
+            where: { eventTypeId: id },
+          });
           for (const uId of hostIds) {
-            await this.prisma.eventTypeHost.create({
-              data: { eventTypeId: id, userId: uId }
-            }).catch(() => {});
+            await this.prisma.eventTypeHost
+              .create({
+                data: { eventTypeId: id, userId: uId },
+              })
+              .catch(() => {});
           }
         }
       }
     } else if (teamId !== undefined || hostIds !== undefined) {
-      const effectiveTeamId = (teamId && typeof teamId === 'string' && teamId.trim() !== '') ? teamId.trim() : currentEvent.teamId;
+      const effectiveTeamId =
+        teamId && typeof teamId === 'string' && teamId.trim() !== ''
+          ? teamId.trim()
+          : currentEvent.teamId;
       if (currentEvent.schedulingType !== 'PERSONAL' && effectiveTeamId) {
         if (teamId !== undefined) {
           updatePayload.teamId = effectiveTeamId;
@@ -198,18 +272,24 @@ export class EventTypesService {
           const validMembers = await this.prisma.teamMember.count({
             where: {
               teamId: effectiveTeamId,
-              userId: { in: hostIds }
-            }
+              userId: { in: hostIds },
+            },
           });
           if (validMembers !== hostIds.length) {
-            throw new BadRequestException('One or more selected hosts are not active members of this team');
+            throw new BadRequestException(
+              'One or more selected hosts are not active members of this team',
+            );
           }
 
-          await this.prisma.eventTypeHost.deleteMany({ where: { eventTypeId: id } });
+          await this.prisma.eventTypeHost.deleteMany({
+            where: { eventTypeId: id },
+          });
           for (const uId of hostIds) {
-            await this.prisma.eventTypeHost.create({
-              data: { eventTypeId: id, userId: uId }
-            }).catch(() => {});
+            await this.prisma.eventTypeHost
+              .create({
+                data: { eventTypeId: id, userId: uId },
+              })
+              .catch(() => {});
           }
         }
       }
@@ -222,19 +302,21 @@ export class EventTypesService {
 
     if (customQuestions !== undefined) {
       const incomingIds: string[] = customQuestions
-        .map(q => q.id)
+        .map((q) => q.id)
         .filter((id): id is string => Boolean(id));
-      
+
       await this.prisma.customQuestion.deleteMany({
         where: {
           eventTypeId: id,
-          id: { notIn: incomingIds }
-        }
+          id: { notIn: incomingIds },
+        },
       });
 
       for (const q of customQuestions) {
         if (q.id) {
-          const existing = await this.prisma.customQuestion.findFirst({ where: { id: q.id, eventTypeId: id } });
+          const existing = await this.prisma.customQuestion.findFirst({
+            where: { id: q.id, eventTypeId: id },
+          });
           if (existing) {
             await this.prisma.customQuestion.update({
               where: { id: q.id },
@@ -245,7 +327,7 @@ export class EventTypesService {
                 required: q.required,
                 options: q.options || [],
                 order: q.order,
-              }
+              },
             });
           }
         } else {
@@ -258,7 +340,7 @@ export class EventTypesService {
               required: q.required,
               options: q.options || [],
               order: q.order,
-            }
+            },
           });
         }
       }
@@ -267,7 +349,11 @@ export class EventTypesService {
     if (enableReminder24h !== undefined) {
       if (enableReminder24h) {
         const existing = await this.prisma.workflow.findFirst({
-          where: { eventTypeId: id, triggerType: 'BEFORE_EVENT', timeOffset: 1440 }
+          where: {
+            eventTypeId: id,
+            triggerType: 'BEFORE_EVENT',
+            timeOffset: 1440,
+          },
         });
         if (!existing) {
           await this.prisma.workflow.create({
@@ -276,12 +362,16 @@ export class EventTypesService {
               triggerType: 'BEFORE_EVENT',
               timeOffset: 1440,
               actionType: 'EMAIL',
-            }
+            },
           });
         }
       } else {
         await this.prisma.workflow.deleteMany({
-          where: { eventTypeId: id, triggerType: 'BEFORE_EVENT', timeOffset: 1440 }
+          where: {
+            eventTypeId: id,
+            triggerType: 'BEFORE_EVENT',
+            timeOffset: 1440,
+          },
         });
       }
     }
@@ -294,21 +384,29 @@ export class EventTypesService {
     await this.findOne(id, userId);
 
     const totalBookings = await this.prisma.booking.count({
-      where: { eventTypeId: id }
+      where: { eventTypeId: id },
     });
 
     if (totalBookings > 0) {
       // Soft archive to protect past booking records and FK integrity
       return this.prisma.eventType.update({
         where: { id },
-        data: { isActive: false }
+        data: { isActive: false },
       });
     } else {
       // Safe hard delete: cascade remove associated relations
-      await this.prisma.workflow.deleteMany({ where: { eventTypeId: id } }).catch(() => {});
-      await this.prisma.singleUseLink.deleteMany({ where: { eventTypeId: id } }).catch(() => {});
-      await this.prisma.eventTypeHost.deleteMany({ where: { eventTypeId: id } }).catch(() => {});
-      await this.prisma.customQuestion.deleteMany({ where: { eventTypeId: id } }).catch(() => {});
+      await this.prisma.workflow
+        .deleteMany({ where: { eventTypeId: id } })
+        .catch(() => {});
+      await this.prisma.singleUseLink
+        .deleteMany({ where: { eventTypeId: id } })
+        .catch(() => {});
+      await this.prisma.eventTypeHost
+        .deleteMany({ where: { eventTypeId: id } })
+        .catch(() => {});
+      await this.prisma.customQuestion
+        .deleteMany({ where: { eventTypeId: id } })
+        .catch(() => {});
 
       return this.prisma.eventType.delete({
         where: { id },
@@ -318,7 +416,7 @@ export class EventTypesService {
 
   async duplicate(id: string, userId: string) {
     const eventType = await this.findOne(id, userId);
-    
+
     // Generate unique slug
     const slugSuffix = crypto.randomBytes(4).toString('hex');
     const newSlug = `${eventType.slug}-${slugSuffix}`;
@@ -351,23 +449,29 @@ export class EventTypesService {
         price: (eventType as any).price ?? null,
         currency: (eventType as any).currency ?? 'usd',
         customQuestions: {
-          create: eventType.customQuestions.map(q => ({
+          create: eventType.customQuestions.map((q) => ({
             type: q.type,
             label: q.label,
             placeholder: q.placeholder,
             required: q.required,
             options: q.options || [],
             order: q.order,
-          }))
-        }
-      } as any
+          })),
+        },
+      } as any,
     });
 
-    if (eventType.schedulingType !== 'PERSONAL' && eventType.hosts && eventType.hosts.length > 0) {
+    if (
+      eventType.schedulingType !== 'PERSONAL' &&
+      eventType.hosts &&
+      eventType.hosts.length > 0
+    ) {
       for (const h of eventType.hosts) {
-        await this.prisma.eventTypeHost.create({
-          data: { eventTypeId: newEvent.id, userId: h.userId }
-        }).catch(() => {});
+        await this.prisma.eventTypeHost
+          .create({
+            data: { eventTypeId: newEvent.id, userId: h.userId },
+          })
+          .catch(() => {});
       }
     }
 
@@ -377,7 +481,7 @@ export class EventTypesService {
   async generateSingleUseLink(id: string, userId: string) {
     await this.findOne(id, userId); // verify ownership
     const token = crypto.randomBytes(32).toString('hex');
-    
+
     // Default expiration to 7 days from now if not specified
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
@@ -386,13 +490,13 @@ export class EventTypesService {
       data: {
         eventTypeId: id,
         tokenHash: token,
-        expiresAt
-      }
+        expiresAt,
+      },
     });
 
     return {
       token: link.tokenHash,
-      expiresAt: link.expiresAt
+      expiresAt: link.expiresAt,
     };
   }
 }

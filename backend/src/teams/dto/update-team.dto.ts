@@ -7,7 +7,9 @@ export class UpdateTeamDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^[a-z0-9-]+$/, { message: 'Slug can only contain lowercase letters, numbers, and hyphens' })
+  @Matches(/^[a-z0-9-]+$/, {
+    message: 'Slug can only contain lowercase letters, numbers, and hyphens',
+  })
   slug?: string;
 
   @IsOptional()

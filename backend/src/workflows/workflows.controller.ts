@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { WorkflowsService } from './workflows.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CreateWorkflowDto } from './dto/create-workflow.dto';
@@ -15,8 +25,14 @@ export class WorkflowsController {
   }
 
   @Get('event-type/:eventTypeId')
-  findAllByEventType(@Request() req, @Param('eventTypeId') eventTypeId: string) {
-    return this.workflowsService.findAllByEventType(req.user.userId, eventTypeId);
+  findAllByEventType(
+    @Request() req,
+    @Param('eventTypeId') eventTypeId: string,
+  ) {
+    return this.workflowsService.findAllByEventType(
+      req.user.userId,
+      eventTypeId,
+    );
   }
 
   @Get(':id')
@@ -25,7 +41,11 @@ export class WorkflowsController {
   }
 
   @Patch(':id')
-  update(@Request() req, @Param('id') id: string, @Body() updateWorkflowDto: UpdateWorkflowDto) {
+  update(
+    @Request() req,
+    @Param('id') id: string,
+    @Body() updateWorkflowDto: UpdateWorkflowDto,
+  ) {
     return this.workflowsService.update(req.user.userId, id, updateWorkflowDto);
   }
 

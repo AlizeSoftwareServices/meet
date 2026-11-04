@@ -1,4 +1,14 @@
-import { IsString, IsEmail, IsOptional, IsDateString, IsArray, ValidateNested, IsInt, Min, IsIn } from 'class-validator';
+import {
+  IsString,
+  IsEmail,
+  IsOptional,
+  IsDateString,
+  IsArray,
+  ValidateNested,
+  IsInt,
+  Min,
+  IsIn,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class AnswerDto {

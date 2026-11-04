@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Request, Patch } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  Request,
+  Patch,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { PollsService } from './polls.service';
 import { CreatePollDto } from './dto/create-poll.dto';
@@ -40,7 +49,11 @@ export class PollsController {
 
   @UseGuards(JwtAuthGuard)
   @Patch(':id/finalize')
-  finalizePoll(@Request() req, @Param('id') id: string, @Body('slotId') slotId: string) {
+  finalizePoll(
+    @Request() req,
+    @Param('id') id: string,
+    @Body('slotId') slotId: string,
+  ) {
     return this.pollsService.finalizePoll(req.user.userId, id, slotId);
   }
 }

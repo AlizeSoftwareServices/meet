@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Put, Patch, Delete, Param, Body, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Patch,
+  Delete,
+  Param,
+  Body,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { RoutingService } from './routing.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -66,6 +77,10 @@ export class RoutingController {
     @Param('slug') slug: string,
     @Body('answers') answers: { questionId: string; value: string }[],
   ) {
-    return this.routingService.submitRoutingForm(identifier, slug, answers || []);
+    return this.routingService.submitRoutingForm(
+      identifier,
+      slug,
+      answers || [],
+    );
   }
 }

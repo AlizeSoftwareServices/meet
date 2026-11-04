@@ -9,9 +9,16 @@ import { AuthModule } from '../auth/auth.module';
 import { WebhooksModule } from '../webhooks/webhooks.module';
 
 @Module({
-  imports: [ContactsModule, PrismaModule, IntegrationsModule, AvailabilityModule, AuthModule, WebhooksModule],
+  imports: [
+    ContactsModule,
+    PrismaModule,
+    IntegrationsModule,
+    AvailabilityModule,
+    AuthModule,
+    WebhooksModule,
+  ],
   providers: [BookingsService],
   controllers: [BookingsController],
-  exports: [BookingsService]
+  exports: [BookingsService],
 })
 export class BookingsModule {}

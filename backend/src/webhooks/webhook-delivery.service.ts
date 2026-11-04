@@ -24,7 +24,12 @@ export class WebhookDeliveryService {
    * Dispatches an event to all active webhooks registered by the user that subscribe to this event.
    * Asynchronous and non-blocking: Never throws an error to the caller.
    */
-  async dispatch(userId: string, event: string, data: any, bookingId?: string): Promise<void> {
+  async dispatch(
+    userId: string,
+    event: string,
+    data: any,
+    bookingId?: string,
+  ): Promise<void> {
     try {
       const webhooks = await this.prisma.webhook.findMany({
         where: {
@@ -61,12 +66,18 @@ export class WebhookDeliveryService {
         });
 
         // Fire-and-forget delivery in background
-        this.attemptDelivery(webhook, delivery.id, payloadString, event).catch((err) => {
-          this.logger.warn(`Background delivery failure for webhook ${webhook.id}: ${err.message}`);
-        });
+        this.attemptDelivery(webhook, delivery.id, payloadString, event).catch(
+          (err) => {
+            this.logger.warn(
+              `Background delivery failure for webhook ${webhook.id}: ${err.message}`,
+            );
+          },
+        );
       }
     } catch (err: any) {
-      this.logger.error(`Failed to dispatch webhook event ${event} for user ${userId}: ${err.message}`);
+      this.logger.error(
+        `Failed to dispatch webhook event ${event} for user ${userId}: ${err.message}`,
+      );
     }
   }
 
@@ -74,7 +85,12 @@ export class WebhookDeliveryService {
    * Sends the HTTP POST to the webhook endpoint with HMAC signature and records the result.
    * The HMAC is always computed fresh from the stored payload + secret (not cached).
    */
-  async attemptDelivery(webhook: any, deliveryId: string, payloadString: string, event: string): Promise<boolean> {
+  async attemptDelivery(
+    webhook: any,
+    deliveryId: string,
+    payloadString: string,
+    event: string,
+  ): Promise<boolean> {
     // FIX #3: Always re-sign with fresh HMAC — never reuse a cached signature
     const signature = this.generateSignature(payloadString, webhook.secret);
     const headers = {
@@ -91,12 +107,15 @@ export class WebhookDeliveryService {
     let isSuccess = false;
 
     if (!isSafeWebhookUrl(webhook.url)) {
-      this.logger.warn(`SSRF Block: Webhook destination URL ${webhook.url} rejected`);
+      this.logger.warn(
+        `SSRF Block: Webhook destination URL ${webhook.url} rejected`,
+      );
       await this.prisma.webhookDelivery.update({
         where: { id: deliveryId },
         data: {
           statusCode: 400,
-          response: 'Delivery aborted: Destination URL targets restricted private/metadata IP space',
+          response:
+            'Delivery aborted: Destination URL targets restricted private/metadata IP space',
           success: false,
           attempts: { increment: 1 },
           nextAttemptAt: null, // Do not retry unsafe destinations
@@ -113,7 +132,8 @@ export class WebhookDeliveryService {
       });
 
       statusCode = res.status;
-      responseText = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+      responseText =
+        typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
       if (responseText && responseText.length > 2000) {
         responseText = responseText.substring(0, 2000) + '...[truncated]';
       }
@@ -155,10 +175,14 @@ export class WebhookDeliveryService {
       });
 
       if (isAbandoned) {
-        this.logger.warn(`Webhook delivery ${deliveryId} abandoned after ${attemptsDone} failed attempts.`);
+        this.logger.warn(
+          `Webhook delivery ${deliveryId} abandoned after ${attemptsDone} failed attempts.`,
+        );
       }
     } catch (dbErr: any) {
-      this.logger.error(`Failed to update delivery status ${deliveryId}: ${dbErr.message}`);
+      this.logger.error(
+        `Failed to update delivery status ${deliveryId}: ${dbErr.message}`,
+      );
     }
 
     return isSuccess;
@@ -187,11 +211,15 @@ export class WebhookDeliveryService {
       for (const delivery of due) {
         if (!delivery.webhook || !delivery.webhook.isActive) {
           // Abandon deliveries whose webhook was deactivated or deleted
-          await this.prisma.webhookDelivery.update({
-            where: { id: delivery.id },
-            data: { nextAttemptAt: null },
-          }).catch(() => {});
-          this.logger.debug(`Abandoned delivery ${delivery.id}: webhook inactive or deleted`);
+          await this.prisma.webhookDelivery
+            .update({
+              where: { id: delivery.id },
+              data: { nextAttemptAt: null },
+            })
+            .catch(() => {});
+          this.logger.debug(
+            `Abandoned delivery ${delivery.id}: webhook inactive or deleted`,
+          );
           continue;
         }
 

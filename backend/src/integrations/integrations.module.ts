@@ -12,7 +12,18 @@ import { WebhooksModule } from '../webhooks/webhooks.module';
   // FIX #3: Import WebhooksModule so CronService can inject WebhookDeliveryService
   imports: [WebhooksModule],
   controllers: [IntegrationsController],
-  providers: [EmailService, CalendarService, CronService, SlackService, PushNotificationService],
-  exports: [EmailService, CalendarService, SlackService, PushNotificationService],
+  providers: [
+    EmailService,
+    CalendarService,
+    CronService,
+    SlackService,
+    PushNotificationService,
+  ],
+  exports: [
+    EmailService,
+    CalendarService,
+    SlackService,
+    PushNotificationService,
+  ],
 })
 export class IntegrationsModule {}

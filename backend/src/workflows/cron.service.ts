@@ -116,7 +116,9 @@ export class CronService {
         } catch (e: any) {
           if (e.code === 'P2002') {
             // Already executed constraint
-            this.logger.debug(`Workflow already executed for booking ${booking.id}`);
+            this.logger.debug(
+              `Workflow already executed for booking ${booking.id}`,
+            );
           } else {
             this.logger.error(
               `Error executing workflow ${workflow.id} for booking ${booking.id}: ${e.message}`,
@@ -130,10 +132,15 @@ export class CronService {
   /**
    * Dispatches SMS notification via Twilio REST API if configured, or logs clean debug output.
    */
-  private async dispatchSmsNotification(booking: any, workflow: any): Promise<void> {
+  private async dispatchSmsNotification(
+    booking: any,
+    workflow: any,
+  ): Promise<void> {
     const guestPhone = booking.guestPhone;
     if (!guestPhone) {
-      this.logger.debug(`Skipping SMS workflow for booking ${booking.id}: guest phone not provided.`);
+      this.logger.debug(
+        `Skipping SMS workflow for booking ${booking.id}: guest phone not provided.`,
+      );
       return;
     }
 
@@ -141,7 +148,8 @@ export class CronService {
     const token = process.env.TWILIO_AUTH_TOKEN;
     const fromPhone = process.env.TWILIO_PHONE_NUMBER;
 
-    const messageBody = workflow.emailBody ||
+    const messageBody =
+      workflow.emailBody ||
       `Reminder: Your meeting "${booking.eventType.title}" is scheduled for ${new Date(booking.startTime).toLocaleString()}. Link: ${booking.meetLink || 'meet.alizesoftwareservices.com'}`;
 
     if (sid && token && fromPhone) {
@@ -162,12 +170,18 @@ export class CronService {
             },
           },
         );
-        this.logger.log(`[Twilio SMS] Dispatched SMS to ${guestPhone} for booking ${booking.id}`);
+        this.logger.log(
+          `[Twilio SMS] Dispatched SMS to ${guestPhone} for booking ${booking.id}`,
+        );
       } catch (err: any) {
-        this.logger.error(`[Twilio SMS] Failed to dispatch SMS to ${guestPhone}: ${err.message}`);
+        this.logger.error(
+          `[Twilio SMS] Failed to dispatch SMS to ${guestPhone}: ${err.message}`,
+        );
       }
     } else {
-      this.logger.log(`[SMS Gateway Simulated] Sent to ${guestPhone}: "${messageBody}"`);
+      this.logger.log(
+        `[SMS Gateway Simulated] Sent to ${guestPhone}: "${messageBody}"`,
+      );
     }
   }
 }

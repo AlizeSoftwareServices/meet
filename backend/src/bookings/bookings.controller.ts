@@ -1,4 +1,14 @@
-import { Controller, Post, Body, UseGuards, Request, Get, BadRequestException, Param, Query } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Request,
+  Get,
+  BadRequestException,
+  Param,
+  Query,
+} from '@nestjs/common';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
@@ -37,20 +47,28 @@ export class BookingsController {
 
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('guest/reschedule')
-  guestReschedule(@Body('token') token: string, @Body('newStartTime') newStartTime: string) {
+  guestReschedule(
+    @Body('token') token: string,
+    @Body('newStartTime') newStartTime: string,
+  ) {
     if (!token) throw new BadRequestException('Token is required');
-    if (!newStartTime) throw new BadRequestException('newStartTime is required');
+    if (!newStartTime)
+      throw new BadRequestException('newStartTime is required');
     return this.bookingsService.guestReschedule(token, newStartTime);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post(':id/cancel')
   cancelBooking(
-    @Param('id') id: string, 
+    @Param('id') id: string,
     @Request() req: any,
-    @Body('reason') reason: string
+    @Body('reason') reason: string,
   ) {
-    return this.bookingsService.cancelBooking(id, req.user.userId, reason || 'Cancelled by host');
+    return this.bookingsService.cancelBooking(
+      id,
+      req.user.userId,
+      reason || 'Cancelled by host',
+    );
   }
 
   @Post('series/:id/cancel')
@@ -58,9 +76,13 @@ export class BookingsController {
   cancelSeries(
     @Param('id') id: string,
     @Request() req: any,
-    @Body('reason') reason: string
+    @Body('reason') reason: string,
   ) {
-    return this.bookingsService.cancelSeries(id, req.user.userId, reason || 'Cancelled by host');
+    return this.bookingsService.cancelSeries(
+      id,
+      req.user.userId,
+      reason || 'Cancelled by host',
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -69,17 +91,19 @@ export class BookingsController {
     @Param('id') id: string,
     @Body('newStartTime') newStartTime: string,
     @Body('newEndTime') newEndTime: string,
-    @Request() req
+    @Request() req,
   ) {
-    return this.bookingsService.rescheduleBooking(id, req.user.userId, new Date(newStartTime), new Date(newEndTime));
+    return this.bookingsService.rescheduleBooking(
+      id,
+      req.user.userId,
+      new Date(newStartTime),
+      new Date(newEndTime),
+    );
   }
 
   @UseGuards(JwtAuthGuard)
   @Post(':id/no-show')
-  markNoShow(
-    @Param('id') id: string,
-    @Request() req: any
-  ) {
+  markNoShow(@Param('id') id: string, @Request() req: any) {
     return this.bookingsService.markNoShow(id, req.user.userId);
   }
 }

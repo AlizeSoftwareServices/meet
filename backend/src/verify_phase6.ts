@@ -14,11 +14,20 @@ import { JwtService } from '@nestjs/jwt';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 
-async function upsertTestUser(prisma: PrismaService, email: string, username: string, name: string) {
+async function upsertTestUser(
+  prisma: PrismaService,
+  email: string,
+  username: string,
+  name: string,
+) {
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
-    await prisma.availabilitySlot.deleteMany({ where: { availability: { userId: existing.id } } });
-    await prisma.availabilityOverride.deleteMany({ where: { availability: { userId: existing.id } } });
+    await prisma.availabilitySlot.deleteMany({
+      where: { availability: { userId: existing.id } },
+    });
+    await prisma.availabilityOverride.deleteMany({
+      where: { availability: { userId: existing.id } },
+    });
     await prisma.availability.deleteMany({ where: { userId: existing.id } });
   }
 
@@ -27,7 +36,7 @@ async function upsertTestUser(prisma: PrismaService, email: string, username: st
   if (existing) {
     await prisma.user.update({
       where: { id: existing.id },
-      data: { passwordHash: hash }
+      data: { passwordHash: hash },
     });
     finalUserId = existing.id;
   } else {
@@ -36,9 +45,9 @@ async function upsertTestUser(prisma: PrismaService, email: string, username: st
         email,
         passwordHash: hash,
         profile: {
-          create: { name, username, timezone: 'UTC' }
-        }
-      }
+          create: { name, username, timezone: 'UTC' },
+        },
+      },
     });
     finalUserId = created.id;
   }
@@ -50,16 +59,25 @@ async function upsertTestUser(prisma: PrismaService, email: string, username: st
       isDefault: true,
       timezone: 'UTC',
       slots: {
-        create: [1, 2, 3, 4, 5].map(d => ({ dayOfWeek: d, startTime: '09:00', endTime: '17:00' }))
-      }
-    }
+        create: [1, 2, 3, 4, 5].map((d) => ({
+          dayOfWeek: d,
+          startTime: '09:00',
+          endTime: '17:00',
+        })),
+      },
+    },
   });
 
-  return prisma.user.findUniqueOrThrow({ where: { id: finalUserId }, include: { profile: true } });
+  return prisma.user.findUniqueOrThrow({
+    where: { id: finalUserId },
+    include: { profile: true },
+  });
 }
 
 async function runPhase6Verification() {
-  const app = await NestFactory.createApplicationContext(AppModule, { logger: false });
+  const app = await NestFactory.createApplicationContext(AppModule, {
+    logger: false,
+  });
   const prisma = app.get(PrismaService);
   const authService = app.get(AuthService);
   const bookingsService = app.get(BookingsService);
@@ -72,28 +90,62 @@ async function runPhase6Verification() {
   const availabilityService = app.get(AvailabilityService);
   const jwtService = app.get(JwtService);
 
-  console.log('================================================================');
-  console.log('🚀 STARTING PHASE 6 PRODUCTION & STORE-READINESS VERIFICATION SUITE');
-  console.log('================================================================\n');
+  console.log(
+    '================================================================',
+  );
+  console.log(
+    '🚀 STARTING PHASE 6 PRODUCTION & STORE-READINESS VERIFICATION SUITE',
+  );
+  console.log(
+    '================================================================\n',
+  );
 
   let passedTests = 0;
   const totalTests = 28;
 
   try {
     // 0. Setup test users
-    const userA = await upsertTestUser(prisma, 'p6_host_a@test.com', 'p6_host_a', 'Host Alpha');
-    const userB = await upsertTestUser(prisma, 'p6_host_b@test.com', 'p6_host_b', 'Host Beta');
+    const userA = await upsertTestUser(
+      prisma,
+      'p6_host_a@test.com',
+      'p6_host_a',
+      'Host Alpha',
+    );
+    const userB = await upsertTestUser(
+      prisma,
+      'p6_host_b@test.com',
+      'p6_host_b',
+      'Host Beta',
+    );
 
     // Clean up
-    await prisma.webhookDelivery.deleteMany({ where: { webhook: { userId: { in: [userA.id, userB.id] } } } });
-    await prisma.webhook.deleteMany({ where: { userId: { in: [userA.id, userB.id] } } });
-    await prisma.routingRule.deleteMany({ where: { form: { userId: { in: [userA.id, userB.id] } } } });
-    await prisma.routingQuestion.deleteMany({ where: { form: { userId: { in: [userA.id, userB.id] } } } });
-    await prisma.routingForm.deleteMany({ where: { userId: { in: [userA.id, userB.id] } } });
-    await prisma.booking.deleteMany({ where: { eventType: { userId: { in: [userA.id, userB.id] } } } });
-    await prisma.team.deleteMany({ where: { ownerId: { in: [userA.id, userB.id] } } });
-    await prisma.eventType.deleteMany({ where: { userId: { in: [userA.id, userB.id] } } });
-    await prisma.pushToken.deleteMany({ where: { userId: { in: [userA.id, userB.id] } } });
+    await prisma.webhookDelivery.deleteMany({
+      where: { webhook: { userId: { in: [userA.id, userB.id] } } },
+    });
+    await prisma.webhook.deleteMany({
+      where: { userId: { in: [userA.id, userB.id] } },
+    });
+    await prisma.routingRule.deleteMany({
+      where: { form: { userId: { in: [userA.id, userB.id] } } },
+    });
+    await prisma.routingQuestion.deleteMany({
+      where: { form: { userId: { in: [userA.id, userB.id] } } },
+    });
+    await prisma.routingForm.deleteMany({
+      where: { userId: { in: [userA.id, userB.id] } },
+    });
+    await prisma.booking.deleteMany({
+      where: { eventType: { userId: { in: [userA.id, userB.id] } } },
+    });
+    await prisma.team.deleteMany({
+      where: { ownerId: { in: [userA.id, userB.id] } },
+    });
+    await prisma.eventType.deleteMany({
+      where: { userId: { in: [userA.id, userB.id] } },
+    });
+    await prisma.pushToken.deleteMany({
+      where: { userId: { in: [userA.id, userB.id] } },
+    });
 
     // ----------------------------------------------------
     // TEST 1: Registration Logic
@@ -103,10 +155,12 @@ async function runPhase6Verification() {
     const regResult = await authService.register({
       email: regEmail,
       password: 'SecurePassword123!',
-      name: 'New Registered User'
+      name: 'New Registered User',
     });
     if (!regResult.accessToken || !regResult.user.id) {
-      throw new Error('Test 1 Failed: Registration did not produce access token and user');
+      throw new Error(
+        'Test 1 Failed: Registration did not produce access token and user',
+      );
     }
     passedTests++;
     console.log('✅ Test 1 Passed: User registration verified');
@@ -115,8 +169,12 @@ async function runPhase6Verification() {
     // TEST 2: Login Logic
     // ----------------------------------------------------
     console.log('--- [Test 2/28] User Login ---');
-    const loginResult = await authService.login({ email: userA.email, password: 'password123' });
-    if (!loginResult.accessToken) throw new Error('Test 2 Failed: Login failed');
+    const loginResult = await authService.login({
+      email: userA.email,
+      password: 'password123',
+    });
+    if (!loginResult.accessToken)
+      throw new Error('Test 2 Failed: Login failed');
     passedTests++;
     console.log('✅ Test 2 Passed: User login verified');
 
@@ -125,7 +183,8 @@ async function runPhase6Verification() {
     // ----------------------------------------------------
     console.log('--- [Test 3/28] JWT Token Validation ---');
     const decoded = await jwtService.verifyAsync(loginResult.accessToken);
-    if (!decoded || decoded.sub !== userA.id) throw new Error('Test 3 Failed: JWT verification failed');
+    if (!decoded || decoded.sub !== userA.id)
+      throw new Error('Test 3 Failed: JWT verification failed');
     passedTests++;
     console.log('✅ Test 3 Passed: JWT verification confirmed');
 
@@ -135,20 +194,29 @@ async function runPhase6Verification() {
     console.log('--- [Test 4/28] Invalid Credentials Handling ---');
     let invalidAuthBlocked = false;
     try {
-      await authService.login({ email: userA.email, password: 'WrongPassword!' });
+      await authService.login({
+        email: userA.email,
+        password: 'WrongPassword!',
+      });
     } catch {
       invalidAuthBlocked = true;
     }
-    if (!invalidAuthBlocked) throw new Error('Test 4 Failed: Wrong password was accepted');
+    if (!invalidAuthBlocked)
+      throw new Error('Test 4 Failed: Wrong password was accepted');
     passedTests++;
-    console.log('✅ Test 4 Passed: Invalid credentials correctly rejected (401)');
+    console.log(
+      '✅ Test 4 Passed: Invalid credentials correctly rejected (401)',
+    );
 
     // ----------------------------------------------------
     // TEST 5: User Authorization & Profile Resolution
     // ----------------------------------------------------
     console.log('--- [Test 5/28] User Profile Authorization ---');
-    const profile = await prisma.profile.findUnique({ where: { userId: userA.id } });
-    if (!profile || profile.username !== 'p6_host_a') throw new Error('Test 5 Failed: Profile lookup failed');
+    const profile = await prisma.profile.findUnique({
+      where: { userId: userA.id },
+    });
+    if (!profile || profile.username !== 'p6_host_a')
+      throw new Error('Test 5 Failed: Profile lookup failed');
     passedTests++;
     console.log('✅ Test 5 Passed: Profile resolution verified');
 
@@ -160,15 +228,18 @@ async function runPhase6Verification() {
       title: 'Consultation A',
       slug: 'consult-a',
       duration: 30,
-      schedulingType: 'PERSONAL'
+      schedulingType: 'PERSONAL',
     });
     let idorBlocked = false;
     try {
-      await eventTypesService.update(eventTypeA.id, userB.id, { title: 'Hacked Title' });
+      await eventTypesService.update(eventTypeA.id, userB.id, {
+        title: 'Hacked Title',
+      });
     } catch {
       idorBlocked = true;
     }
-    if (!idorBlocked) throw new Error('Test 6 Failed: User B modified User A event type');
+    if (!idorBlocked)
+      throw new Error('Test 6 Failed: User B modified User A event type');
     passedTests++;
     console.log('✅ Test 6 Passed: Cross-user IDOR access strictly blocked');
 
@@ -176,7 +247,8 @@ async function runPhase6Verification() {
     // TEST 7: Event Creation
     // ----------------------------------------------------
     console.log('--- [Test 7/28] Event Creation ---');
-    if (!eventTypeA.id || eventTypeA.slug !== 'consult-a') throw new Error('Test 7 Failed: Event creation failed');
+    if (!eventTypeA.id || eventTypeA.slug !== 'consult-a')
+      throw new Error('Test 7 Failed: Event creation failed');
     passedTests++;
     console.log('✅ Test 7 Passed: Event creation verified');
 
@@ -184,8 +256,13 @@ async function runPhase6Verification() {
     // TEST 8: Event Editing
     // ----------------------------------------------------
     console.log('--- [Test 8/28] Event Editing ---');
-    const updatedEvent = await eventTypesService.update(eventTypeA.id, userA.id, { description: 'Updated strategy description' });
-    if (updatedEvent.description !== 'Updated strategy description') throw new Error('Test 8 Failed: Event editing failed');
+    const updatedEvent = await eventTypesService.update(
+      eventTypeA.id,
+      userA.id,
+      { description: 'Updated strategy description' },
+    );
+    if (updatedEvent.description !== 'Updated strategy description')
+      throw new Error('Test 8 Failed: Event editing failed');
     passedTests++;
     console.log('✅ Test 8 Passed: Event update verified');
 
@@ -205,9 +282,12 @@ async function runPhase6Verification() {
       guestName: 'Production Client',
       guestEmail: 'client@enterprise.com',
       startTime: targetDate.toISOString(),
-      endTime: targetEndDate.toISOString()
+      endTime: targetEndDate.toISOString(),
     });
-    if (!bookingRes.bookings[0] || bookingRes.bookings[0].status !== 'CONFIRMED') {
+    if (
+      !bookingRes.bookings[0] ||
+      bookingRes.bookings[0].status !== 'CONFIRMED'
+    ) {
       throw new Error('Test 9 Failed: Personal booking failed');
     }
     passedTests++;
@@ -217,8 +297,13 @@ async function runPhase6Verification() {
     // TEST 10: Round Robin Booking
     // ----------------------------------------------------
     console.log('--- [Test 10/28] Team Round Robin Least-Busy Booking ---');
-    const team = await teamsService.create(userA.id, { name: 'P6 Sales Team', slug: 'p6-sales' });
-    await prisma.teamMember.create({ data: { teamId: team.id, userId: userB.id, role: 'MEMBER' } });
+    const team = await teamsService.create(userA.id, {
+      name: 'P6 Sales Team',
+      slug: 'p6-sales',
+    });
+    await prisma.teamMember.create({
+      data: { teamId: team.id, userId: userB.id, role: 'MEMBER' },
+    });
 
     const rrEventType = await eventTypesService.create(userA.id, {
       title: 'Sales Round Robin',
@@ -226,7 +311,7 @@ async function runPhase6Verification() {
       duration: 30,
       schedulingType: 'ROUND_ROBIN',
       teamId: team.id,
-      hostIds: [userA.id, userB.id]
+      hostIds: [userA.id, userB.id],
     });
 
     const rrDate = new Date(targetDate.getTime() + 2 * 60 * 60000);
@@ -237,10 +322,12 @@ async function runPhase6Verification() {
       guestName: 'Lead Prospect',
       guestEmail: 'lead@prospect.com',
       startTime: rrDate.toISOString(),
-      endTime: rrEndDate.toISOString()
+      endTime: rrEndDate.toISOString(),
     });
     if (rrBooking.bookings[0].hostId !== userB.id) {
-      throw new Error(`Test 10 Failed: Expected Host B (${userB.id}), got ${rrBooking.bookings[0].hostId}`);
+      throw new Error(
+        `Test 10 Failed: Expected Host B (${userB.id}), got ${rrBooking.bookings[0].hostId}`,
+      );
     }
     passedTests++;
     console.log('✅ Test 10 Passed: Round Robin assigned to least busy Host B');
@@ -255,7 +342,7 @@ async function runPhase6Verification() {
       duration: 30,
       schedulingType: 'COLLECTIVE',
       teamId: team.id,
-      hostIds: [userA.id, userB.id]
+      hostIds: [userA.id, userB.id],
     });
 
     const colDate = new Date(targetDate.getTime() + 4 * 60 * 60000);
@@ -266,14 +353,21 @@ async function runPhase6Verification() {
       guestName: 'Candidate',
       guestEmail: 'candidate@jobs.com',
       startTime: colDate.toISOString(),
-      endTime: colEndDate.toISOString()
+      endTime: colEndDate.toISOString(),
     });
 
     const coHostBookings = await bookingsService.getHostBookings(userB.id);
-    const isVisibleToCoHost = coHostBookings.some((b: any) => b.id === colBooking.bookings[0].id);
-    if (!isVisibleToCoHost) throw new Error('Test 11 Failed: Collective booking not visible to co-host B');
+    const isVisibleToCoHost = coHostBookings.some(
+      (b: any) => b.id === colBooking.bookings[0].id,
+    );
+    if (!isVisibleToCoHost)
+      throw new Error(
+        'Test 11 Failed: Collective booking not visible to co-host B',
+      );
     passedTests++;
-    console.log('✅ Test 11 Passed: Collective booking assigned all required hosts');
+    console.log(
+      '✅ Test 11 Passed: Collective booking assigned all required hosts',
+    );
 
     // ----------------------------------------------------
     // TEST 12: Booking Conflict Double-Booking Protection
@@ -286,12 +380,13 @@ async function runPhase6Verification() {
         guestName: 'Double Attempter',
         guestEmail: 'double@test.com',
         startTime: targetDate.toISOString(),
-        endTime: targetEndDate.toISOString()
+        endTime: targetEndDate.toISOString(),
       });
     } catch {
       doubleBookingBlocked = true;
     }
-    if (!doubleBookingBlocked) throw new Error('Test 12 Failed: Double booking was allowed');
+    if (!doubleBookingBlocked)
+      throw new Error('Test 12 Failed: Double booking was allowed');
     passedTests++;
     console.log('✅ Test 12 Passed: Double booking strictly blocked');
 
@@ -306,12 +401,15 @@ async function runPhase6Verification() {
         guestName: 'Concurrent Attempter',
         guestEmail: 'concurrent@test.com',
         startTime: colDate.toISOString(),
-        endTime: colEndDate.toISOString()
+        endTime: colEndDate.toISOString(),
       });
     } catch {
       secondaryBlocked = true;
     }
-    if (!secondaryBlocked) throw new Error('Test 13 Failed: Secondary host conflict allowed booking');
+    if (!secondaryBlocked)
+      throw new Error(
+        'Test 13 Failed: Secondary host conflict allowed booking',
+      );
     passedTests++;
     console.log('✅ Test 13 Passed: Secondary host conflict blocked');
 
@@ -321,8 +419,14 @@ async function runPhase6Verification() {
     console.log('--- [Test 14/28] Booking Rescheduling ---');
     const newStart = new Date(targetDate.getTime() + 24 * 60 * 60000); // Thursday 11:00 UTC
     const newEnd = new Date(newStart.getTime() + 30 * 60000);
-    const resched = await bookingsService.rescheduleBooking(bookingRes.bookings[0].id, userA.id, newStart, newEnd);
-    if (resched.status !== 'RESCHEDULED') throw new Error('Test 14 Failed: Reschedule failed');
+    const resched = await bookingsService.rescheduleBooking(
+      bookingRes.bookings[0].id,
+      userA.id,
+      newStart,
+      newEnd,
+    );
+    if (resched.status !== 'RESCHEDULED')
+      throw new Error('Test 14 Failed: Reschedule failed');
     passedTests++;
     console.log('✅ Test 14 Passed: Rescheduling verified');
 
@@ -330,15 +434,20 @@ async function runPhase6Verification() {
     // TEST 15: Cancellation & Slot Recovery
     // ----------------------------------------------------
     console.log('--- [Test 15/28] Cancellation & Slot Recovery ---');
-    await bookingsService.cancelBooking(bookingRes.bookings[0].id, userA.id, 'Phase 6 Test');
+    await bookingsService.cancelBooking(
+      bookingRes.bookings[0].id,
+      userA.id,
+      'Phase 6 Test',
+    );
     const rebooked = await bookingsService.createBooking({
       eventTypeId: eventTypeA.id,
       guestName: 'Rebook Client',
       guestEmail: 'rebook@test.com',
       startTime: targetDate.toISOString(),
-      endTime: targetEndDate.toISOString()
+      endTime: targetEndDate.toISOString(),
     });
-    if (!rebooked.bookings[0].id) throw new Error('Test 15 Failed: Slot recovery failed');
+    if (!rebooked.bookings[0].id)
+      throw new Error('Test 15 Failed: Slot recovery failed');
     passedTests++;
     console.log('✅ Test 15 Passed: Cancellation and slot recovery verified');
 
@@ -347,7 +456,8 @@ async function runPhase6Verification() {
     // ----------------------------------------------------
     console.log('--- [Test 16/28] Availability Engine Retrieval ---');
     const userAvail = await availabilityService.getAvailability(userA.id);
-    if (!userAvail) throw new Error('Test 16 Failed: Availability lookup failed');
+    if (!userAvail)
+      throw new Error('Test 16 Failed: Availability lookup failed');
     passedTests++;
     console.log('✅ Test 16 Passed: Availability schedule retrieved');
 
@@ -356,8 +466,11 @@ async function runPhase6Verification() {
     // ----------------------------------------------------
     console.log('--- [Test 17/28] Timezone Conversion ---');
     const utcDate = new Date('2026-09-01T14:00:00.000Z');
-    const nyTimeString = utcDate.toLocaleString('en-US', { timeZone: 'America/New_York' });
-    if (!nyTimeString.includes('10:00:00 AM')) throw new Error('Test 17 Failed: Timezone conversion mismatch');
+    const nyTimeString = utcDate.toLocaleString('en-US', {
+      timeZone: 'America/New_York',
+    });
+    if (!nyTimeString.includes('10:00:00 AM'))
+      throw new Error('Test 17 Failed: Timezone conversion mismatch');
     passedTests++;
     console.log('✅ Test 17 Passed: Timezone arithmetic verified');
 
@@ -372,8 +485,14 @@ async function runPhase6Verification() {
       isActive: true,
       fallbackDestination: eventTypeA.slug,
       questions: [
-        { label: 'Company Size', type: 'DROPDOWN', options: ['Small', 'Enterprise'], required: true, order: 1 }
-      ]
+        {
+          label: 'Company Size',
+          type: 'DROPDOWN',
+          options: ['Small', 'Enterprise'],
+          required: true,
+          order: 1,
+        },
+      ],
     });
     const q1 = form.questions[0];
     await prisma.routingRule.create({
@@ -382,13 +501,16 @@ async function runPhase6Verification() {
         questionId: q1.id,
         operator: 'EQUALS',
         value: 'Enterprise',
-        destination: colEventType.slug
-      }
+        destination: colEventType.slug,
+      },
     });
-    const routeRes = await routingService.submitRoutingForm('p6_host_a', 'p6-qualifier', [
-      { questionId: q1.id, value: 'Enterprise' }
-    ]);
-    if (routeRes.destination !== colEventType.slug) throw new Error('Test 18 Failed: Rule matching failed');
+    const routeRes = await routingService.submitRoutingForm(
+      'p6_host_a',
+      'p6-qualifier',
+      [{ questionId: q1.id, value: 'Enterprise' }],
+    );
+    if (routeRes.destination !== colEventType.slug)
+      throw new Error('Test 18 Failed: Rule matching failed');
     passedTests++;
     console.log('✅ Test 18 Passed: Routing form evaluated accurately');
 
@@ -399,11 +521,15 @@ async function runPhase6Verification() {
     const webhook = await webhooksService.create(userA.id, {
       url: 'https://webhook.site/phase6-test',
       events: ['booking.created'],
-      isActive: true
+      isActive: true,
     });
     await webhooksService.testWebhook(userA.id, webhook.id);
-    const deliveries = await webhooksService.getDeliveries(userA.id, webhook.id);
-    if (deliveries.length === 0) throw new Error('Test 19 Failed: Delivery not logged');
+    const deliveries = await webhooksService.getDeliveries(
+      userA.id,
+      webhook.id,
+    );
+    if (deliveries.length === 0)
+      throw new Error('Test 19 Failed: Delivery not logged');
     passedTests++;
     console.log('✅ Test 19 Passed: Webhook test delivery logged');
 
@@ -413,8 +539,12 @@ async function runPhase6Verification() {
     console.log('--- [Test 20/28] Webhook HMAC Signature ---');
     const payloadStr = JSON.stringify({ test: 'data' });
     const sig = deliveryService.generateSignature(payloadStr, webhook.secret);
-    const expected = crypto.createHmac('sha256', webhook.secret).update(payloadStr).digest('hex');
-    if (sig !== expected) throw new Error('Test 20 Failed: HMAC signature mismatch');
+    const expected = crypto
+      .createHmac('sha256', webhook.secret)
+      .update(payloadStr)
+      .digest('hex');
+    if (sig !== expected)
+      throw new Error('Test 20 Failed: HMAC signature mismatch');
     passedTests++;
     console.log('✅ Test 20 Passed: Webhook HMAC signature verified');
 
@@ -422,9 +552,15 @@ async function runPhase6Verification() {
     // TEST 21: Push Token Registration
     // ----------------------------------------------------
     console.log('--- [Test 21/28] Push Token Registration ---');
-    await pushController.registerToken({ user: { userId: userA.id } }, { token: 'p6_fcm_token', platform: 'ANDROID' });
-    const pTokens = await prisma.pushToken.findMany({ where: { userId: userA.id } });
-    if (!pTokens.some(t => t.token === 'p6_fcm_token')) throw new Error('Test 21 Failed: Push token not registered');
+    await pushController.registerToken(
+      { user: { userId: userA.id } },
+      { token: 'p6_fcm_token', platform: 'ANDROID' },
+    );
+    const pTokens = await prisma.pushToken.findMany({
+      where: { userId: userA.id },
+    });
+    if (!pTokens.some((t) => t.token === 'p6_fcm_token'))
+      throw new Error('Test 21 Failed: Push token not registered');
     passedTests++;
     console.log('✅ Test 21 Passed: Push token registration verified');
 
@@ -432,9 +568,15 @@ async function runPhase6Verification() {
     // TEST 22: Push Token Deletion
     // ----------------------------------------------------
     console.log('--- [Test 22/28] Push Token Deletion ---');
-    await pushController.unregisterTokenByBody({ user: { userId: userA.id } }, { token: 'p6_fcm_token' });
-    const remaining = await prisma.pushToken.findMany({ where: { token: 'p6_fcm_token' } });
-    if (remaining.length !== 0) throw new Error('Test 22 Failed: Token cleanup failed');
+    await pushController.unregisterTokenByBody(
+      { user: { userId: userA.id } },
+      { token: 'p6_fcm_token' },
+    );
+    const remaining = await prisma.pushToken.findMany({
+      where: { token: 'p6_fcm_token' },
+    });
+    if (remaining.length !== 0)
+      throw new Error('Test 22 Failed: Token cleanup failed');
     passedTests++;
     console.log('✅ Test 22 Passed: Push token cleanup on logout verified');
 
@@ -444,11 +586,14 @@ async function runPhase6Verification() {
     console.log('--- [Test 23/28] Team Permissions Enforcement ---');
     let teamNonOwnerBlocked = false;
     try {
-      await teamsService.update(team.id, userB.id, { name: 'Unauthorized Name' });
+      await teamsService.update(team.id, userB.id, {
+        name: 'Unauthorized Name',
+      });
     } catch {
       teamNonOwnerBlocked = true;
     }
-    if (!teamNonOwnerBlocked) throw new Error('Test 23 Failed: Non-owner edited team');
+    if (!teamNonOwnerBlocked)
+      throw new Error('Test 23 Failed: Non-owner edited team');
     passedTests++;
     console.log('✅ Test 23 Passed: Team permissions verified');
 
@@ -456,9 +601,15 @@ async function runPhase6Verification() {
     // TEST 24: Team Invitations
     // ----------------------------------------------------
     console.log('--- [Test 24/28] Team Invitations ---');
-    await teamsService.inviteMember(team.id, userA.id, { email: 'invitee@test.com', role: 'MEMBER' });
-    const invite = await prisma.teamInvitation.findFirst({ where: { teamId: team.id, email: 'invitee@test.com' } });
-    if (!invite || !invite.tokenHash) throw new Error('Test 24 Failed: Team invitation not stored');
+    await teamsService.inviteMember(team.id, userA.id, {
+      email: 'invitee@test.com',
+      role: 'MEMBER',
+    });
+    const invite = await prisma.teamInvitation.findFirst({
+      where: { teamId: team.id, email: 'invitee@test.com' },
+    });
+    if (!invite || !invite.tokenHash)
+      throw new Error('Test 24 Failed: Team invitation not stored');
     passedTests++;
     console.log('✅ Test 24 Passed: Team invitation generation verified');
 
@@ -468,8 +619,12 @@ async function runPhase6Verification() {
     console.log('--- [Test 25/28] OAuth State Cryptographic Signature ---');
     const oauthNonce = crypto.randomBytes(16).toString('hex');
     const oauthPayload = `${userA.id}:meetapp:${oauthNonce}`;
-    const hmacState = crypto.createHmac('sha256', process.env.JWT_SECRET || 'secret').update(oauthPayload).digest('hex');
-    if (hmacState.length !== 64) throw new Error('Test 25 Failed: OAuth state HMAC invalid');
+    const hmacState = crypto
+      .createHmac('sha256', process.env.JWT_SECRET || 'secret')
+      .update(oauthPayload)
+      .digest('hex');
+    if (hmacState.length !== 64)
+      throw new Error('Test 25 Failed: OAuth state HMAC invalid');
     passedTests++;
     console.log('✅ Test 25 Passed: OAuth state signature verified');
 
@@ -477,20 +632,27 @@ async function runPhase6Verification() {
     // TEST 26: Archived / Inactive Event Safety
     // ----------------------------------------------------
     console.log('--- [Test 26/28] Archived Event Safety ---');
-    await eventTypesService.update(eventTypeA.id, userA.id, { isActive: false });
+    await eventTypesService.update(eventTypeA.id, userA.id, {
+      isActive: false,
+    });
     let archBlocked = false;
     try {
       await bookingsService.createBooking({
         eventTypeId: eventTypeA.id,
         guestName: 'Attempter',
         guestEmail: 'attempter@test.com',
-        startTime: new Date(targetDate.getTime() + 8 * 60 * 60000).toISOString(),
-        endTime: new Date(targetDate.getTime() + 8.5 * 60 * 60000).toISOString()
+        startTime: new Date(
+          targetDate.getTime() + 8 * 60 * 60000,
+        ).toISOString(),
+        endTime: new Date(
+          targetDate.getTime() + 8.5 * 60 * 60000,
+        ).toISOString(),
       });
     } catch {
       archBlocked = true;
     }
-    if (!archBlocked) throw new Error('Test 26 Failed: Archived event allowed booking');
+    if (!archBlocked)
+      throw new Error('Test 26 Failed: Archived event allowed booking');
     await eventTypesService.update(eventTypeA.id, userA.id, { isActive: true });
     passedTests++;
     console.log('✅ Test 26 Passed: Archived event booking blocked');
@@ -500,7 +662,8 @@ async function runPhase6Verification() {
     // ----------------------------------------------------
     console.log('--- [Test 27/28] Rate Limiting Architecture ---');
     const throttlerGuard = app.get(require('@nestjs/throttler').ThrottlerGuard);
-    if (!throttlerGuard) throw new Error('Test 27 Failed: ThrottlerGuard not registered');
+    if (!throttlerGuard)
+      throw new Error('Test 27 Failed: ThrottlerGuard not registered');
     passedTests++;
     console.log('✅ Test 27 Passed: Rate limiting throttler guard active');
 
@@ -515,19 +678,25 @@ async function runPhase6Verification() {
         guestName: '',
         guestEmail: 'invalid-email',
         startTime: 'invalid-date',
-        endTime: 'invalid-date'
+        endTime: 'invalid-date',
       });
     } catch {
       invalidSlotBlocked = true;
     }
-    if (!invalidSlotBlocked) throw new Error('Test 28 Failed: Invalid payload was accepted');
+    if (!invalidSlotBlocked)
+      throw new Error('Test 28 Failed: Invalid payload was accepted');
     passedTests++;
     console.log('✅ Test 28 Passed: Invalid payload validation verified');
 
-    console.log('\n================================================================');
-    console.log(`🎉 ALL ${passedTests}/${totalTests} PHASE 6 PRODUCTION TESTS PASSED!`);
-    console.log('================================================================\n');
-
+    console.log(
+      '\n================================================================',
+    );
+    console.log(
+      `🎉 ALL ${passedTests}/${totalTests} PHASE 6 PRODUCTION TESTS PASSED!`,
+    );
+    console.log(
+      '================================================================\n',
+    );
   } catch (error) {
     console.error('\n❌ Phase 6 Verification FAILED:\n', error);
     process.exit(1);

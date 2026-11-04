@@ -28,19 +28,23 @@ import { WebhooksModule } from './webhooks/webhooks.module';
   imports: [
     ScheduleModule.forRoot(),
     ThrottlerModule.forRoot({
-      throttlers: [{
-        ttl: 60000,
-        limit: 60,
-      }],
-      storage: process.env.REDIS_URL ? new ThrottlerStorageRedisService(process.env.REDIS_URL) : undefined,
+      throttlers: [
+        {
+          ttl: 60000,
+          limit: 60,
+        },
+      ],
+      storage: process.env.REDIS_URL
+        ? new ThrottlerStorageRedisService(process.env.REDIS_URL)
+        : undefined,
     }),
-    PrismaModule, 
-    UsersModule, 
-    AuthModule, 
-    EventTypesModule, 
-    AvailabilityModule, 
-    BookingsModule, 
-    IntegrationsModule, 
+    PrismaModule,
+    UsersModule,
+    AuthModule,
+    EventTypesModule,
+    AvailabilityModule,
+    BookingsModule,
+    IntegrationsModule,
     AnalyticsModule,
     ContactsModule,
     PublicModule,
@@ -49,7 +53,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     PollsModule,
     RoutingModule,
     TeamsModule,
-    WebhooksModule
+    WebhooksModule,
   ],
   controllers: [AppController],
   providers: [
@@ -57,7 +61,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
-    }
+    },
   ],
 })
 export class AppModule {}

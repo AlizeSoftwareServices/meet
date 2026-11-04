@@ -1,4 +1,14 @@
-import { Controller, Post, Delete, Body, Param, UseGuards, Request, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+  Request,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegisterPushTokenDto } from './dto/register-push-token.dto';
@@ -15,12 +25,12 @@ export class PushController {
     const userId = req.user.userId;
     const platform = dto.platform ? dto.platform.toUpperCase() : undefined;
 
-    // We use upsert because the token is globally unique. 
+    // We use upsert because the token is globally unique.
     // If another user had it (e.g. signed out on the same device), it will be reassigned to the current user.
     await this.prisma.pushToken.upsert({
       where: { token: dto.token },
       update: { userId, platform },
-      create: { token: dto.token, userId, platform }
+      create: { token: dto.token, userId, platform },
     });
 
     return { success: true, message: 'Push token registered' };
@@ -28,11 +38,14 @@ export class PushController {
 
   @Delete()
   @HttpCode(HttpStatus.OK)
-  async unregisterTokenByBody(@Request() req: any, @Body() dto: DeletePushTokenDto) {
+  async unregisterTokenByBody(
+    @Request() req: any,
+    @Body() dto: DeletePushTokenDto,
+  ) {
     const userId = req.user.userId;
 
     const result = await this.prisma.pushToken.deleteMany({
-      where: { token: dto.token, userId }
+      where: { token: dto.token, userId },
     });
 
     return { success: true, count: result.count };
@@ -40,11 +53,14 @@ export class PushController {
 
   @Delete(':token')
   @HttpCode(HttpStatus.OK)
-  async unregisterTokenByParam(@Request() req: any, @Param('token') token: string) {
+  async unregisterTokenByParam(
+    @Request() req: any,
+    @Param('token') token: string,
+  ) {
     const userId = req.user.userId;
 
     const result = await this.prisma.pushToken.deleteMany({
-      where: { token, userId }
+      where: { token, userId },
     });
 
     return { success: true, count: result.count };

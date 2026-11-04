@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CalendarService } from '../integrations/calendar.service';
 import { EmailService } from '../integrations/email.service';
@@ -25,15 +30,15 @@ export class PollsService {
         description: dto.description,
         duration: dto.duration,
         slots: {
-          create: dto.slots.map(s => ({
+          create: dto.slots.map((s) => ({
             startTime: new Date(s.startTime),
-            endTime: new Date(s.endTime)
-          }))
-        }
+            endTime: new Date(s.endTime),
+          })),
+        },
       },
       include: {
-        slots: true
-      }
+        slots: true,
+      },
     });
   }
 
@@ -43,11 +48,11 @@ export class PollsService {
       include: {
         slots: {
           include: {
-            votes: true
-          }
-        }
+            votes: true,
+          },
+        },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -57,15 +62,15 @@ export class PollsService {
       include: {
         slots: {
           include: {
-            votes: true
-          }
+            votes: true,
+          },
         },
         host: {
           include: {
-            profile: true
-          }
-        }
-      }
+            profile: true,
+          },
+        },
+      },
     });
 
     if (!poll) {
@@ -78,7 +83,7 @@ export class PollsService {
   async vote(pollId: string, dto: VotePollDto) {
     const poll = await this.prisma.poll.findUnique({
       where: { id: pollId },
-      include: { slots: true }
+      include: { slots: true },
     });
 
     if (!poll) {
@@ -89,7 +94,7 @@ export class PollsService {
       throw new BadRequestException('Poll is closed');
     }
 
-    const slot = poll.slots.find(s => s.id === dto.pollSlotId);
+    const slot = poll.slots.find((s) => s.id === dto.pollSlotId);
     if (!slot) {
       throw new BadRequestException('Invalid slot ID for this poll');
     }
@@ -98,8 +103,8 @@ export class PollsService {
     const existingVote = await this.prisma.pollVote.findFirst({
       where: {
         pollSlotId: dto.pollSlotId,
-        guestEmail: dto.guestEmail
-      }
+        guestEmail: dto.guestEmail,
+      },
     });
 
     if (existingVote) {
@@ -107,8 +112,8 @@ export class PollsService {
         where: { id: existingVote.id },
         data: {
           guestName: dto.guestName,
-          status: dto.status
-        }
+          status: dto.status,
+        },
       });
     }
 
@@ -118,12 +123,14 @@ export class PollsService {
           pollSlotId: dto.pollSlotId,
           guestName: dto.guestName,
           guestEmail: dto.guestEmail,
-          status: dto.status
-        }
+          status: dto.status,
+        },
       });
     } catch (error: any) {
       if (error.code === 'P2002') {
-        throw new ConflictException('You have already voted on this slot concurrently.');
+        throw new ConflictException(
+          'You have already voted on this slot concurrently.',
+        );
       }
       throw error;
     }
@@ -131,13 +138,13 @@ export class PollsService {
 
   async closePoll(hostId: string, pollId: string) {
     const poll = await this.prisma.poll.findUnique({ where: { id: pollId } });
-    
+
     if (!poll) throw new NotFoundException('Poll not found');
     if (poll.hostId !== hostId) throw new BadRequestException('Unauthorized');
 
     return this.prisma.poll.update({
       where: { id: pollId },
-      data: { status: 'CLOSED' }
+      data: { status: 'CLOSED' },
     });
   }
 
@@ -146,22 +153,25 @@ export class PollsService {
       where: { id: pollId },
       include: {
         slots: {
-          include: { votes: true }
+          include: { votes: true },
         },
         host: {
-          include: { profile: true }
-        }
-      }
+          include: { profile: true },
+        },
+      },
     });
 
     if (!poll) throw new NotFoundException('Poll not found');
     if (poll.hostId !== hostId) throw new BadRequestException('Unauthorized');
 
-    const winningSlot = poll.slots.find(s => s.id === slotId);
-    if (!winningSlot) throw new BadRequestException('Invalid winning slot selected');
+    const winningSlot = poll.slots.find((s) => s.id === slotId);
+    if (!winningSlot)
+      throw new BadRequestException('Invalid winning slot selected');
 
     // Get all attendees who voted YES or IF_NEED_BE
-    const eligibleVotes = winningSlot.votes.filter(v => v.status === 'YES' || v.status === 'IF_NEED_BE');
+    const eligibleVotes = winningSlot.votes.filter(
+      (v) => v.status === 'YES' || v.status === 'IF_NEED_BE',
+    );
 
     // Create Calendar Event & Meeting link if calendar is integrated
     let meetLink: string | null = null;
@@ -173,20 +183,23 @@ export class PollsService {
         winningSlot.startTime.toISOString(),
         winningSlot.endTime.toISOString(),
         eligibleVotes[0]?.guestEmail || 'attendee@example.com',
-        eligibleVotes[0]?.guestName || 'Meeting Attendee'
+        eligibleVotes[0]?.guestName || 'Meeting Attendee',
       );
       if (calRes) {
         meetLink = calRes.meetLink;
         externalEventId = calRes.eventId;
       }
     } catch (err: any) {
-      console.error('Failed to create calendar event for finalized poll:', err.message);
+      console.error(
+        'Failed to create calendar event for finalized poll:',
+        err.message,
+      );
     }
 
     // Mark poll as finalized
     await this.prisma.poll.update({
       where: { id: pollId },
-      data: { status: 'FINALIZED' }
+      data: { status: 'FINALIZED' },
     });
 
     // Send confirmation emails to all participating voters
@@ -199,10 +212,13 @@ export class PollsService {
           winningSlot.startTime.toISOString(),
           meetLink || undefined,
           poll.duration,
-          poll.host.profile?.name || poll.host.email
+          poll.host.profile?.name || poll.host.email,
         );
       } catch (e: any) {
-        console.error(`Failed to send confirmation email to ${vote.guestEmail}:`, e.message);
+        console.error(
+          `Failed to send confirmation email to ${vote.guestEmail}:`,
+          e.message,
+        );
       }
     }
 
@@ -217,7 +233,10 @@ export class PollsService {
       },
       meetLink,
       attendeeCount: eligibleVotes.length,
-      attendees: eligibleVotes.map(v => ({ name: v.guestName, email: v.guestEmail })),
+      attendees: eligibleVotes.map((v) => ({
+        name: v.guestName,
+        email: v.guestEmail,
+      })),
     };
   }
 }

@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CalendarService } from '../integrations/calendar.service';
 import { toZonedTime, fromZonedTime } from 'date-fns-tz';
@@ -16,7 +20,9 @@ export class AvailabilityEngineService {
     if (eventTypeId) {
       const eventType = await this.prisma.eventType.findUnique({
         where: { id: eventTypeId },
-        include: { availability: { include: { slots: true, overrides: true } } }
+        include: {
+          availability: { include: { slots: true, overrides: true } },
+        },
       });
       if (eventType && eventType.availability) {
         schedule = eventType.availability;
@@ -26,53 +32,68 @@ export class AvailabilityEngineService {
     if (!schedule) {
       schedule = await this.prisma.availability.findFirst({
         where: { userId: hostId, isDefault: true },
-        include: { slots: true, overrides: true }
+        include: { slots: true, overrides: true },
       });
     }
 
     if (!schedule) {
       schedule = await this.prisma.availability.findFirst({
         where: { userId: hostId },
-        include: { slots: true, overrides: true }
+        include: { slots: true, overrides: true },
       });
     }
 
     return schedule;
   }
 
-  private createZonedDate(dateStr: string, timeStr: string, timezone: string): Date {
+  private createZonedDate(
+    dateStr: string,
+    timeStr: string,
+    timezone: string,
+  ): Date {
     return fromZonedTime(`${dateStr}T${timeStr}:00`, timezone);
   }
 
-  public getWorkingPeriodsForDate(dateStr: string, schedule: any, timezone: string) {
-    const dayOfWeek = toZonedTime(fromZonedTime(`${dateStr}T12:00:00`, timezone), timezone).getDay();
+  public getWorkingPeriodsForDate(
+    dateStr: string,
+    schedule: any,
+    timezone: string,
+  ) {
+    const dayOfWeek = toZonedTime(
+      fromZonedTime(`${dateStr}T12:00:00`, timezone),
+      timezone,
+    ).getDay();
 
-    const dateOverrides = schedule.overrides.filter((o: any) => o.date === dateStr);
-    
-    let workingPeriods: { start: Date, end: Date }[] = [];
+    const dateOverrides = schedule.overrides.filter(
+      (o: any) => o.date === dateStr,
+    );
+
+    const workingPeriods: { start: Date; end: Date }[] = [];
 
     if (dateOverrides.length > 0) {
       for (const override of dateOverrides) {
         if (override.isAvailable && override.startTime && override.endTime) {
           workingPeriods.push({
             start: this.createZonedDate(dateStr, override.startTime, timezone),
-            end: this.createZonedDate(dateStr, override.endTime, timezone)
+            end: this.createZonedDate(dateStr, override.endTime, timezone),
           });
         }
       }
     } else {
-      const daySlots = schedule.slots.filter((s: any) => s.dayOfWeek === dayOfWeek);
+      const daySlots = schedule.slots.filter(
+        (s: any) => s.dayOfWeek === dayOfWeek,
+      );
       for (const slot of daySlots) {
         workingPeriods.push({
           start: this.createZonedDate(dateStr, slot.startTime, timezone),
-          end: this.createZonedDate(dateStr, slot.endTime, timezone)
+          end: this.createZonedDate(dateStr, slot.endTime, timezone),
         });
       }
     }
 
     workingPeriods.sort((a, b) => a.start.getTime() - b.start.getTime());
-    const normalized: { start: Date, end: Date }[] = [];
-    
+    const normalized: { start: Date; end: Date }[] = [];
+
     for (const period of workingPeriods) {
       if (normalized.length === 0) {
         normalized.push(period);
@@ -80,7 +101,7 @@ export class AvailabilityEngineService {
         const last = normalized[normalized.length - 1];
         if (period.start <= last.end) {
           if (period.end > last.end) {
-             last.end = period.end;
+            last.end = period.end;
           }
         } else {
           normalized.push(period);
@@ -92,25 +113,27 @@ export class AvailabilityEngineService {
   }
 
   public async evaluateSlots(
-    hostId: string, 
-    eventTypeId: string, 
-    requestedSlots: any[]
+    hostId: string,
+    eventTypeId: string,
+    requestedSlots: any[],
   ): Promise<any[]> {
-    
     if (requestedSlots.length === 0) return [];
 
     const host = await this.prisma.user.findUnique({
       where: { id: hostId },
-      include: { profile: true }
+      include: { profile: true },
     });
     if (!host) throw new NotFoundException('Host not found');
 
-    const eventType = eventTypeId 
+    const eventType = eventTypeId
       ? await this.prisma.eventType.findUnique({ where: { id: eventTypeId } })
       : null;
 
     const schedule = await this.getEffectiveAvailability(hostId, eventTypeId);
-    if (!schedule) throw new BadRequestException('Host has no availability schedule configured.');
+    if (!schedule)
+      throw new BadRequestException(
+        'Host has no availability schedule configured.',
+      );
 
     const timezone = schedule.timezone || host.profile?.timezone || 'UTC';
     const duration = eventType?.duration || 30;
@@ -125,29 +148,37 @@ export class AvailabilityEngineService {
     const maxAdvanceDateHost = endOfDay(futureHost);
     const maxAdvanceDate = fromZonedTime(maxAdvanceDateHost, timezone);
 
-    const minTime = new Date(Math.min(...requestedSlots.map(s => s.startTime.getTime())));
-    const maxTime = new Date(Math.max(...requestedSlots.map(s => s.endTime.getTime())));
+    const minTime = new Date(
+      Math.min(...requestedSlots.map((s) => s.startTime.getTime())),
+    );
+    const maxTime = new Date(
+      Math.max(...requestedSlots.map((s) => s.endTime.getTime())),
+    );
 
-    const searchStart = startOfDay(fromZonedTime(toZonedTime(minTime, timezone), timezone));
-    const searchEnd = endOfDay(fromZonedTime(toZonedTime(maxTime, timezone), timezone));
+    const searchStart = startOfDay(
+      fromZonedTime(toZonedTime(minTime, timezone), timezone),
+    );
+    const searchEnd = endOfDay(
+      fromZonedTime(toZonedTime(maxTime, timezone), timezone),
+    );
 
     const existingBookings = await this.prisma.booking.findMany({
       where: {
         status: { in: ['CONFIRMED', 'RESCHEDULED'] },
         OR: [
           { hostId: hostId },
-          { assignedHosts: { some: { userId: hostId } } }
+          { assignedHosts: { some: { userId: hostId } } },
         ],
         startTime: { gte: addMinutes(searchStart, -1440) },
-        endTime: { lte: addMinutes(searchEnd, 1440) }
+        endTime: { lte: addMinutes(searchEnd, 1440) },
       },
-      include: { eventType: true }
+      include: { eventType: true },
     });
 
     const externalBusyPeriods = await this.calendarService.getBusyPeriods(
       hostId,
       addMinutes(searchStart, -1440).toISOString(),
-      addMinutes(searchEnd, 1440).toISOString()
+      addMinutes(searchEnd, 1440).toISOString(),
     );
 
     const results: any[] = [];
@@ -172,28 +203,36 @@ export class AvailabilityEngineService {
         const d = String(zonedSlotStart.getDate()).padStart(2, '0');
         const dateStr = `${y}-${m}-${d}`;
 
-        const workingPeriods = this.getWorkingPeriodsForDate(dateStr, schedule, timezone);
-        
-        const isWithinWorkingHours = workingPeriods.some(p => 
-          (slot.startTime.getTime() >= p.start.getTime()) && 
-          (slot.endTime.getTime() <= p.end.getTime())
+        const workingPeriods = this.getWorkingPeriodsForDate(
+          dateStr,
+          schedule,
+          timezone,
+        );
+
+        const isWithinWorkingHours = workingPeriods.some(
+          (p) =>
+            slot.startTime.getTime() >= p.start.getTime() &&
+            slot.endTime.getTime() <= p.end.getTime(),
         );
 
         if (!isWithinWorkingHours) {
           isAvailable = false;
           reason = 'Slot is outside host working hours.';
-        } else if (eventType?.maxDailyBookings && eventType.maxDailyBookings > 0) {
+        } else if (
+          eventType?.maxDailyBookings &&
+          eventType.maxDailyBookings > 0
+        ) {
           // maxDailyBookings enforcement based on host timezone calendar date
-          const sameDayBookingsCount = existingBookings.filter(b => {
+          const sameDayBookingsCount = existingBookings.filter((b) => {
             if (b.eventTypeId !== eventTypeId) return false;
             if (b.status !== 'CONFIRMED') return false;
-            
+
             const zonedStart = toZonedTime(b.startTime, timezone);
             const bY = zonedStart.getFullYear();
             const bM = String(zonedStart.getMonth() + 1).padStart(2, '0');
             const bD = String(zonedStart.getDate()).padStart(2, '0');
             const bDateStr = `${bY}-${bM}-${bD}`;
-            
+
             return bDateStr === dateStr;
           }).length;
 
@@ -211,24 +250,31 @@ export class AvailabilityEngineService {
 
         if (eventType?.isGroupEvent) {
           // Count existing bookings for this specific group event
-          const groupBookingsCount = existingBookings.filter(b => 
-            b.eventTypeId === eventTypeId && 
-            b.startTime.getTime() === slot.startTime.getTime() && 
-            b.endTime.getTime() === slot.endTime.getTime()
+          const groupBookingsCount = existingBookings.filter(
+            (b) =>
+              b.eventTypeId === eventTypeId &&
+              b.startTime.getTime() === slot.startTime.getTime() &&
+              b.endTime.getTime() === slot.endTime.getTime(),
           ).length;
 
-          if (eventType.maxInvitees && groupBookingsCount >= eventType.maxInvitees) {
+          if (
+            eventType.maxInvitees &&
+            groupBookingsCount >= eventType.maxInvitees
+          ) {
             isAvailable = false;
             reason = 'Group event slot is full.';
           } else {
             // Check if host is busy with ANOTHER event entirely
-            const otherOverlap = existingBookings.find(b => {
+            const otherOverlap = existingBookings.find((b) => {
               if (b.eventTypeId === eventTypeId) return false;
               const bBufferBefore = b.eventType?.bufferBefore || 0;
               const bBufferAfter = b.eventType?.bufferAfter || 0;
               const bStart = addMinutes(b.startTime, -bBufferBefore);
               const bEnd = addMinutes(b.endTime, bBufferAfter);
-              return bStart.getTime() < slotEndWithBuffer.getTime() && bEnd.getTime() > slotStartWithBuffer.getTime();
+              return (
+                bStart.getTime() < slotEndWithBuffer.getTime() &&
+                bEnd.getTime() > slotStartWithBuffer.getTime()
+              );
             });
             if (otherOverlap) {
               isAvailable = false;
@@ -237,12 +283,15 @@ export class AvailabilityEngineService {
           }
         } else {
           // Standard 1-on-1 overlap
-          const overlap = existingBookings.find(b => {
+          const overlap = existingBookings.find((b) => {
             const bBufferBefore = b.eventType?.bufferBefore || 0;
             const bBufferAfter = b.eventType?.bufferAfter || 0;
             const bStart = addMinutes(b.startTime, -bBufferBefore);
             const bEnd = addMinutes(b.endTime, bBufferAfter);
-            return bStart.getTime() < slotEndWithBuffer.getTime() && bEnd.getTime() > slotStartWithBuffer.getTime();
+            return (
+              bStart.getTime() < slotEndWithBuffer.getTime() &&
+              bEnd.getTime() > slotStartWithBuffer.getTime()
+            );
           });
           if (overlap) {
             isAvailable = false;
@@ -252,14 +301,21 @@ export class AvailabilityEngineService {
       }
 
       // 4. Overlaps with External Google Calendar
-      if (isAvailable && externalBusyPeriods && externalBusyPeriods.length > 0) {
+      if (
+        isAvailable &&
+        externalBusyPeriods &&
+        externalBusyPeriods.length > 0
+      ) {
         const slotStartWithBuffer = addMinutes(slot.startTime, -bufferBefore);
         const slotEndWithBuffer = addMinutes(slot.endTime, bufferAfter);
 
         const externalOverlap = externalBusyPeriods.find((busy: any) => {
           const busyStart = new Date(busy.start).getTime();
           const busyEnd = new Date(busy.end).getTime();
-          return (busyStart < slotEndWithBuffer.getTime() && busyEnd > slotStartWithBuffer.getTime());
+          return (
+            busyStart < slotEndWithBuffer.getTime() &&
+            busyEnd > slotStartWithBuffer.getTime()
+          );
         });
 
         if (externalOverlap) {
@@ -271,7 +327,7 @@ export class AvailabilityEngineService {
       results.push({
         ...slot,
         isAvailable,
-        reason
+        reason,
       });
     }
 
@@ -282,13 +338,20 @@ export class AvailabilityEngineService {
     hostIds: string[],
     eventTypeId: string,
     schedulingType: string,
-    requestedSlots: any[]
+    requestedSlots: any[],
   ): Promise<any[]> {
     if (requestedSlots.length === 0) return [];
-    if (hostIds.length === 0) return requestedSlots.map(s => ({ ...s, isAvailable: false, reason: 'No hosts provided' }));
+    if (hostIds.length === 0)
+      return requestedSlots.map((s) => ({
+        ...s,
+        isAvailable: false,
+        reason: 'No hosts provided',
+      }));
 
     const hostResults = await Promise.all(
-      hostIds.map(hostId => this.evaluateSlots(hostId, eventTypeId, requestedSlots))
+      hostIds.map((hostId) =>
+        this.evaluateSlots(hostId, eventTypeId, requestedSlots),
+      ),
     );
 
     const mergedResults: any[] = [];
@@ -297,7 +360,7 @@ export class AvailabilityEngineService {
       const slot = requestedSlots[i];
       let isAvailable = false;
       let reason = 'Unavailable';
-      let availableHostIds: string[] = [];
+      const availableHostIds: string[] = [];
 
       for (let j = 0; j < hostIds.length; j++) {
         const hostSlotResult = hostResults[j][i];
@@ -334,7 +397,7 @@ export class AvailabilityEngineService {
         ...slot,
         isAvailable,
         reason,
-        availableHostIds // Needed for downstream assignment
+        availableHostIds, // Needed for downstream assignment
       });
     }
 

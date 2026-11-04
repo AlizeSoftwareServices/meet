@@ -7,7 +7,7 @@ export enum TokenType {
   EMAIL_VERIFICATION = 'EMAIL_VERIFICATION',
   GUEST_CANCEL = 'GUEST_CANCEL',
   GUEST_RESCHEDULE = 'GUEST_RESCHEDULE',
-  BOOKING_CONFIRMATION = 'BOOKING_CONFIRMATION'
+  BOOKING_CONFIRMATION = 'BOOKING_CONFIRMATION',
 }
 
 @Injectable()
@@ -20,7 +20,12 @@ export class SecureTokenService {
     return crypto.createHash('sha256').update(token).digest('hex');
   }
 
-  async generateToken(type: TokenType, expirationHours: number, userId?: string, bookingId?: string): Promise<string> {
+  async generateToken(
+    type: TokenType,
+    expirationHours: number,
+    userId?: string,
+    bookingId?: string,
+  ): Promise<string> {
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = this.hashToken(rawToken);
 
@@ -34,7 +39,7 @@ export class SecureTokenService {
         userId,
         bookingId,
         expiresAt,
-      }
+      },
     });
 
     return rawToken;
@@ -46,7 +51,7 @@ export class SecureTokenService {
     // Atomic consumption: we use delete to consume it so it's strictly single-use
     try {
       const tokenRecord = await this.prisma.actionToken.findUnique({
-        where: { tokenHash }
+        where: { tokenHash },
       });
 
       if (!tokenRecord) {
@@ -58,13 +63,15 @@ export class SecureTokenService {
       }
 
       if (tokenRecord.expiresAt < new Date()) {
-        await this.prisma.actionToken.delete({ where: { tokenHash } }).catch(() => {});
+        await this.prisma.actionToken
+          .delete({ where: { tokenHash } })
+          .catch(() => {});
         return null;
       }
 
       // Consume
       await this.prisma.actionToken.delete({ where: { tokenHash } });
-      
+
       return tokenRecord;
     } catch (e) {
       this.logger.error(`Error consuming token: ${e.message}`);
@@ -77,7 +84,7 @@ export class SecureTokenService {
 
     try {
       const tokenRecord = await this.prisma.actionToken.findUnique({
-        where: { tokenHash }
+        where: { tokenHash },
       });
 
       if (!tokenRecord) {
@@ -103,8 +110,8 @@ export class SecureTokenService {
     await this.prisma.actionToken.deleteMany({
       where: {
         userId,
-        ...(type ? { type } : {})
-      }
+        ...(type ? { type } : {}),
+      },
     });
   }
 
@@ -112,8 +119,8 @@ export class SecureTokenService {
     await this.prisma.actionToken.deleteMany({
       where: {
         bookingId,
-        ...(type ? { type } : {})
-      }
+        ...(type ? { type } : {}),
+      },
     });
   }
 }
