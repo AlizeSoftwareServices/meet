@@ -395,8 +395,8 @@ export default function RegisterPage() {
                           setOtpValue(val);
                           setOtpError(null);
                         }}
-                        placeholder="123456"
-                        className="h-11 tracking-[0.4em] text-center font-mono font-bold text-lg rounded-xl bg-white dark:bg-zinc-950 border-purple-500/30 focus:border-brand-purple"
+                        placeholder="______"
+                        className="h-11 tracking-[0.4em] text-center font-mono font-bold text-lg rounded-xl bg-white dark:bg-zinc-950 border-purple-500/30 focus:border-brand-purple placeholder:text-muted-foreground/40 placeholder:tracking-[0.4em]"
                       />
                       <Button
                         type="button"
@@ -417,11 +417,6 @@ export default function RegisterPage() {
                     {otpError && (
                       <p className="text-xs text-brand-red font-bold flex items-center gap-1">
                         <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {otpError}
-                      </p>
-                    )}
-                    {otpSuccess && (
-                      <p className="text-xs text-emerald-600 font-bold flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> {otpSuccess}
                       </p>
                     )}
                   </motion.div>
