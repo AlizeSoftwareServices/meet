@@ -295,3 +295,4 @@ export function AddContactModal({ isOpen, onClose, contactToEdit }: AddContactMo
     </AnimatePresence>
   );
 }
+

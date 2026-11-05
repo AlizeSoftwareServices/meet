@@ -767,6 +767,10 @@ export class BookingsService {
           guestEmail,
           booking.guestPhone,
           booking.guestCompany,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
           booking.startTime,
         );
       } catch (error: any) {
