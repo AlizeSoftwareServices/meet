@@ -75,7 +75,11 @@ export default function RegisterPage() {
     setIsAlreadyRegistered(false);
 
     try {
-      const res = await api.post('/auth/send-registration-otp', { email: cleanEmail });
+      const res = await api.post(
+        '/auth/send-registration-otp',
+        { email: cleanEmail },
+        { timeout: 15000 },
+      );
       setOtpSent(true);
       setResendTimer(60);
       setOtpSuccess(res.data?.message || 'Verification code sent to your email!');
@@ -99,6 +103,8 @@ export default function RegisterPage() {
         setTimeout(() => {
           router.push(`/login?email=${encodeURIComponent(cleanEmail)}`);
         }, 2000);
+      } else if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+        setOtpError('Request timed out. Please try clicking "Verify Email" again.');
       } else {
         setOtpError(data?.message || 'Failed to send verification code. Please check your email and try again.');
       }

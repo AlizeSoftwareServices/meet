@@ -25,23 +25,36 @@ export class EmailService {
     const pass = process.env.SMTP_PASS || process.env.GMAIL_PASS;
 
     if (host && user && pass) {
-      this.transporter = nodemailer.createTransport({
-        host,
-        port,
-        secure: port === 465,
-        auth: { user, pass },
-        tls: {
-          rejectUnauthorized: false,
-        },
-      });
+      this.transporter = this.createTransporterInstance(host, port, user, pass);
       this.logger.log(
-        `[EmailService] Initialized SMTP transporter with host: ${host}`,
+        `[EmailService] Initialized SMTP transporter with host: ${host}, port: ${port}`,
       );
     } else {
       this.logger.warn(
         `[EmailService] No SMTP credentials provided. Email sending will fail.`,
       );
     }
+  }
+
+  private createTransporterInstance(
+    host: string,
+    port: number,
+    user: string,
+    pass: string,
+  ): nodemailer.Transporter {
+    return nodemailer.createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: { user, pass },
+      connectionTimeout: 8000,
+      greetingTimeout: 8000,
+      socketTimeout: 10000,
+      tls: {
+        rejectUnauthorized: false,
+        minVersion: 'TLSv1.2',
+      },
+    });
   }
 
   private getFromAddress(): string {
@@ -57,10 +70,21 @@ export class EmailService {
     htmlContent: string,
     attachments?: any[],
   ) {
+    const host =
+      process.env.SMTP_HOST ||
+      (process.env.GMAIL_USER ? 'smtp.gmail.com' : null);
+    const port = Number(process.env.SMTP_PORT) || 587;
+    const user = process.env.SMTP_USER || process.env.GMAIL_USER;
+    const pass = process.env.SMTP_PASS || process.env.GMAIL_PASS;
+
     if (!this.transporter) {
-      throw new InternalServerErrorException(
-        'SMTP credentials are not configured. Cannot send email.',
-      );
+      if (host && user && pass) {
+        this.transporter = this.createTransporterInstance(host, port, user, pass);
+      } else {
+        throw new InternalServerErrorException(
+          'SMTP credentials are not configured. Cannot send email.',
+        );
+      }
     }
 
     try {
@@ -75,11 +99,44 @@ export class EmailService {
         `[EmailService] Email sent successfully to ${to}. MessageId: ${info.messageId}`,
       );
       return { success: true, messageId: info.messageId };
-    } catch (error) {
-      this.logger.error(
-        `[EmailService] Failed to send email via SMTP: ${error.message}`,
+    } catch (error: any) {
+      this.logger.warn(
+        `[EmailService] Primary SMTP attempt failed (${host}:${port}): ${error.message}`,
       );
-      throw new InternalServerErrorException('Failed to send email via SMTP');
+
+      // Automatic fallback: If port was 465, try port 587 (STARTTLS). If port was 587, try 465 (SSL).
+      if (host && user && pass) {
+        const altPort = port === 465 ? 587 : 465;
+        try {
+          this.logger.log(
+            `[EmailService] Attempting automatic fallback via ${host}:${altPort}...`,
+          );
+          const fallbackTransporter = this.createTransporterInstance(
+            host,
+            altPort,
+            user,
+            pass,
+          );
+          const info = await fallbackTransporter.sendMail({
+            from: this.getFromAddress(),
+            to,
+            subject,
+            html: htmlContent,
+            attachments,
+          });
+          this.logger.log(
+            `[EmailService] Email sent via fallback port ${altPort} to ${to}. MessageId: ${info.messageId}`,
+          );
+          this.transporter = fallbackTransporter;
+          return { success: true, messageId: info.messageId };
+        } catch (fallbackError: any) {
+          this.logger.error(
+            `[EmailService] Fallback SMTP attempt failed (${host}:${altPort}): ${fallbackError.message}`,
+          );
+        }
+      }
+
+      throw new InternalServerErrorException(`Failed to send email via SMTP: ${error.message}`);
     }
   }
 
