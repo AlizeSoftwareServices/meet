@@ -46,23 +46,23 @@ function Calendar({
         weeks: "w-full space-y-1",
         week: "w-full",
         row: "w-full",
-        day: "relative p-1 text-center text-sm w-[14.2857%] align-middle",
-        cell: "relative p-1 text-center text-sm w-[14.2857%] align-middle",
+        day: "relative p-1 text-center text-sm w-[14.2857%] align-middle bg-transparent",
+        cell: "relative p-1 text-center text-sm w-[14.2857%] align-middle bg-transparent",
 
-        // Day Number Button
+        // Day Number Button (Distinct circle)
         day_button: cn(
           "h-9 w-9 sm:h-10 sm:w-10 p-0 font-medium rounded-full transition-all flex items-center justify-center text-zinc-800 dark:text-zinc-200 hover:bg-violet-100 dark:hover:bg-violet-950/50 hover:text-violet-700 dark:hover:text-violet-300 focus:outline-none mx-auto cursor-pointer"
         ),
 
-        // States
-        selected: "bg-violet-600 text-white font-bold hover:bg-violet-700 hover:text-white focus:bg-violet-600 focus:text-white shadow-md shadow-violet-500/20 scale-105",
-        day_selected: "bg-violet-600 text-white font-bold hover:bg-violet-700 hover:text-white focus:bg-violet-600 focus:text-white shadow-md shadow-violet-500/20 scale-105",
-        today: "bg-zinc-100 dark:bg-zinc-800 font-bold text-violet-600 dark:text-violet-400 ring-2 ring-violet-500/20",
-        day_today: "bg-zinc-100 dark:bg-zinc-800 font-bold text-violet-600 dark:text-violet-400 ring-2 ring-violet-500/20",
-        outside: "text-zinc-300 dark:text-zinc-700 opacity-40 pointer-events-none",
-        day_outside: "text-zinc-300 dark:text-zinc-700 opacity-40 pointer-events-none",
-        disabled: "text-zinc-300 dark:text-zinc-700 opacity-30 cursor-not-allowed hover:bg-transparent hover:text-zinc-300",
-        day_disabled: "text-zinc-300 dark:text-zinc-700 opacity-30 cursor-not-allowed hover:bg-transparent hover:text-zinc-300",
+        // States (Targeting button for clean rounded circles, leaving TD cell transparent)
+        selected: "bg-transparent [&>button]:bg-violet-600 [&>button]:text-white [&>button]:font-bold [&>button]:hover:bg-violet-700 [&>button]:hover:text-white [&>button]:focus:bg-violet-600 [&>button]:focus:text-white [&>button]:shadow-md [&>button]:shadow-violet-500/20 [&>button]:scale-105 [&>button]:rounded-full",
+        day_selected: "bg-transparent [&>button]:bg-violet-600 [&>button]:text-white [&>button]:font-bold [&>button]:hover:bg-violet-700 [&>button]:hover:text-white [&>button]:focus:bg-violet-600 [&>button]:focus:text-white [&>button]:shadow-md [&>button]:shadow-violet-500/20 [&>button]:scale-105 [&>button]:rounded-full",
+        today: "bg-transparent [&>button]:font-bold [&>button]:text-violet-600 dark:[&>button]:text-violet-400 [&>button]:ring-2 [&>button]:ring-violet-500/40 [&>button]:rounded-full",
+        day_today: "bg-transparent [&>button]:font-bold [&>button]:text-violet-600 dark:[&>button]:text-violet-400 [&>button]:ring-2 [&>button]:ring-violet-500/40 [&>button]:rounded-full",
+        outside: "text-zinc-300 dark:text-zinc-700 opacity-40 pointer-events-none bg-transparent",
+        day_outside: "text-zinc-300 dark:text-zinc-700 opacity-40 pointer-events-none bg-transparent",
+        disabled: "text-zinc-300 dark:text-zinc-700 opacity-30 cursor-not-allowed hover:bg-transparent hover:text-zinc-300 bg-transparent",
+        day_disabled: "text-zinc-300 dark:text-zinc-700 opacity-30 cursor-not-allowed hover:bg-transparent hover:text-zinc-300 bg-transparent",
         hidden: "invisible",
         day_hidden: "invisible",
         ...classNames,

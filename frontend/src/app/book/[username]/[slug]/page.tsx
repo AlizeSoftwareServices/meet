@@ -421,7 +421,7 @@ export default function SchedulingPage() {
                         available: (date) => availableDatesSet.has(format(date, 'yyyy-MM-dd')),
                       }}
                       modifiersClassNames={{
-                        available: 'font-bold text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-950/60 ring-2 ring-violet-500/30',
+                        available: 'bg-transparent [&>button]:bg-violet-100 dark:[&>button]:bg-violet-950/60 [&>button]:text-violet-700 dark:[&>button]:text-violet-300 [&>button]:font-bold [&>button]:ring-2 [&>button]:ring-violet-500/30 [&>button]:rounded-full hover:[&>button]:bg-violet-200 dark:hover:[&>button]:bg-violet-900/80',
                       }}
                     />
                   </div>
