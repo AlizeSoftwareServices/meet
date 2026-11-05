@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
+  ConflictException,
   Logger,
 } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
@@ -37,9 +38,11 @@ export class AuthService {
     const cleanEmail = dto.email.toLowerCase().trim();
     const existingUser = await this.usersService.findByEmail(cleanEmail);
     if (existingUser) {
-      throw new BadRequestException(
-        'An account already exists with this email address. Please sign in.',
-      );
+      throw new ConflictException({
+        statusCode: 409,
+        alreadyRegistered: true,
+        message: 'An account with this email already exists. Please sign in.',
+      });
     }
 
     // Generate 6-digit random code

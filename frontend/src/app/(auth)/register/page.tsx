@@ -13,7 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Sparkles, ArrowRight, CheckCircle2, Eye, EyeOff, ShieldCheck, Mail } from 'lucide-react';
+import { Sparkles, ArrowRight, CheckCircle2, Eye, EyeOff, ShieldCheck, Mail, AlertTriangle, AlertCircle, LogIn, Loader2 } from 'lucide-react';
 
 const registerSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters' }),
@@ -42,6 +42,7 @@ export default function RegisterPage() {
   const [resendTimer, setResendTimer] = useState(0);
   const [otpError, setOtpError] = useState<string | null>(null);
   const [otpSuccess, setOtpSuccess] = useState<string | null>(null);
+  const [isAlreadyRegistered, setIsAlreadyRegistered] = useState(false);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -62,7 +63,8 @@ export default function RegisterPage() {
   }, [resendTimer]);
 
   const handleSendOtp = async () => {
-    if (!emailValue || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) {
+    const cleanEmail = emailValue?.trim().toLowerCase();
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       form.setError('email', { message: 'Please enter a valid email address first.' });
       return;
     }
@@ -70,14 +72,36 @@ export default function RegisterPage() {
     setIsSendingOtp(true);
     setOtpError(null);
     setOtpSuccess(null);
+    setIsAlreadyRegistered(false);
 
     try {
-      const res = await api.post('/auth/send-registration-otp', { email: emailValue.trim().toLowerCase() });
+      const res = await api.post('/auth/send-registration-otp', { email: cleanEmail });
       setOtpSent(true);
       setResendTimer(60);
       setOtpSuccess(res.data?.message || 'Verification code sent to your email!');
     } catch (err: any) {
-      setOtpError(err.response?.data?.message || 'Failed to send verification code. Please try again.');
+      const status = err.response?.status;
+      const data = err.response?.data;
+      const message = typeof data?.message === 'string' ? data.message : '';
+
+      const isConflict =
+        status === 409 ||
+        data?.alreadyRegistered ||
+        data?.statusCode === 409 ||
+        message.toLowerCase().includes('already exists') ||
+        message.toLowerCase().includes('already registered');
+
+      if (isConflict) {
+        setIsAlreadyRegistered(true);
+        setOtpSent(false);
+        setOtpError('An account with this email already exists. Redirecting to Sign In...');
+        // Auto navigate to sign-in page after 2 seconds
+        setTimeout(() => {
+          router.push(`/login?email=${encodeURIComponent(cleanEmail)}`);
+        }, 2000);
+      } else {
+        setOtpError(data?.message || 'Failed to send verification code. Please check your email and try again.');
+      }
     } finally {
       setIsSendingOtp(false);
     }
@@ -200,16 +224,25 @@ export default function RegisterPage() {
                   <Input
                     id="email"
                     type="email"
-                    disabled={isEmailVerified}
+                    disabled={isEmailVerified || isAlreadyRegistered}
                     placeholder="name@example.com"
                     className={`h-14 bg-white/50 dark:bg-zinc-950/50 border-border/50 focus:border-brand-purple focus:ring-brand-purple/20 transition-all rounded-xl text-base pr-32 ${
                       isEmailVerified ? 'border-emerald-500/50 bg-emerald-500/5 text-emerald-950 dark:text-emerald-200' : ''
+                    } ${
+                      isAlreadyRegistered ? 'border-amber-500/50 bg-amber-500/5 text-amber-950 dark:text-amber-200' : ''
                     }`}
                     {...form.register('email', {
                       onChange: () => {
+                        setIsAlreadyRegistered(false);
+                        setOtpError(null);
+                        setOtpSuccess(null);
                         if (isEmailVerified) {
                           setIsEmailVerified(false);
                           setVerificationToken(null);
+                        }
+                        if (otpSent) {
+                          setOtpSent(false);
+                          setOtpValue('');
                         }
                       }
                     })}
@@ -224,11 +257,23 @@ export default function RegisterPage() {
                           setVerificationToken(null);
                           setOtpSent(false);
                           setOtpValue('');
+                          setOtpSuccess(null);
+                          setOtpError(null);
+                          setIsAlreadyRegistered(false);
                         }}
                         className="text-xs text-muted-foreground hover:text-foreground font-semibold px-2 py-1 underline transition-colors"
                       >
                         Change
                       </button>
+                    ) : isAlreadyRegistered ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => router.push(`/login?email=${encodeURIComponent(emailValue?.trim().toLowerCase() || '')}`)}
+                        className="h-9 px-3 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm transition-all flex items-center gap-1"
+                      >
+                        <LogIn className="w-3.5 h-3.5" /> Sign In
+                      </Button>
                     ) : (
                       <Button
                         type="button"
@@ -237,11 +282,58 @@ export default function RegisterPage() {
                         onClick={handleSendOtp}
                         className="h-9 px-3 rounded-lg text-xs font-bold bg-brand-purple hover:bg-brand-purple/90 text-white shadow-sm transition-all"
                       >
-                        {isSendingOtp ? 'Sending...' : otpSent ? 'Resend Code' : 'Verify Email'}
+                        {isSendingOtp ? (
+                          <span className="flex items-center gap-1.5">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Sending...
+                          </span>
+                        ) : otpSent ? (
+                          'Resend Code'
+                        ) : (
+                          'Verify Email'
+                        )}
                       </Button>
                     )}
                   </div>
                 </div>
+
+                {/* Already Registered Warning Banner with Automatic Redirect */}
+                {isAlreadyRegistered && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start gap-3 text-amber-900 dark:text-amber-200 mt-2"
+                  >
+                    <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div className="flex-1 text-xs">
+                      <p className="font-bold text-sm text-amber-700 dark:text-amber-300">
+                        Already registered!
+                      </p>
+                      <p className="text-amber-600 dark:text-amber-400 mt-0.5 font-medium leading-relaxed">
+                        An account with this email already exists. Redirecting you to Sign In...
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => router.push(`/login?email=${encodeURIComponent(emailValue?.trim().toLowerCase() || '')}`)}
+                      className="h-8 px-3 rounded-lg text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shrink-0 shadow-sm"
+                    >
+                      Sign In Now
+                    </Button>
+                  </motion.div>
+                )}
+
+                {/* OTP Error message displayed directly below email field */}
+                {otpError && !isAlreadyRegistered && !otpSent && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-3 bg-brand-red/10 border border-brand-red/20 rounded-xl text-xs text-brand-red font-bold flex items-center gap-2 mt-2"
+                  >
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span>{otpError}</span>
+                  </motion.div>
+                )}
 
                 {form.formState.errors.email && (
                   <p className="text-xs text-brand-red font-bold flex items-center gap-1 mt-1">
@@ -260,10 +352,18 @@ export default function RegisterPage() {
                     transition={{ duration: 0.3 }}
                     className="p-4 bg-purple-500/5 border border-purple-500/20 rounded-2xl space-y-3 overflow-hidden"
                   >
-                    <div className="flex items-center justify-between text-xs">
+                    {/* Visual notice confirming OTP dispatched to inbox */}
+                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-2.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                      <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                      <span>
+                        OTP sent! We have sent a 6-digit code to <span className="underline">{emailValue}</span>. Please check your inbox or spam folder.
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-1">
                       <span className="font-semibold text-foreground flex items-center gap-1.5">
                         <Mail className="w-3.5 h-3.5 text-brand-purple" />
-                        Enter 6-digit code sent to your email:
+                        Enter 6-digit verification code:
                       </span>
                       {resendTimer > 0 ? (
                         <span className="text-muted-foreground font-medium">Resend in {resendTimer}s</span>
@@ -298,15 +398,25 @@ export default function RegisterPage() {
                         onClick={handleVerifyOtp}
                         className="h-11 px-5 rounded-xl font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md text-xs shrink-0"
                       >
-                        {isVerifyingOtp ? 'Checking...' : 'Verify'}
+                        {isVerifyingOtp ? (
+                          <span className="flex items-center gap-1">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Checking...
+                          </span>
+                        ) : (
+                          'Verify OTP'
+                        )}
                       </Button>
                     </div>
 
                     {otpError && (
-                      <p className="text-xs text-brand-red font-bold">{otpError}</p>
+                      <p className="text-xs text-brand-red font-bold flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {otpError}
+                      </p>
                     )}
                     {otpSuccess && (
-                      <p className="text-xs text-emerald-600 font-bold">{otpSuccess}</p>
+                      <p className="text-xs text-emerald-600 font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> {otpSuccess}
+                      </p>
                     )}
                   </motion.div>
                 )}

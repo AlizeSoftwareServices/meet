@@ -28,10 +28,19 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [isNative, setIsNative] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [redirectedMsg, setRedirectedMsg] = useState<string | null>(null);
 
   useEffect(() => {
     setIsNative(Capacitor.isNativePlatform());
-  }, []);
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const emailParam = params.get('email');
+      if (emailParam) {
+        form.setValue('email', emailParam);
+        setRedirectedMsg('An account with this email already exists. Please sign in with your password.');
+      }
+    }
+  }, [form]);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -130,6 +139,17 @@ export default function LoginPage() {
                   </p>
                 )}
               </div>
+
+              {redirectedMsg && !error && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3.5 text-xs text-amber-800 dark:text-amber-200 font-semibold bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center gap-2"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>{redirectedMsg}</span>
+                </motion.div>
+              )}
 
               {error && (
                 <motion.div 
