@@ -206,6 +206,10 @@ model Contact {
   email           String
   phone           String?
   company         String?
+  jobTitle        String?
+  timezone        String?
+  notes           String?
+  tags            String[] @default([])
   lastMeetingDate DateTime?
   totalMeetings   Int      @default(0)
   createdAt       DateTime @default(now())
