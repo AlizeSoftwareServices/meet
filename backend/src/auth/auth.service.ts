@@ -155,7 +155,7 @@ export class AuthService {
     const salt = await bcrypt.genSalt();
     const passwordHash = await bcrypt.hash(dto.password, salt);
 
-    // Create user and profile in a transaction
+    // Create user and profile with default availability in a transaction
     const user = await this.prisma.user.create({
       data: {
         email: cleanEmail,
@@ -168,6 +168,20 @@ export class AuthService {
               '-' +
               Math.random().toString(36).substring(2, 8),
             timezone: 'UTC', // Default, can be updated later
+          },
+        },
+        availabilities: {
+          create: {
+            name: 'Working Hours',
+            isDefault: true,
+            timezone: 'UTC',
+            slots: {
+              create: [1, 2, 3, 4, 5].map((day) => ({
+                dayOfWeek: day,
+                startTime: '09:00',
+                endTime: '17:00',
+              })),
+            },
           },
         },
         isVerified: true, // Auto-verify on signup as verified via OTP

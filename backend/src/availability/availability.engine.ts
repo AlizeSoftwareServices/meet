@@ -43,6 +43,61 @@ export class AvailabilityEngineService {
       });
     }
 
+    // Auto-seed default Working Hours schedule if host has none in database
+    if (!schedule || !schedule.slots || schedule.slots.length === 0) {
+      try {
+        const hostProfile = await this.prisma.profile.findFirst({ where: { userId: hostId } });
+        const hostTz = hostProfile?.timezone || 'UTC';
+
+        let defaultSched = await this.prisma.availability.findFirst({
+          where: { userId: hostId, isDefault: true },
+          include: { slots: true, overrides: true },
+        });
+
+        if (!defaultSched) {
+          defaultSched = await this.prisma.availability.create({
+            data: {
+              userId: hostId,
+              name: 'Working Hours',
+              isDefault: true,
+              timezone: hostTz,
+            },
+            include: { slots: true, overrides: true },
+          });
+        }
+
+        if (!defaultSched.slots || defaultSched.slots.length === 0) {
+          const defaultSlots = [1, 2, 3, 4, 5].map((day) => ({
+            availabilityId: defaultSched.id,
+            dayOfWeek: day,
+            startTime: '09:00',
+            endTime: '17:00',
+          }));
+          await this.prisma.availabilitySlot.createMany({ data: defaultSlots });
+        }
+
+        schedule = await this.prisma.availability.findUnique({
+          where: { id: defaultSched.id },
+          include: { slots: true, overrides: true },
+        });
+      } catch (err: any) {
+        // Safe fallback in-memory schedule so guest can always book
+        schedule = {
+          id: 'default-fallback',
+          userId: hostId,
+          name: 'Working Hours',
+          isDefault: true,
+          timezone: 'UTC',
+          slots: [1, 2, 3, 4, 5].map((day) => ({
+            dayOfWeek: day,
+            startTime: '09:00',
+            endTime: '17:00',
+          })),
+          overrides: [],
+        };
+      }
+    }
+
     return schedule;
   }
 
