@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Allow: /book/*
+Allow: /forms/*
+Allow: /about
+Allow: /contact
+Allow: /login
+Allow: /register
+
+# Private application areas
+Disallow: /dashboard/*
+Disallow: /guest/*
+Disallow: /api/*
+
+Sitemap: https://meet.alizesoftwareservices.com/sitemap.xml

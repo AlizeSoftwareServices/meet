@@ -11,6 +11,11 @@ export function getApiBaseUrl(): string {
     return process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '');
   }
 
+  // Safe Production fallback when running on live domain
+  if (typeof window !== 'undefined' && window.location.hostname.includes('alizesoftwareservices.com')) {
+    return 'https://meet-f4ak.onrender.com';
+  }
+
   // Fallbacks for local / native development
   if (Capacitor.isNativePlatform()) {
     if (Capacitor.getPlatform() === 'android') {

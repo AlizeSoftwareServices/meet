@@ -92,7 +92,7 @@ export default function LandingPage() {
             <Video className="w-6 h-6 text-brand-red" />
             <span className="font-black text-xl text-foreground">Video conferencing</span>
           </div>
-          {['Zoom', 'Google Meet', 'Microsoft Teams', 'Webex'].map((tool) => (
+          {['Google Meet Video', 'Google Calendar Sync', 'Instant Meeting Links', 'Automated Email Reminders'].map((tool) => (
             <div key={tool} className="flex items-center justify-between p-5 rounded-2xl border border-border hover:border-brand-red/50 hover:bg-brand-red/5 transition-all group shadow-sm">
               <span className="font-bold text-foreground text-lg">{tool}</span>
               <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-brand-red transition-colors" />

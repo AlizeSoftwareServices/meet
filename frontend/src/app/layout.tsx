@@ -19,10 +19,35 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Meet | Modern Scheduling for Professionals",
+  metadataBase: new URL("https://meet.alizesoftwareservices.com"),
+  title: {
+    default: "Meet | Modern Scheduling for Professionals",
+    template: "%s | Meet",
+  },
   description: "Join millions of professionals who easily book meetings and automate their workflows with Meet, the ultimate scheduling tool.",
-  keywords: ["scheduling", "meetings", "calendar", "productivity", "time management", "appointment booking", "Meet", "Alize Software Services"],
-  authors: [{ name: "Alize Software Services LLP" }],
+  keywords: ["scheduling", "meetings", "calendar", "productivity", "time management", "appointment booking", "Meet", "Google Meet integration", "Alize Software Services"],
+  authors: [{ name: "Alize Software Services LLP", url: "https://www.alizesoftwareservices.com" }],
+  creator: "Alize Software Services LLP",
+  publisher: "Alize Software Services LLP",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  icons: {
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
+  alternates: {
+    canonical: "https://meet.alizesoftwareservices.com",
+  },
   openGraph: {
     title: "Meet | Modern Scheduling for Professionals",
     description: "Easily book meetings and automate your workflows with Meet.",
@@ -30,7 +55,7 @@ export const metadata: Metadata = {
     siteName: "Meet",
     images: [
       {
-        url: "https://meet.alizesoftwareservices.com/logo.png", 
+        url: "/logo.png", 
         width: 1200,
         height: 630,
         alt: "Meet Scheduling Platform",
@@ -43,7 +68,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Meet | Modern Scheduling for Professionals",
     description: "Easily book meetings and automate your workflows with Meet.",
-    images: ["https://meet.alizesoftwareservices.com/logo.png"],
+    images: ["/logo.png"],
   },
 };
 
