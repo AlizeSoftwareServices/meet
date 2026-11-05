@@ -17,7 +17,8 @@ import {
   ExternalLink,
   Sparkles,
   CheckCircle2,
-  RefreshCw
+  RefreshCw,
+  BarChart3
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -179,11 +180,19 @@ export default function DashboardPage() {
                 />
               </div>
             </div>
-            <div className="flex flex-col justify-end w-full sm:w-auto">
-              <span className="text-xs invisible mb-1 hidden sm:block">Export</span>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Link href="/dashboard/analytics">
+                <Button 
+                  variant="outline" 
+                  className="gap-2 h-10 w-full sm:w-auto text-xs font-semibold rounded-xl border-border hover:bg-muted/60"
+                >
+                  <BarChart3 className="w-4 h-4 text-blue-600" />
+                  Analytics
+                </Button>
+              </Link>
               <Button 
                 variant="outline" 
-                className="gap-2 h-10 w-full sm:w-auto" 
+                className="gap-2 h-10 w-full sm:w-auto text-xs rounded-xl" 
                 disabled={isExporting}
                 onClick={async () => {
                   try {
