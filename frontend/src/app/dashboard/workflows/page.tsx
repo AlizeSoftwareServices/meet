@@ -58,10 +58,10 @@ export default function WorkflowsPage() {
   const fetchEventTypes = async () => {
     try {
       const res = await api.get('/event-types');
-      const data = res.data;
+      const data = Array.isArray(res.data) ? res.data : [];
       setEventTypes(data);
-      if (data.length > 0 && !selectedEventTypeId) {
-        setSelectedEventTypeId(data[0].id);
+      if (data.length > 0) {
+        setSelectedEventTypeId((prev) => (prev && data.some((d: any) => d.id === prev) ? prev : data[0].id));
       }
     } catch (err: any) {
       console.error(err);
@@ -166,18 +166,51 @@ export default function WorkflowsPage() {
         </div>
       ) : (
         <div className="bg-card rounded-2xl border border-border p-6 shadow-sm">
-          <div className="mb-6">
-            <Label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Select Event Type</Label>
-            <select
-              value={selectedEventTypeId}
-              onChange={(e) => setSelectedEventTypeId(e.target.value)}
-              className="w-full md:w-1/2 rounded-xl border border-input bg-background py-2.5 px-3.5 text-sm font-semibold text-foreground focus:ring-2 focus:ring-primary focus:outline-none"
-            >
-              <option value="" disabled>-- Select an Event Type --</option>
-              {eventTypes.map(et => (
-                <option key={et.id} value={et.id}>{et.title} ({et.slug})</option>
-              ))}
-            </select>
+          <div className="mb-6 space-y-3">
+            <Label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground">Select Event Type</Label>
+            
+            {/* Quick Switch Pills */}
+            <div className="flex flex-wrap gap-2">
+              {eventTypes.map(et => {
+                const isSelected = et.id === selectedEventTypeId;
+                return (
+                  <button
+                    key={et.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedEventTypeId(et.id);
+                      triggerHaptic('light');
+                    }}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+                      isSelected
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm shadow-blue-500/25 ring-2 ring-blue-500/20'
+                        : 'bg-background hover:bg-muted text-foreground border-border/80'
+                    }`}
+                  >
+                    <Calendar className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-blue-600'}`} />
+                    <span>{et.title}</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${isSelected ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'}`}>
+                      {et.slug}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Accessible Fallback Selector */}
+            <div className="pt-1">
+              <select
+                value={selectedEventTypeId}
+                onChange={(e) => setSelectedEventTypeId(e.target.value)}
+                className="w-full md:w-1/2 rounded-xl border border-input bg-background py-2.5 px-3.5 text-xs font-semibold text-foreground focus:ring-2 focus:ring-primary focus:outline-none"
+              >
+                {eventTypes.map(et => (
+                  <option key={et.id} value={et.id} className="bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100">
+                    {et.title} ({et.slug})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {selectedEventTypeId && (

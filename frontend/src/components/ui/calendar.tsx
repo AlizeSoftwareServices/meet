@@ -21,6 +21,7 @@ function Calendar({
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         month: "space-y-4 w-full",
         caption: "flex justify-center pt-1 relative items-center mb-2",
+        month_caption: "flex justify-center pt-1 relative items-center mb-2",
         caption_label: "text-base font-bold text-zinc-900 dark:text-zinc-100",
         nav: "space-x-1 flex items-center",
         nav_button: "h-8 w-8 bg-transparent p-0 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg flex items-center justify-center transition-colors border border-zinc-200 dark:border-zinc-800",
@@ -41,11 +42,12 @@ function Calendar({
         day_disabled: "text-zinc-300 dark:text-zinc-700 opacity-30 cursor-not-allowed hover:bg-transparent hover:text-zinc-300",
         day_hidden: "invisible",
         ...classNames,
-      }}
+      } as any}
       components={{
-        IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4" />,
-        IconRight: ({ ...props }) => <ChevronRight className="h-4 w-4" />,
-      }}
+        IconLeft: ({ ...props }: any) => <ChevronLeft className="h-4 w-4" />,
+        IconRight: ({ ...props }: any) => <ChevronRight className="h-4 w-4" />,
+        Chevron: ({ orientation }: any) => orientation === 'left' ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />,
+      } as any}
       {...props}
     />
   )

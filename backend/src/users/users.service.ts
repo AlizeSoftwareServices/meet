@@ -44,6 +44,14 @@ export class UsersService {
       data: profileData,
     });
 
+    // Bidirectional sync: keep default Availability schedule timezone aligned with Profile timezone
+    if (profileData.timezone) {
+      await this.prisma.availability.updateMany({
+        where: { userId, isDefault: true },
+        data: { timezone: profileData.timezone },
+      });
+    }
+
     if (email) {
       await this.prisma.user.update({
         where: { id: userId },

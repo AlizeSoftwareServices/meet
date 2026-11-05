@@ -291,10 +291,14 @@ function TeamCard({ team, currentUserId }: { team: Team; currentUserId: string }
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCopyLink} title="Copy team booking link">
                   {copied ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                 </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8" title="Open team page" asChild>
-                  <a href={`/team/${team.slug}`} target="_blank" rel="noreferrer">
-                    <ExternalLink className="w-4 h-4" />
-                  </a>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8" 
+                  title="Open team page" 
+                  onClick={() => window.open(`/team/${team.slug}`, '_blank')}
+                >
+                  <ExternalLink className="w-4 h-4" />
                 </Button>
               </div>
             </div>

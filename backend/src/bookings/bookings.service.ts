@@ -310,10 +310,9 @@ export class BookingsService {
           });
         }
       }
-    } else if (dto.answers && dto.answers.length > 0) {
-      throw new BadRequestException(
-        `This event type does not accept custom answers.`,
-      );
+    } else if (dto.answers && Array.isArray(dto.answers)) {
+      // Tolerate empty or blank stray answers gracefully rather than rejecting booking
+      // dbAnswers remains empty array [] as this event has no custom questions
     }
 
     let occurrencesToAttempt = [

@@ -44,34 +44,14 @@ export default function UserProfilePage() {
   const isOwner = myProfile && (myProfile.username === username || (username === 'me' && myProfile));
 
   useEffect(() => {
-    if (isOwner) {
-      router.replace('/dashboard/events');
-    } else if (profile) {
-      // If the host has only 1 event type, take the guest directly to it.
+    if (!isOwner && profile) {
+      // If the host has only 1 event type, take guest directly to it.
       // If the host has multiple event types, let the guest choose from their booking hub.
       if (profile.eventTypes && profile.eventTypes.length === 1) {
         router.replace(`/book/${profile.username}/${profile.eventTypes[0].slug}`);
       }
     }
   }, [isOwner, profile, router]);
-
-  if (isOwner) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-zinc-50 dark:bg-zinc-950 p-6 text-center">
-        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-sm text-muted-foreground font-medium">Opening your account dashboard...</p>
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => router.replace('/dashboard/events')}
-          className="mt-4 gap-2"
-        >
-          <LayoutDashboard className="w-4 h-4" />
-          Go to Dashboard
-        </Button>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
@@ -89,6 +69,26 @@ export default function UserProfilePage() {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 flex justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl w-full space-y-8">
+        {/* Host Preview Mode Indicator */}
+        {isOwner && (
+          <div className="bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-200 px-4 py-3 rounded-2xl flex items-center justify-between text-sm shadow-sm">
+            <div className="flex items-center gap-2">
+              <span className="font-bold flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                Preview Mode
+              </span>
+              <span className="text-muted-foreground hidden sm:inline">|</span>
+              <span className="text-xs sm:text-sm">You are viewing your public scheduling hub as guests see it.</span>
+            </div>
+            <Link href="/dashboard/events">
+              <Button size="sm" variant="outline" className="h-8 rounded-xl font-semibold text-xs gap-1.5 border-blue-300 dark:border-blue-700">
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                Dashboard
+              </Button>
+            </Link>
+          </div>
+        )}
+
         {/* Profile Header */}
         <div className="text-center">
           <Avatar className="w-24 h-24 mx-auto shadow-md border-2" style={{ borderColor: profile.brandColor || '#e5e7eb' }}>

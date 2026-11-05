@@ -98,6 +98,14 @@ export class AvailabilityService {
       },
     });
 
+    // Bidirectional sync: keep user Profile timezone synchronized with default availability schedule
+    if (finalIsDefault && finalTimezone) {
+      await this.prisma.profile.updateMany({
+        where: { userId },
+        data: { timezone: finalTimezone },
+      });
+    }
+
     if (finalSlots.length > 0) {
       await this.prisma.availabilitySlot.createMany({
         data: finalSlots.map((slot) => ({

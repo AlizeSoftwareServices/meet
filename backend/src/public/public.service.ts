@@ -92,13 +92,9 @@ export class PublicService {
     const hostTimezone = schedule.timezone || profile.timezone || 'UTC';
     const effectiveGuestTimezone = guestTimezone || hostTimezone;
 
-    // 1. Parse guest date in guest timezone
-    const [year, month, day] = dateStr.split('-').map(Number);
-    const guestDate = new Date(year, month - 1, day);
-    const guestStartOfDayUTC = fromZonedTime(guestDate, effectiveGuestTimezone);
-    const guestEndOfDayUTC = endOfDay(
-      fromZonedTime(guestDate, effectiveGuestTimezone),
-    );
+    // 1. Parse guest date in guest timezone deterministically
+    const guestStartOfDayUTC = fromZonedTime(`${dateStr}T00:00:00.000`, effectiveGuestTimezone);
+    const guestEndOfDayUTC = fromZonedTime(`${dateStr}T23:59:59.999`, effectiveGuestTimezone);
 
     // 2. See what host calendar dates this UTC span covers
     const hostStart = toZonedTime(guestStartOfDayUTC, hostTimezone);
@@ -223,13 +219,15 @@ export class PublicService {
 
     const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const guestTz = guestTimezone || 'UTC';
+    const guestNow = toZonedTime(new Date(), guestTz);
+    const guestTodayStr = `${guestNow.getFullYear()}-${String(guestNow.getMonth() + 1).padStart(2, '0')}-${String(guestNow.getDate()).padStart(2, '0')}`;
 
     const monthDates: string[] = [];
     for (let day = 1; day <= daysInMonth; day++) {
       const dStr = `${yearNum}-${String(monthNum).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      // Only include dates today or in the future
-      if (dStr >= todayStr) {
+      // Only include dates today or in the future relative to the guest's local day
+      if (dStr >= guestTodayStr) {
         monthDates.push(dStr);
       }
     }
