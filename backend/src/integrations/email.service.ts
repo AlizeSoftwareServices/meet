@@ -64,6 +64,14 @@ export class EmailService {
     return 'Meet <no-reply@alizesoftwareservices.com>';
   }
 
+  public getFrontendBaseUrl(): string {
+    const envUrl = process.env.FRONTEND_URL?.trim();
+    if (envUrl && envUrl.startsWith('http')) {
+      return envUrl.replace(/\/$/, '');
+    }
+    return 'https://meet.alizesoftwareservices.com';
+  }
+
   private async sendViaMeetMailBridge(
     to: string,
     subject: string,
@@ -232,15 +240,15 @@ export class EmailService {
       </head>
       <body>
         <div class="container">
-          <div class="header">
-            <div class="logo">Meet</div>
+          <div class="header" style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); padding: 24px 32px; color: #ffffff;">
+            <div class="logo">Meet <span style="font-size: 13px; font-weight: 500; opacity: 0.85; margin-left: 6px;">by Alize</span></div>
           </div>
           <div class="content">
             <h1 class="title">${title}</h1>
             ${contentHtml}
           </div>
           <div class="footer">
-            Sent by Meet • Effortless Meeting Scheduling
+            Sent securely by Meet • <a href="https://meet.alizesoftwareservices.com" style="color: #64748b; text-decoration: underline;">meet.alizesoftwareservices.com</a>
           </div>
         </div>
       </body>
@@ -302,8 +310,8 @@ export class EmailService {
           ? `
         <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 13px;">
           <p style="margin-bottom: 8px;">Need to make changes?</p>
-          ${rescheduleToken ? `<a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/guest/reschedule?token=${rescheduleToken}" style="color: #64748b; text-decoration: underline; margin-right: 12px;">Reschedule</a>` : ''}
-          ${cancelToken ? `<a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/guest/cancel?token=${cancelToken}" style="color: #64748b; text-decoration: underline;">Cancel</a>` : ''}
+          ${rescheduleToken ? `<a href="${this.getFrontendBaseUrl()}/guest/reschedule?token=${rescheduleToken}" style="color: #64748b; text-decoration: underline; margin-right: 12px;">Reschedule</a>` : ''}
+          ${cancelToken ? `<a href="${this.getFrontendBaseUrl()}/guest/cancel?token=${cancelToken}" style="color: #64748b; text-decoration: underline;">Cancel</a>` : ''}
         </div>
       `
           : ''
@@ -448,8 +456,8 @@ export class EmailService {
           ? `
         <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; font-size: 13px;">
           <p style="margin-bottom: 8px;">Need to make changes?</p>
-          ${rescheduleToken ? `<a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/guest/reschedule?token=${rescheduleToken}" style="color: #64748b; text-decoration: underline; margin-right: 12px;">Reschedule</a>` : ''}
-          ${cancelToken ? `<a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/guest/cancel?token=${cancelToken}" style="color: #64748b; text-decoration: underline;">Cancel</a>` : ''}
+          ${rescheduleToken ? `<a href="${this.getFrontendBaseUrl()}/guest/reschedule?token=${rescheduleToken}" style="color: #64748b; text-decoration: underline; margin-right: 12px;">Reschedule</a>` : ''}
+          ${cancelToken ? `<a href="${this.getFrontendBaseUrl()}/guest/cancel?token=${cancelToken}" style="color: #64748b; text-decoration: underline;">Cancel</a>` : ''}
         </div>
       `
           : ''
@@ -581,17 +589,34 @@ export class EmailService {
   async sendPasswordResetEmail(email: string, name: string, tokenUrl: string) {
     const safeName = escapeHtml(name);
     const content = `
-      <p>Hello <strong>${safeName}</strong>,</p>
-      <p>We received a request to reset your password. If you didn't make this request, you can safely ignore this email.</p>
+      <p style="font-size: 15px; margin-bottom: 16px;">Hello <strong>${safeName}</strong>,</p>
+      <p style="font-size: 15px; line-height: 1.6; color: #334155; margin-bottom: 24px;">
+        We received a request to reset the password for your Meet account. If you initiated this request, click the button below to choose a new password:
+      </p>
       
-      <p>Click the button below to set a new password. This link will expire in 1 hour.</p>
-      
-      <a href="${tokenUrl}" class="button" target="_blank">Reset Password</a>
+      <div style="text-align: center; margin: 28px 0;">
+        <a href="${tokenUrl}" class="button" target="_blank" style="display: inline-block; background: #2563eb; color: #ffffff !important; padding: 14px 32px; font-size: 15px; font-weight: 700; border-radius: 10px; text-decoration: none; box-shadow: 0 4px 12px rgba(37,99,235,0.25);">
+          Reset Password
+        </a>
+      </div>
+
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin: 24px 0; font-size: 13px; color: #64748b; line-height: 1.5;">
+        <strong style="color: #0f172a;">Important Security Information:</strong>
+        <ul style="margin: 8px 0 0 0; padding-left: 20px;">
+          <li>This link is strictly valid for <strong>1 hour</strong> and can only be used once.</li>
+          <li>If you did not request a password reset, you can safely ignore this email — your account remains safe and secure.</li>
+        </ul>
+      </div>
+
+      <p style="font-size: 12px; color: #94a3b8; word-break: break-all; margin-top: 24px; line-height: 1.5;">
+        Having trouble clicking the button? Copy and paste the following URL into your web browser:<br/>
+        <a href="${tokenUrl}" style="color: #2563eb; text-decoration: underline;">${tokenUrl}</a>
+      </p>
     `;
     return this.sendMail(
       email,
-      `Reset Your Password`,
-      this.getBaseTemplate('Password Reset', content),
+      `Reset Your Password - Meet`,
+      this.getBaseTemplate('Reset Your Password', content),
     );
   }
 
@@ -618,7 +643,7 @@ export class EmailService {
       <p>Hello <strong>${safeName}</strong>,</p>
       <p>You have successfully signed up in Meet!</p>
       <p>We're excited to have you on board. Start scheduling your meetings effortlessly.</p>
-      <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard" class="button" target="_blank">Go to Dashboard</a>
+      <a href="${this.getFrontendBaseUrl()}/dashboard" class="button" target="_blank">Go to Dashboard</a>
     `;
     return this.sendMail(
       email,
@@ -669,7 +694,7 @@ export class EmailService {
   ) {
     const safeTeam = escapeHtml(teamName);
     const subject = `You've been invited to join ${safeTeam} on Meet`;
-    const acceptUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/guest/invitation?token=${token}`;
+    const acceptUrl = `${this.getFrontendBaseUrl()}/guest/invitation?token=${token}`;
 
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 8px;">

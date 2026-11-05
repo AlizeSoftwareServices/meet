@@ -240,7 +240,7 @@ export class AuthService {
         1,
         user.id,
       );
-      const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+      const resetUrl = `${this.emailService.getFrontendBaseUrl()}/reset-password?token=${resetToken}`;
       this.emailService
         .sendPasswordResetEmail(user.email, profile?.name || 'User', resetUrl)
         .catch((e) => {
@@ -311,7 +311,7 @@ export class AuthService {
         24,
         user.id,
       );
-      const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${verifyToken}`;
+      const verifyUrl = `${this.emailService.getFrontendBaseUrl()}/verify-email?token=${verifyToken}`;
       this.emailService
         .sendVerificationEmail(user.email, profile?.name || 'User', verifyUrl)
         .catch((e) => {
