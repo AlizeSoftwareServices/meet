@@ -104,26 +104,18 @@ export default function IntegrationsPage() {
   };
 
   const googleIntegration = integrations.find(i => i.provider === 'google');
-  const slackIntegration = integrations.find(i => i.provider === 'slack');
 
   return (
     <div className="max-w-4xl space-y-8">
       <div>
         <h1 className="text-3xl font-bold mb-2 text-foreground">Integrations</h1>
-        <p className="text-muted-foreground">Connect your calendar and notification tools for seamless scheduling.</p>
+        <p className="text-muted-foreground">Connect your Google Calendar and Meet for two-way synchronization.</p>
       </div>
 
       {success === 'google_connected' && (
         <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center gap-3 text-green-500">
           <CheckCircle2 className="w-5 h-5" />
           <p className="font-medium">Google Calendar connected successfully!</p>
-        </div>
-      )}
-
-      {success === 'slack_connected' && (
-        <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center gap-3 text-green-500">
-          <CheckCircle2 className="w-5 h-5" />
-          <p className="font-medium">Slack connected successfully!</p>
         </div>
       )}
 
@@ -270,73 +262,6 @@ export default function IntegrationsPage() {
               </div>
             </div>
           )}
-        </motion.div>
-
-        {/* Slack Integration */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-card border border-border p-6 rounded-3xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
-        >
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4">
-            <div className="flex gap-4">
-              <div className="w-16 h-16 bg-[#4A154B] rounded-2xl flex items-center justify-center shadow-sm flex-shrink-0">
-                <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none">
-                  <path d="M5.04 15.21c-1.35 0-2.45-1.1-2.45-2.45s1.1-2.45 2.45-2.45 2.45 1.1 2.45 2.45v2.45H5.04zm1.23 0c0 1.35 1.1 2.45 2.45 2.45s2.45-1.1 2.45-2.45V8.29C11.17 6.94 10.07 5.84 8.72 5.84s-2.45 1.1-2.45 2.45v6.92z" fill="#36C5F0"/>
-                  <path d="M8.79 5.04c0-1.35 1.1-2.45 2.45-2.45s2.45 1.1 2.45 2.45-1.1 2.45-2.45 2.45H8.79V5.04zm0 1.23c-1.35 0-2.45 1.1-2.45 2.45s1.1 2.45 2.45 2.45h6.92c1.35 0 2.45-1.1 2.45-2.45s-1.1-2.45-2.45-2.45H8.79z" fill="#2EB67D"/>
-                  <path d="M18.96 8.79c1.35 0 2.45 1.1 2.45 2.45s-1.1 2.45-2.45 2.45-2.45-1.1-2.45-2.45V8.79h2.45zm-1.23 0c0-1.35-1.1-2.45-2.45-2.45s-2.45 1.1-2.45 2.45v6.92c0 1.35 1.1 2.45 2.45 2.45s2.45-1.1 2.45-2.45V8.79z" fill="#E01E5A"/>
-                  <path d="M15.21 18.96c0 1.35-1.1 2.45-2.45 2.45s-2.45-1.1-2.45-2.45 1.1-2.45 2.45-2.45h2.45v2.45zm0-1.23c1.35 0 2.45-1.1 2.45-2.45s-1.1-2.45-2.45-2.45H8.29c-1.35 0-2.45 1.1-2.45 2.45s1.1 2.45 2.45 2.45h6.92z" fill="#ECB22E"/>
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold mb-1">Slack</h3>
-                <p className="text-muted-foreground text-sm max-w-lg">
-                  Get instant notifications in your Slack channels whenever a new Meet is booked, rescheduled, or canceled.
-                </p>
-                <div className="flex gap-4 mt-4">
-                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
-                    <AlertCircle className="w-3.5 h-3.5" />
-                    Notifications
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div>
-              {loading ? (
-                <div className="w-24 h-10 bg-muted animate-pulse rounded-xl" />
-              ) : slackIntegration ? (
-                <div className="flex flex-col gap-2 items-center">
-                  <div className="px-4 py-2 bg-green-500/10 text-green-600 font-medium rounded-xl flex items-center gap-2 border border-green-500/20">
-                    <CheckCircle2 className="w-4 h-4" />
-                    Connected
-                  </div>
-                  <button
-                    onClick={async () => {
-                      if (confirm('Are you sure you want to disconnect Slack?')) {
-                        await api.patch('/integrations/slack/disconnect');
-                        setIntegrations(prev => prev.filter(i => i.provider !== 'slack'));
-                      }
-                    }}
-                    className="text-xs font-semibold text-destructive hover:underline"
-                  >
-                    Disconnect
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={async () => {
-                    const redirectUri = typeof window !== 'undefined' ? window.location.origin : '';
-                    const { data } = await api.get(`/integrations/slack/auth?redirect_uri=${encodeURIComponent(redirectUri)}`);
-                    window.location.href = data.url;
-                  }}
-                  className="px-6 py-2.5 bg-primary text-primary-foreground font-medium rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95"
-                >
-                  Connect
-                </button>
-              )}
-            </div>
-          </div>
         </motion.div>
       </div>
     </div>
