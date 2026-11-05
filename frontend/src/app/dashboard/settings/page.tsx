@@ -216,7 +216,7 @@ export default function SettingsPage() {
         {/* Eye-attractive Header Cover Banner */}
         <div className="h-32 sm:h-44 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white/20 via-transparent to-black/20" />
-          <div className="absolute bottom-3 right-4 hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/20 backdrop-blur-md text-white/90 text-xs font-medium border border-white/10">
+          <div className="absolute top-4 right-4 hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/25 backdrop-blur-md text-white text-xs font-semibold border border-white/15 shadow-sm">
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
             Public Booking Profile
           </div>
@@ -224,11 +224,12 @@ export default function SettingsPage() {
 
         {/* Avatar & Header Information Bar */}
         <div className="px-6 sm:px-8 pb-6 border-b border-border/60">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5 -mt-14 sm:-mt-16">
-            {/* Avatar with Camera Overlay */}
-            <div className="flex items-end gap-4">
-              <div className="relative group shrink-0">
-                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl ring-4 ring-background bg-gradient-to-br from-blue-500 to-indigo-600 shadow-xl overflow-hidden flex items-center justify-center">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
+            {/* Avatar with Camera Overlay and User Details */}
+            <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+              {/* Only Avatar has negative margin to overlap the banner cleanly */}
+              <div className="relative group shrink-0 -mt-12 sm:-mt-16">
+                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl ring-4 ring-card bg-gradient-to-br from-blue-500 to-indigo-600 shadow-xl overflow-hidden flex items-center justify-center">
                   {profile?.avatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img 
@@ -246,7 +247,7 @@ export default function SettingsPage() {
                 {/* Upload Button overlay */}
                 <label 
                   htmlFor="avatar-upload"
-                  className="absolute inset-0 rounded-3xl bg-black/60 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-all duration-200 backdrop-blur-xs ring-4 ring-background"
+                  className="absolute inset-0 rounded-3xl bg-black/60 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-all duration-200 backdrop-blur-xs ring-4 ring-card"
                   title="Upload profile picture"
                 >
                   <Camera className="w-6 h-6 mb-1 text-white" />
@@ -262,25 +263,26 @@ export default function SettingsPage() {
                 </label>
 
                 {uploadingAvatar && (
-                  <div className="absolute inset-0 rounded-3xl bg-black/70 flex items-center justify-center ring-4 ring-background">
+                  <div className="absolute inset-0 rounded-3xl bg-black/70 flex items-center justify-center ring-4 ring-card">
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   </div>
                 )}
               </div>
 
-              <div className="mb-1">
-                <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-foreground">
+              {/* Name & Email - positioned 100% on card surface below banner */}
+              <div className="pt-2 sm:pt-0 sm:pb-1">
+                <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-foreground tracking-tight">
                   {profile?.name || 'Your Name'}
                 </h2>
-                <p className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                <p className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-1.5 mt-1">
                   <Mail className="w-3.5 h-3.5 text-blue-500" />
                   {profile?.email || 'user@example.com'}
                 </p>
               </div>
             </div>
 
-            {/* Header Right Actions */}
-            <div className="flex flex-wrap items-center gap-2.5">
+            {/* Header Right Actions - cleanly positioned on card surface */}
+            <div className="flex flex-wrap items-center gap-2.5 pt-2 sm:pt-0 sm:pb-1">
               <Button
                 variant="outline"
                 size="sm"
