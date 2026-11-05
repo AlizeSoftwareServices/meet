@@ -30,22 +30,26 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [redirectedMsg, setRedirectedMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    setIsNative(Capacitor.isNativePlatform());
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const emailParam = params.get('email');
-      if (emailParam) {
-        form.setValue('email', emailParam);
-        setRedirectedMsg('An account with this email already exists. Please sign in with your password.');
-      }
-    }
-  }, [form]);
-
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
   });
+
+  useEffect(() => {
+    setIsNative(Capacitor.isNativePlatform());
+    if (typeof window !== 'undefined') {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const emailParam = params.get('email');
+        if (emailParam) {
+          form.setValue('email', emailParam);
+          setRedirectedMsg('An account with this email already exists. Please sign in with your password.');
+        }
+      } catch (e) {
+        // Safe fallback
+      }
+    }
+  }, [form]);
 
   const loginMutation = useMutation({
     mutationFn: async (data: LoginFormValues) => {
