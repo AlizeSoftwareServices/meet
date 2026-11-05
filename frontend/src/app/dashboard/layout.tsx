@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
-  Calendar, 
+  Calendar,
+  CalendarCheck, 
   Clock, 
   LayoutDashboard, 
   LogOut, 
@@ -16,6 +17,7 @@ import {
   Plug, 
   UsersRound, 
   Split, 
+  BarChart2,
   Share2, 
   Link2, 
   Check, 
@@ -34,11 +36,12 @@ import { WifiOff } from 'lucide-react';
 const sidebarLinks = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/dashboard/events', label: 'Event Types', icon: Calendar },
-  { href: '/dashboard/bookings', label: 'Bookings', icon: Users },
+  { href: '/dashboard/bookings', label: 'Bookings', icon: CalendarCheck },
   { href: '/dashboard/availability', label: 'Availability', icon: Clock },
   { href: '/dashboard/teams', label: 'Teams', icon: UsersRound },
+  { href: '/dashboard/contacts', label: 'Contacts', icon: Users },
   { href: '/dashboard/routing', label: 'Routing Forms', icon: Split },
-  { href: '/dashboard/polls', label: 'Meeting Polls', icon: Users },
+  { href: '/dashboard/polls', label: 'Meeting Polls', icon: BarChart2 },
   { href: '/dashboard/workflows', label: 'Workflows', icon: Sparkles },
   { href: '/dashboard/integrations', label: 'Integrations', icon: Plug },
   { href: '/dashboard/settings', label: 'Profile', icon: User },

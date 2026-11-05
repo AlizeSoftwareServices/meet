@@ -15,7 +15,9 @@ import {
   Activity,
   Video,
   ExternalLink,
-  Sparkles
+  Sparkles,
+  CheckCircle2,
+  RefreshCw
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -32,6 +34,7 @@ import Link from 'next/link';
 export default function DashboardPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
 
   const queryParams = new URLSearchParams();
   if (startDate) queryParams.append('startDate', startDate);
@@ -83,17 +86,30 @@ export default function DashboardPage() {
   const nextMeeting = upcomingMeets[0];
 
   const statIcons: Record<string, any> = {
+    'Upcoming Meetings': CalendarIcon,
     'Upcoming Meets': CalendarIcon,
-    'Completed Meets': Users,
-    'Total Contacts': LinkIcon,
+    'Completed Meetings': CheckCircle2,
+    'Completed Meets': CheckCircle2,
+    'Total Contacts': Users,
     'Total Hours Booked': Clock,
   };
 
   const statColors: Record<string, string> = {
+    'Upcoming Meetings': 'from-blue-500/20 to-blue-500/5 text-blue-600 dark:text-blue-400 border-blue-500/20',
     'Upcoming Meets': 'from-blue-500/20 to-blue-500/5 text-blue-600 dark:text-blue-400 border-blue-500/20',
+    'Completed Meetings': 'from-emerald-500/20 to-emerald-500/5 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
     'Completed Meets': 'from-emerald-500/20 to-emerald-500/5 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
     'Total Contacts': 'from-violet-500/20 to-violet-500/5 text-violet-600 dark:text-violet-400 border-violet-500/20',
     'Total Hours Booked': 'from-amber-500/20 to-amber-500/5 text-amber-600 dark:text-amber-400 border-amber-500/20',
+  };
+
+  const statLinks: Record<string, string> = {
+    'Upcoming Meetings': '/dashboard/bookings',
+    'Upcoming Meets': '/dashboard/bookings',
+    'Completed Meetings': '/dashboard/bookings',
+    'Completed Meets': '/dashboard/bookings',
+    'Total Contacts': '/dashboard/contacts',
+    'Total Hours Booked': '/dashboard/analytics',
   };
 
   const containerVariants: Variants = {
@@ -165,17 +181,30 @@ export default function DashboardPage() {
             </div>
             <div className="flex flex-col justify-end w-full sm:w-auto">
               <span className="text-xs invisible mb-1 hidden sm:block">Export</span>
-              <Button variant="outline" className="gap-2 h-10 w-full sm:w-auto" onClick={async () => {
-                const res = await api.get(`/analytics/export${queryString}`, { responseType: 'blob' });
-                const url = window.URL.createObjectURL(new Blob([res.data]));
-                const link = document.createElement('a');
-                link.href = url;
-                link.setAttribute('download', 'bookings-export.csv');
-                document.body.appendChild(link);
-                link.click();
-              }}>
-                <Download className="w-4 h-4" />
-                Export CSV
+              <Button 
+                variant="outline" 
+                className="gap-2 h-10 w-full sm:w-auto" 
+                disabled={isExporting}
+                onClick={async () => {
+                  try {
+                    setIsExporting(true);
+                    const res = await api.get(`/analytics/export${queryString}`, { responseType: 'blob' });
+                    const url = window.URL.createObjectURL(new Blob([res.data]));
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.setAttribute('download', `bookings-export-${new Date().toISOString().split('T')[0]}.csv`);
+                    document.body.appendChild(link);
+                    link.click();
+                  } catch (err) {
+                    console.error('Export failed', err);
+                    alert('Export failed. Please try again.');
+                  } finally {
+                    setIsExporting(false);
+                  }
+                }}
+              >
+                {isExporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                {isExporting ? 'Exporting...' : 'Export CSV'}
               </Button>
             </div>
           </div>
@@ -262,25 +291,28 @@ export default function DashboardPage() {
         {displayAnalytics.stats.map((stat: any) => {
           const Icon = statIcons[stat.title] || CalendarIcon;
           const styleClasses = statColors[stat.title] || 'from-primary/20 to-primary/5 text-primary border-primary/20';
+          const targetLink = statLinks[stat.title] || '/dashboard/bookings';
           
           return (
             <motion.div key={stat.title} variants={itemVariants} whileHover={{ y: -4 }}>
-              <Card className="relative overflow-hidden group shadow-sm hover:shadow-md transition-all duration-300 border-border bg-card">
-                {/* Decorative background gradient */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${styleClasses.split(' ').slice(0, 2).join(' ')} opacity-30 group-hover:opacity-70 transition-opacity duration-500`} />
-                
-                <CardHeader className="relative flex flex-row items-center justify-between pb-2 z-10 px-6 pt-6">
-                  <CardTitle className="text-xs font-semibold text-muted-foreground tracking-wide uppercase">
-                    {stat.title}
-                  </CardTitle>
-                  <div className={`p-2 rounded-xl bg-background shadow-sm border ${styleClasses.split(' ').slice(2).join(' ')} group-hover:scale-110 transition-transform duration-300`}>
-                    <Icon className="w-4 h-4" />
-                  </div>
-                </CardHeader>
-                <CardContent className="relative z-10 px-6 pb-6">
-                  <div className="text-3xl sm:text-4xl font-heading font-black tracking-tight text-foreground mt-1">{stat.value}</div>
-                </CardContent>
-              </Card>
+              <Link href={targetLink} className="block group">
+                <Card className="relative overflow-hidden group shadow-sm hover:shadow-md transition-all duration-300 border-border bg-card cursor-pointer">
+                  {/* Decorative background gradient */}
+                  <div className={`absolute inset-0 bg-gradient-to-br ${styleClasses.split(' ').slice(0, 2).join(' ')} opacity-30 group-hover:opacity-70 transition-opacity duration-500`} />
+                  
+                  <CardHeader className="relative flex flex-row items-center justify-between pb-2 z-10 px-6 pt-6">
+                    <CardTitle className="text-xs font-semibold text-muted-foreground tracking-wide uppercase group-hover:text-foreground transition-colors">
+                      {stat.title}
+                    </CardTitle>
+                    <div className={`p-2 rounded-xl bg-background shadow-sm border ${styleClasses.split(' ').slice(2).join(' ')} group-hover:scale-110 transition-transform duration-300`}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="relative z-10 px-6 pb-6">
+                    <div className="text-3xl sm:text-4xl font-heading font-black tracking-tight text-foreground mt-1">{stat.value}</div>
+                  </CardContent>
+                </Card>
+              </Link>
             </motion.div>
           );
         })}

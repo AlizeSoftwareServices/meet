@@ -38,6 +38,16 @@ export default function EventTypesPage() {
     },
   });
 
+  const { data: profile } = useQuery({
+    queryKey: ['profile'],
+    queryFn: async () => {
+      const res = await api.get('/profile');
+      return res.data;
+    },
+  });
+
+  const username = profile?.username || 'me';
+
   const toggleStatusMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: string, isActive: boolean }) => {
       await api.patch(`/event-types/${id}`, { isActive });
@@ -72,14 +82,14 @@ export default function EventTypesPage() {
     },
     onSuccess: (result) => {
       const event = events?.find((e: any) => e.id === result.id);
-      const url = `${window.location.origin}/book/me/${event?.slug}?singleUseToken=${result.data.token}`;
+      const url = `${window.location.origin}/book/${username}/${event?.slug}?singleUseToken=${result.data.token}`;
       navigator.clipboard.writeText(url);
       alert('Single-use link copied to clipboard!');
     }
   });
 
   const handleShare = async (event: any) => {
-    const url = `${window.location.origin}/book/me/${event.slug}`;
+    const url = `${window.location.origin}/book/${username}/${event.slug}`;
     const opened = await shareMeetingLink({
       title: event.title || 'Schedule a Meeting',
       text: `Book a ${event.duration || 30}-min meeting with me on Meet:`,
@@ -304,7 +314,7 @@ export default function EventTypesPage() {
                               variant="ghost" 
                               size="sm" 
                               onClick={async () => {
-                                const url = `${window.location.origin}/book/me/${event.slug}`;
+                                const url = `${window.location.origin}/book/${username}/${event.slug}`;
                                 await navigator.clipboard.writeText(url);
                                 triggerHaptic('light');
                                 alert('Link copied to clipboard!');
@@ -404,7 +414,7 @@ export default function EventTypesPage() {
 
               <div className="p-4 bg-white rounded-2xl border border-zinc-200 shadow-inner mb-6">
                 <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=8&data=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}/book/me/${selectedQrEvent.slug}` : '')}`} 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=8&data=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}/book/${username}/${selectedQrEvent.slug}` : '')}`} 
                   alt="Booking QR Code" 
                   className="w-48 h-48 rounded-lg"
                 />
@@ -414,7 +424,7 @@ export default function EventTypesPage() {
                 <Button 
                   className="flex-1 rounded-xl gap-2 font-bold text-xs h-10"
                   onClick={async () => {
-                    const url = `${window.location.origin}/book/me/${selectedQrEvent.slug}`;
+                    const url = `${window.location.origin}/book/${username}/${selectedQrEvent.slug}`;
                     await navigator.clipboard.writeText(url);
                     triggerHaptic('light');
                     alert('Booking URL copied to clipboard!');
@@ -424,7 +434,7 @@ export default function EventTypesPage() {
                   Copy Link
                 </Button>
                 <a 
-                  href={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&margin=15&data=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}/book/me/${selectedQrEvent.slug}` : '')}`}
+                  href={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&margin=15&data=${encodeURIComponent(typeof window !== 'undefined' ? `${window.location.origin}/book/${username}/${selectedQrEvent.slug}` : '')}`}
                   target="_blank"
                   download={`meet-qr-${selectedQrEvent.slug}.png`}
                   className="inline-flex items-center justify-center px-4 rounded-xl border border-border hover:bg-muted text-xs font-semibold h-10 transition-colors"
@@ -495,7 +505,7 @@ export default function EventTypesPage() {
                   <code>
                     {embedTab === 'inline' ? (
 `<iframe 
-  src="${typeof window !== 'undefined' ? window.location.origin : 'https://meet.alizesoftwareservices.com'}/book/me/${selectedEmbedEvent.slug}" 
+  src="${typeof window !== 'undefined' ? window.location.origin : 'https://meet.alizesoftwareservices.com'}/book/${username}/${selectedEmbedEvent.slug}" 
   width="100%" 
   height="700px" 
   frameborder="0"
@@ -503,7 +513,7 @@ export default function EventTypesPage() {
 ></iframe>`
                     ) : (
 `<a 
-  href="${typeof window !== 'undefined' ? window.location.origin : 'https://meet.alizesoftwareservices.com'}/book/me/${selectedEmbedEvent.slug}" 
+  href="${typeof window !== 'undefined' ? window.location.origin : 'https://meet.alizesoftwareservices.com'}/book/${username}/${selectedEmbedEvent.slug}" 
   target="_blank" 
   style="display: inline-flex; align-items: center; padding: 12px 24px; background: #6366f1; color: #fff; font-weight: bold; border-radius: 9999px; text-decoration: none; font-family: sans-serif; box-shadow: 0 4px 14px rgba(99,102,241,0.4);"
 >
@@ -522,8 +532,8 @@ export default function EventTypesPage() {
                   className="rounded-xl font-bold text-xs gap-1.5 shrink-0"
                   onClick={async () => {
                     const code = embedTab === 'inline' 
-                      ? `<iframe src="${window.location.origin}/book/me/${selectedEmbedEvent.slug}" width="100%" height="700px" frameborder="0" style="border: 0; min-height: 650px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);"></iframe>`
-                      : `<a href="${window.location.origin}/book/me/${selectedEmbedEvent.slug}" target="_blank" style="display: inline-flex; align-items: center; padding: 12px 24px; background: #6366f1; color: #fff; font-weight: bold; border-radius: 9999px; text-decoration: none; font-family: sans-serif; box-shadow: 0 4px 14px rgba(99,102,241,0.4);">📅 Schedule a Meeting</a>`;
+                      ? `<iframe src="${window.location.origin}/book/${username}/${selectedEmbedEvent.slug}" width="100%" height="700px" frameborder="0" style="border: 0; min-height: 650px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);"></iframe>`
+                      : `<a href="${window.location.origin}/book/${username}/${selectedEmbedEvent.slug}" target="_blank" style="display: inline-flex; align-items: center; padding: 12px 24px; background: #6366f1; color: #fff; font-weight: bold; border-radius: 9999px; text-decoration: none; font-family: sans-serif; box-shadow: 0 4px 14px rgba(99,102,241,0.4);">📅 Schedule a Meeting</a>`;
                     await navigator.clipboard.writeText(code);
                     triggerHaptic('light');
                     alert('Embed code copied to clipboard!');

@@ -52,8 +52,8 @@ export default function ContactsPage() {
         `"${c.email || ''}"`,
         `"${c.phone || ''}"`,
         `"${c.company || ''}"`,
-        c.totalMeets || 0,
-        c.lastMeetDate ? `"${new Date(c.lastMeetDate).toLocaleDateString()}"` : '""'
+        c.totalMeetings ?? c.totalMeets ?? 0,
+        (c.lastMeetingDate || c.lastMeetDate) ? `"${new Date(c.lastMeetingDate || c.lastMeetDate).toLocaleDateString()}"` : '""'
       ].join(','))
     ].join('\n');
 
@@ -159,11 +159,13 @@ export default function ContactsPage() {
                         </td>
                         <td className="px-6 py-4 hidden sm:table-cell">
                           <div className="flex flex-col gap-1">
-                            <span className="font-medium text-foreground">{contact.totalMeets} Meet{contact.totalMeets !== 1 ? 's' : ''}</span>
-                            {contact.lastMeetDate && (
+                            <span className="font-medium text-foreground">
+                              {contact.totalMeetings ?? contact.totalMeets ?? 0} Meet{(contact.totalMeetings ?? contact.totalMeets ?? 0) !== 1 ? 's' : ''}
+                            </span>
+                            {(contact.lastMeetingDate || contact.lastMeetDate) && (
                               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                 <Calendar className="w-3 h-3" />
-                                Last: {new Date(contact.lastMeetDate).toLocaleDateString()}
+                                Last: {new Date(contact.lastMeetingDate || contact.lastMeetDate).toLocaleDateString()}
                               </div>
                             )}
                           </div>
