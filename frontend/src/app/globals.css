@@ -32,8 +32,8 @@ button, a, nav, [role="button"] {
 
 @layer base {
   .theme {
-    --font-heading: var(--font-heading);
-    --font-sans: var(--font-sans);
+    --font-heading: var(--font-outfit);
+    --font-sans: var(--font-outfit);
   }
   :root {
     /* Base UI Colors */

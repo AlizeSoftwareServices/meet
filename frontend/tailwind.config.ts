@@ -10,8 +10,8 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-sans)", "system-ui", "-apple-system", "sans-serif"],
-        heading: ["var(--font-heading)", "var(--font-sans)", "sans-serif"],
+        sans: ["var(--font-outfit)", "var(--font-sans)", "system-ui", "-apple-system", "sans-serif"],
+        heading: ["var(--font-outfit)", "var(--font-sans)", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
