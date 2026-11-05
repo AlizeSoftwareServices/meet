@@ -64,80 +64,12 @@ export class EmailService {
     return 'Meet <no-reply@alizesoftwareservices.com>';
   }
 
-  private async sendViaHostingerBridge(
-    to: string,
-    subject: string,
-    htmlContent: string,
-  ): Promise<{ success: boolean; messageId: string } | null> {
-    const bridgeUrl =
-      process.env.HOSTINGER_BRIDGE_URL ||
-      'https://alizesoftwareservices.com/send-otp.php';
-    const bridgeSecret =
-      process.env.HOSTINGER_BRIDGE_SECRET ||
-      'AlizeChat_Secure_Otp_Bridge_2026_x7k9';
-
-    if (!bridgeUrl) return null;
-
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-      const res = await fetch(bridgeUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Bridge-Secret': bridgeSecret,
-        },
-        body: JSON.stringify({
-          to,
-          name: 'User',
-          subject,
-          otp: '',
-          html: htmlContent,
-        }),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (res.ok) {
-        const data: any = await res.json();
-        if (data && data.success) {
-          this.logger.log(
-            `[EmailService] Email delivered via Hostinger Bridge to ${to}`,
-          );
-          return {
-            success: true,
-            messageId: data.messageId || 'hostinger-bridge-sent',
-          };
-        }
-      }
-    } catch (err: any) {
-      this.logger.warn(
-        `[EmailService] Hostinger bridge attempt failed (${err.message}). Falling back to direct SMTP...`,
-      );
-    }
-    return null;
-  }
-
   private async sendMail(
     to: string,
     subject: string,
     htmlContent: string,
     attachments?: any[],
   ) {
-    // Strategy 1: Hostinger HTTPS Bridge (Port 443 - Bypasses Render/Cloud outbound SMTP restrictions)
-    if (!attachments || attachments.length === 0) {
-      const bridgeResult = await this.sendViaHostingerBridge(
-        to,
-        subject,
-        htmlContent,
-      );
-      if (bridgeResult) {
-        return bridgeResult;
-      }
-    }
-
     const host =
       process.env.SMTP_HOST ||
       (process.env.GMAIL_USER ? 'smtp.gmail.com' : null);
