@@ -392,7 +392,7 @@ export default function SchedulingPage() {
                     )}
                   </div>
 
-                  <div className="relative bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-200/80 dark:border-zinc-800/80 p-2 shadow-xs">
+                  <div className="relative bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-200/80 dark:border-zinc-800/80 p-4 sm:p-5 shadow-xs">
                     <Calendar
                       mode="single"
                       selected={selectedDate}
