@@ -104,20 +104,26 @@ export default function IntegrationsPage() {
   };
 
   const googleIntegration = integrations.find(i => i.provider === 'google');
-  const microsoftIntegration = integrations.find(i => i.provider === 'microsoft');
   const slackIntegration = integrations.find(i => i.provider === 'slack');
 
   return (
     <div className="max-w-4xl space-y-8">
       <div>
         <h1 className="text-3xl font-bold mb-2 text-foreground">Integrations</h1>
-        <p className="text-muted-foreground">Connect your calendars and conferencing tools for two-way synchronization.</p>
+        <p className="text-muted-foreground">Connect your calendar and notification tools for seamless scheduling.</p>
       </div>
 
       {success === 'google_connected' && (
         <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center gap-3 text-green-500">
           <CheckCircle2 className="w-5 h-5" />
           <p className="font-medium">Google Calendar connected successfully!</p>
+        </div>
+      )}
+
+      {success === 'slack_connected' && (
+        <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center gap-3 text-green-500">
+          <CheckCircle2 className="w-5 h-5" />
+          <p className="font-medium">Slack connected successfully!</p>
         </div>
       )}
 
@@ -266,114 +272,11 @@ export default function IntegrationsPage() {
           )}
         </motion.div>
 
-        {/* Microsoft Integration */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-card border border-border p-6 rounded-3xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
-        >
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4">
-            <div className="flex gap-4">
-              <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-zinc-100 flex-shrink-0 grid grid-cols-2 gap-0.5 p-3">
-                <div className="bg-[#F25022] w-full h-full rounded-sm" />
-                <div className="bg-[#7FBA00] w-full h-full rounded-sm" />
-                <div className="bg-[#00A4EF] w-full h-full rounded-sm" />
-                <div className="bg-[#FFB900] w-full h-full rounded-sm" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold mb-1">Microsoft Outlook & Teams</h3>
-                <p className="text-muted-foreground text-sm max-w-lg">
-                  Sync your availability with Outlook Calendar and generate Microsoft Teams Meet links.
-                </p>
-                <div className="flex gap-4 mt-4">
-                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
-                    <Calendar className="w-3.5 h-3.5" />
-                    Calendar Sync
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
-                    <Video className="w-3.5 h-3.5" />
-                    Video Conferencing
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div>
-              {loading ? (
-                <div className="w-24 h-10 bg-muted animate-pulse rounded-xl" />
-              ) : microsoftIntegration?.status === 'EXPIRED' ? (
-                <div className="flex flex-col gap-2 items-center">
-                  <div className="px-4 py-2 bg-destructive/10 text-destructive font-medium rounded-xl flex items-center gap-2 border border-destructive/20">
-                    <AlertCircle className="w-4 h-4" />
-                    Expired
-                  </div>
-                  <button
-                    onClick={async () => {
-                      const redirectUri = typeof window !== 'undefined' ? window.location.origin : '';
-                      const { data } = await api.get(`/integrations/microsoft/auth?redirect_uri=${encodeURIComponent(redirectUri)}`);
-                      window.location.href = data.url;
-                    }}
-                    className="text-xs font-semibold text-primary hover:underline"
-                  >
-                    Reconnect
-                  </button>
-                </div>
-              ) : microsoftIntegration ? (
-                <div className="flex flex-col gap-2 items-center">
-                  <div className="px-4 py-2 bg-green-500/10 text-green-600 font-medium rounded-xl flex items-center gap-2 border border-green-500/20">
-                    <CheckCircle2 className="w-4 h-4" />
-                    Connected
-                  </div>
-                  <button
-                    onClick={async () => {
-                      if (confirm('Are you sure you want to disconnect Microsoft?')) {
-                        await api.patch('/integrations/microsoft/disconnect');
-                        setIntegrations(prev => prev.filter(i => i.provider !== 'microsoft'));
-                      }
-                    }}
-                    className="text-xs font-semibold text-destructive hover:underline"
-                  >
-                    Disconnect
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={async () => {
-                    const redirectUri = typeof window !== 'undefined' ? window.location.origin : '';
-                    const { data } = await api.get(`/integrations/microsoft/auth?redirect_uri=${encodeURIComponent(redirectUri)}`);
-                    window.location.href = data.url;
-                  }}
-                  className="px-6 py-2.5 bg-primary text-primary-foreground font-medium rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95"
-                >
-                  Connect
-                </button>
-              )}
-            </div>
-          </div>
-
-          {microsoftIntegration && (
-            <div className="mt-6 pt-4 border-t border-border/50 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <ShieldCheck className="w-5 h-5 text-primary" />
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Check Outlook Calendar for conflicts</p>
-                  <p className="text-xs text-muted-foreground">Block busy times on your public booking page when you have events on Outlook.</p>
-                </div>
-              </div>
-              <Switch
-                checked={microsoftIntegration.checkConflicts ?? true}
-                disabled={updatingProvider === 'microsoft'}
-                onCheckedChange={() => handleToggleConflicts('microsoft', microsoftIntegration.checkConflicts ?? true)}
-              />
-            </div>
-          )}
-        </motion.div>
-
         {/* Slack Integration */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.1 }}
           className="bg-card border border-border p-6 rounded-3xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
         >
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4">
@@ -435,90 +338,6 @@ export default function IntegrationsPage() {
             </div>
           </div>
         </motion.div>
-
-        {/* Developer Webhooks */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-card border border-border p-6 rounded-3xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
-        >
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4">
-            <div className="flex gap-4">
-              <div className="w-16 h-16 bg-violet-600/10 text-violet-600 dark:text-violet-400 rounded-2xl flex items-center justify-center shadow-sm flex-shrink-0">
-                <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 16.98h-5.99c-1.1 0-1.95.94-2.48 1.9A4 4 0 0 1 2 17c.01-.7.2-1.4.57-2"/>
-                  <path d="m6 17 3.13-5.78c.53-.97.1-2.18-.5-3.1a4 4 0 1 1 6.89-4.06l1.97 3.65"/>
-                  <circle cx="12" cy="12" r="2"/>
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold mb-1">Developer Webhooks</h3>
-                <p className="text-muted-foreground text-sm max-w-lg">
-                  Send real-time HMAC-SHA256 signed event payloads directly to your HTTP endpoints whenever meetings are created, canceled, or rescheduled.
-                </p>
-                <div className="flex gap-4 mt-4">
-                  <div className="flex items-center gap-1.5 text-xs font-medium text-violet-700 bg-violet-50 dark:bg-violet-900/30 px-2 py-1 rounded-md">
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    HMAC-SHA256 Signed
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div>
-              <a
-                href="/dashboard/integrations/webhooks"
-                className="inline-flex items-center px-6 py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 text-sm"
-              >
-                Manage Webhooks
-              </a>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Zoom Integration */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-card border border-border p-6 rounded-3xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
-        >
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4">
-            <div className="flex gap-4">
-              <div className="w-16 h-16 bg-[#2D8CFF]/10 text-[#2D8CFF] rounded-2xl flex items-center justify-center shadow-sm flex-shrink-0">
-                <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M4.5 5.5A2.5 2.5 0 0 0 2 8v8a2.5 2.5 0 0 0 2.5 2.5h9a2.5 2.5 0 0 0 2.5-2.5V8A2.5 2.5 0 0 0 13.5 5.5h-9zm12.3 3.66 4.41-3.15A1 1 0 0 1 23 6.83v10.34a1 1 0 0 1-1.79.62l-4.41-3.15V9.16z" />
-                </svg>
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-bold mb-1">Zoom Meetings</h3>
-                  <span className="text-[11px] font-semibold bg-blue-500/10 text-blue-500 border border-blue-500/20 px-2 py-0.5 rounded-full">
-                    Custom Link Ready
-                  </span>
-                </div>
-                <p className="text-muted-foreground text-sm max-w-lg">
-                  Use your personal Zoom meeting room or vanity URL for event types by selecting Zoom as the location when creating or editing an event.
-                </p>
-                <div className="flex gap-4 mt-4">
-                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
-                    <Video className="w-3.5 h-3.5" />
-                    Video Conferencing
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div>
-              <a
-                href="/dashboard/events"
-                className="inline-flex items-center px-6 py-2.5 bg-secondary hover:bg-secondary/80 text-foreground font-medium rounded-xl shadow-sm transition-all active:scale-95 text-sm"
-              >
-                Configure in Events
-              </a>
-            </div>
-          </div>
-        </motion.div>
-
       </div>
     </div>
   );
