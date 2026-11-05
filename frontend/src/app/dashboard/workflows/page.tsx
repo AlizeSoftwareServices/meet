@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Trash2, Clock, Mail, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Plus, Trash2, Clock, Mail, Sparkles, CheckCircle2, Calendar } from 'lucide-react';
 import { api } from '@/lib/api';
 import { triggerHaptic } from '@/lib/haptics';
 
@@ -140,32 +141,57 @@ export default function WorkflowsPage() {
         </div>
       </div>
 
-      <div className="bg-card rounded-2xl border border-border p-6 shadow-sm">
-        <div className="mb-6">
-          <Label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Select Event Type</Label>
-          <select
-            value={selectedEventTypeId}
-            onChange={(e) => setSelectedEventTypeId(e.target.value)}
-            className="w-full md:w-1/2 rounded-xl border border-input bg-background py-2.5 px-3.5 text-sm font-semibold text-foreground focus:ring-2 focus:ring-primary focus:outline-none"
-          >
-            {eventTypes.map(et => (
-              <option key={et.id} value={et.id}>{et.title}</option>
-            ))}
-          </select>
-        </div>
-
-        {selectedEventTypeId && (
-          <div className="space-y-4 pt-4 border-t border-border/50">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-lg font-heading font-bold text-foreground">Configured Workflows</h2>
-                <p className="text-xs text-muted-foreground">These automated messages trigger based on the meeting time.</p>
-              </div>
-              <Button onClick={() => setIsCreating(true)} disabled={isCreating} className="rounded-xl font-bold text-xs gap-1.5">
-                <Plus className="h-4 w-4" />
-                Add Automation
+      {eventTypes.length === 0 ? (
+        <div className="bg-card rounded-3xl border border-border p-10 shadow-sm text-center flex flex-col items-center justify-center max-w-2xl mx-auto space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center mb-1">
+            <Calendar className="w-8 h-8" />
+          </div>
+          <h2 className="text-2xl font-bold font-heading text-foreground">No Event Types Found</h2>
+          <p className="text-sm text-muted-foreground max-w-md">
+            Workflows automatically trigger email reminders and follow-ups for your scheduled meetings. To set up an automation, you need to have at least one Event Type (e.g. 15-min or 30-min meeting).
+          </p>
+          <div className="flex gap-3 pt-2">
+            <Link href="/dashboard/events/new?type=one-on-one">
+              <Button className="rounded-xl px-6 h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs gap-2 shadow-md shadow-blue-500/20">
+                <Plus className="w-4 h-4" />
+                Create Event Type
               </Button>
-            </div>
+            </Link>
+            <Link href="/dashboard/events">
+              <Button variant="outline" className="rounded-xl px-5 h-11 text-xs font-semibold">
+                Go to Event Types
+              </Button>
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-card rounded-2xl border border-border p-6 shadow-sm">
+          <div className="mb-6">
+            <Label className="block text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Select Event Type</Label>
+            <select
+              value={selectedEventTypeId}
+              onChange={(e) => setSelectedEventTypeId(e.target.value)}
+              className="w-full md:w-1/2 rounded-xl border border-input bg-background py-2.5 px-3.5 text-sm font-semibold text-foreground focus:ring-2 focus:ring-primary focus:outline-none"
+            >
+              <option value="" disabled>-- Select an Event Type --</option>
+              {eventTypes.map(et => (
+                <option key={et.id} value={et.id}>{et.title} ({et.slug})</option>
+              ))}
+            </select>
+          </div>
+
+          {selectedEventTypeId && (
+            <div className="space-y-4 pt-4 border-t border-border/50">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-heading font-bold text-foreground">Configured Workflows</h2>
+                  <p className="text-xs text-muted-foreground">These automated messages trigger based on the meeting time.</p>
+                </div>
+                <Button onClick={() => setIsCreating(true)} disabled={isCreating} className="rounded-xl font-bold text-xs gap-1.5">
+                  <Plus className="h-4 w-4" />
+                  Add Automation
+                </Button>
+              </div>
 
             {isCreating && (
               <div className="bg-muted/30 rounded-2xl p-5 border border-border mb-6 space-y-4 animate-in fade-in duration-200">
@@ -290,6 +316,7 @@ export default function WorkflowsPage() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

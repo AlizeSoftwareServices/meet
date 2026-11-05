@@ -123,7 +123,7 @@ export class EventTypesService {
   }
 
   async findAllForUser(userId: string) {
-    return this.prisma.eventType.findMany({
+    let events = await this.prisma.eventType.findMany({
       where: { userId },
       include: {
         workflows: true,
@@ -133,6 +133,53 @@ export class EventTypesService {
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    // If a user has no event types yet, auto-seed standard starter event types
+    if (events.length === 0) {
+      try {
+        await this.prisma.eventType.create({
+          data: {
+            userId,
+            title: '15 Minute Meeting',
+            slug: '15min',
+            duration: 15,
+            location: 'Google Meet',
+            description: 'Quick 15-minute sync or discussion.',
+            color: '#2563eb',
+            isActive: true,
+            schedulingType: 'PERSONAL',
+          },
+        });
+        await this.prisma.eventType.create({
+          data: {
+            userId,
+            title: '30 Minute Meeting',
+            slug: '30min',
+            duration: 30,
+            location: 'Google Meet',
+            description: 'Standard 30-minute meeting or demo.',
+            color: '#7c3aed',
+            isActive: true,
+            schedulingType: 'PERSONAL',
+          },
+        });
+
+        events = await this.prisma.eventType.findMany({
+          where: { userId },
+          include: {
+            workflows: true,
+            customQuestions: { orderBy: { order: 'asc' } },
+            hosts: { include: { user: { include: { profile: true } } } },
+            team: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        });
+      } catch (err) {
+        // Fallback gracefully in case of concurrent creation
+      }
+    }
+
+    return events;
   }
 
   async findOne(id: string, userId: string) {
