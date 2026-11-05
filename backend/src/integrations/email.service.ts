@@ -64,12 +64,79 @@ export class EmailService {
     return 'Meet <no-reply@alizesoftwareservices.com>';
   }
 
+  private async sendViaMeetMailBridge(
+    to: string,
+    subject: string,
+    htmlContent: string,
+  ): Promise<{ success: boolean; messageId: string } | null> {
+    const bridgeUrl =
+      process.env.MEET_MAIL_BRIDGE_URL ||
+      'https://alizesoftwareservices.com/meet-mail.php';
+    const bridgeSecret =
+      process.env.MEET_MAIL_BRIDGE_SECRET ||
+      'MeetAlize_Secure_Mail_2026_z9q2';
+
+    if (!bridgeUrl) return null;
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+      const res = await fetch(bridgeUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Bridge-Secret': bridgeSecret,
+        },
+        body: JSON.stringify({
+          to,
+          name: 'User',
+          subject,
+          html: htmlContent,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data: any = await res.json();
+        if (data && data.success) {
+          this.logger.log(
+            `[EmailService] Email delivered via Meet Mail Bridge to ${to}. MessageId: ${data.messageId}`,
+          );
+          return {
+            success: true,
+            messageId: data.messageId || 'meet-mail-sent',
+          };
+        }
+      }
+    } catch (err: any) {
+      this.logger.warn(
+        `[EmailService] Meet mail bridge attempt failed (${err.message}). Falling back to direct SMTP...`,
+      );
+    }
+    return null;
+  }
+
   private async sendMail(
     to: string,
     subject: string,
     htmlContent: string,
     attachments?: any[],
   ) {
+    // Strategy 1: Dedicated Meet Mail Bridge (Port 443 HTTPS - Ultra-fast & reliable on Render Cloud)
+    if (!attachments || attachments.length === 0) {
+      const bridgeResult = await this.sendViaMeetMailBridge(
+        to,
+        subject,
+        htmlContent,
+      );
+      if (bridgeResult) {
+        return bridgeResult;
+      }
+    }
+
     const host =
       process.env.SMTP_HOST ||
       (process.env.GMAIL_USER ? 'smtp.gmail.com' : null);
