@@ -279,7 +279,7 @@ export default function SchedulingPage() {
   }
 
   return (
-    <div className={isEmbed ? "w-full p-0 bg-transparent flex flex-col items-center justify-center" : "min-h-screen bg-gradient-to-br from-zinc-50 via-zinc-100/60 to-violet-50/30 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 flex flex-col items-center justify-center py-8 px-3 sm:px-6 lg:px-8"}>
+    <div className={isEmbed ? "w-full p-0 bg-transparent flex flex-col items-center" : "min-h-screen bg-gradient-to-br from-zinc-50 via-zinc-100/60 to-violet-50/30 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 flex flex-col items-center py-6 sm:py-10 px-3 sm:px-6 lg:px-8"}>
       {isOwner && !isEmbed && (
         <div className="max-w-6xl w-full mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center justify-between text-xs text-amber-700 dark:text-amber-300 backdrop-blur-md shadow-xs">
           <span className="font-semibold flex items-center gap-2">
@@ -306,11 +306,11 @@ export default function SchedulingPage() {
       )}
       
       {/* Outer Card Wrapper with Subtle Gradient Border */}
-      <div className="max-w-6xl xl:max-w-7xl w-full p-[1px] rounded-3xl bg-gradient-to-r from-violet-500/20 via-blue-500/20 to-purple-500/20 shadow-2xl shadow-violet-500/5">
-        <div className="w-full bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl rounded-[23px] flex flex-col md:flex-row overflow-hidden min-h-[580px] md:h-[620px] transition-all">
+      <div className="max-w-6xl xl:max-w-7xl w-full p-[1px] rounded-3xl bg-gradient-to-r from-violet-500/20 via-blue-500/20 to-purple-500/20 shadow-2xl shadow-violet-500/5 my-auto">
+        <div className="w-full bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl rounded-[23px] flex flex-col md:flex-row min-h-[580px] md:min-h-[620px] h-auto transition-all">
           
           {/* Left Column - Event Details & Host Info */}
-          <div className="md:w-5/12 lg:w-4/12 border-b md:border-b-0 md:border-r border-zinc-200/80 dark:border-zinc-800/80 p-6 lg:p-8 bg-zinc-50/60 dark:bg-zinc-950/40 flex flex-col justify-between">
+          <div className="md:w-5/12 lg:w-4/12 border-b md:border-b-0 md:border-r border-zinc-200/80 dark:border-zinc-800/80 p-6 lg:p-8 bg-zinc-50/60 dark:bg-zinc-950/40 flex flex-col justify-between shrink-0">
             <div>
               <Link href={`/book/${profile.username}`} className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-all mb-6 text-zinc-600 dark:text-zinc-300 shadow-xs">
                 <ArrowLeft className="w-4 h-4" />
@@ -395,7 +395,7 @@ export default function SchedulingPage() {
           </div>
 
           {/* Right Column - Calendar & Inner Scrollable Time Slots */}
-          <div className="md:w-7/12 lg:w-8/12 p-6 lg:p-8 flex flex-col justify-between overflow-hidden">
+          <div className="md:w-7/12 lg:w-8/12 p-6 lg:p-8 flex flex-col justify-between">
             {!selectedTime ? (
               <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 flex-1 items-start h-full">
                 {/* Calendar Column */}
