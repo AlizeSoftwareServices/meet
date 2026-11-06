@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { User, Prisma } from '@prisma/client';
 import { CalendarService } from '../integrations/calendar.service';
@@ -39,9 +39,39 @@ export class UsersService {
   async updateProfile(userId: string, data: any) {
     const { email, ...profileData } = data;
 
+    // Validate unique username if changed
+    if (profileData.username) {
+      const cleanUsername = profileData.username.trim().toLowerCase();
+      const existing = await this.prisma.profile.findFirst({
+        where: {
+          username: { equals: cleanUsername, mode: 'insensitive' },
+          userId: { not: userId },
+        },
+      });
+      if (existing) {
+        throw new BadRequestException('This booking URL username is already taken by another user.');
+      }
+      profileData.username = cleanUsername;
+    }
+
+    // Validate unique email if changed
+    if (email) {
+      const cleanEmail = email.trim().toLowerCase();
+      const existingUser = await this.prisma.user.findFirst({
+        where: {
+          email: { equals: cleanEmail, mode: 'insensitive' },
+          id: { not: userId },
+        },
+      });
+      if (existingUser) {
+        throw new BadRequestException('This email address is already in use by another account.');
+      }
+    }
+
     const profile = await this.prisma.profile.update({
       where: { userId },
       data: profileData,
+      include: { user: { select: { email: true } } },
     });
 
     // Bidirectional sync: keep default Availability schedule timezone aligned with Profile timezone
@@ -55,11 +85,11 @@ export class UsersService {
     if (email) {
       await this.prisma.user.update({
         where: { id: userId },
-        data: { email },
+        data: { email: email.trim().toLowerCase() },
       });
     }
 
-    return { ...profile, email };
+    return { ...profile, email: email ? email.trim().toLowerCase() : profile.user?.email };
   }
 
   async deleteAccount(userId: string) {

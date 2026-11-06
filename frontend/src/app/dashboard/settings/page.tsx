@@ -33,18 +33,18 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 const profileSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters').optional(),
-  email: z.string().email('Invalid email address').optional(),
-  username: z.string().min(3, 'Username must be at least 3 characters').optional(),
-  bio: z.string().max(300, 'Bio must be less than 300 characters').optional(),
+  name: z.string().min(2, 'Name must be at least 2 characters').optional().or(z.literal('')),
+  email: z.string().email('Invalid email address').optional().or(z.literal('')),
+  username: z.string().min(3, 'Username must be at least 3 characters').optional().or(z.literal('')),
+  bio: z.string().max(300, 'Bio must be less than 300 characters').optional().or(z.literal('')),
   timezone: z.string().min(1, 'Timezone is required'),
-  language: z.string().min(1, 'Language is required'),
-  phone: z.string().optional(),
-  company: z.string().optional(),
-  website: z.string().optional(),
-  brandColor: z.string().optional(),
-  bookingPageTitle: z.string().optional(),
-  bookingPageDescription: z.string().optional(),
+  language: z.string().min(1, 'Language is required').optional().or(z.literal('')),
+  phone: z.string().optional().or(z.literal('')),
+  company: z.string().optional().or(z.literal('')),
+  website: z.string().optional().or(z.literal('')),
+  brandColor: z.string().optional().or(z.literal('')),
+  bookingPageTitle: z.string().optional().or(z.literal('')),
+  bookingPageDescription: z.string().optional().or(z.literal('')),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -104,7 +104,9 @@ export default function SettingsPage() {
 
   const updateMutation = useMutation({
     mutationFn: async (data: ProfileFormValues) => {
-      const response = await api.put('/profile', data);
+      // Clean up empty string fields before sending
+      const payload: any = { ...data };
+      const response = await api.put('/profile', payload);
       return response.data;
     },
     onSuccess: () => {
@@ -113,6 +115,11 @@ export default function SettingsPage() {
       setSuccess(true);
       setIsEditing(false);
       setTimeout(() => setSuccess(false), 3000);
+    },
+    onError: (err: any) => {
+      console.error('Failed to update profile:', err);
+      const errMsg = err?.response?.data?.message || 'Failed to update profile. Please try again.';
+      alert(Array.isArray(errMsg) ? errMsg.join('\n') : errMsg);
     },
   });
 
@@ -338,7 +345,16 @@ export default function SettingsPage() {
 
         {/* Profile Content Body */}
         <CardContent className="p-6 sm:p-8">
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <form 
+            onSubmit={form.handleSubmit(onSubmit, (errors) => {
+              console.warn('Profile validation errors:', errors);
+              const firstErr = Object.values(errors)[0]?.message;
+              if (firstErr) {
+                alert(String(firstErr));
+              }
+            })} 
+            className="space-y-8"
+          >
             
             {/* Section 1: Personal & Contact Information */}
             <div>
