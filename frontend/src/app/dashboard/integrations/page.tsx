@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { useSearchParams } from 'next/navigation';
-import { Calendar, Video, CheckCircle2, AlertCircle, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Calendar, Video, CheckCircle2, AlertCircle, RefreshCw, ShieldCheck, Bell, MessageSquare, Link2, ExternalLink, Hash } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 export default function IntegrationsPage() {
   const [loading, setLoading] = useState(true);
@@ -103,7 +105,56 @@ export default function IntegrationsPage() {
     }
   };
 
+  const [showSlackWebhook, setShowSlackWebhook] = useState(false);
+  const [slackWebhookInput, setSlackWebhookInput] = useState('');
+  const [savingSlackWebhook, setSavingSlackWebhook] = useState(false);
+
+  const handleConnectSlack = async () => {
+    try {
+      const redirectUri = typeof window !== 'undefined' ? window.location.origin : '';
+      const { data } = await api.get(`/integrations/slack/auth?redirect_uri=${encodeURIComponent(redirectUri)}`);
+      if (data?.url) {
+        window.location.href = data.url;
+      }
+    } catch (err: any) {
+      console.warn('Slack OAuth URL unavailable, opening webhook setup:', err);
+      setShowSlackWebhook(true);
+    }
+  };
+
+  const handleSaveSlackWebhook = async () => {
+    if (!slackWebhookInput.trim().startsWith('https://hooks.slack.com/')) {
+      alert('Please enter a valid Slack Incoming Webhook URL (must start with https://hooks.slack.com/)');
+      return;
+    }
+    setSavingSlackWebhook(true);
+    try {
+      await api.post('/integrations/slack/webhook', { webhookUrl: slackWebhookInput.trim() });
+      setShowSlackWebhook(false);
+      setSlackWebhookInput('');
+      fetchIntegrations();
+    } catch (err: any) {
+      console.error('Failed to save webhook', err);
+      alert(err.response?.data?.message || 'Failed to save Slack webhook URL.');
+    } finally {
+      setSavingSlackWebhook(false);
+    }
+  };
+
+  const handleDisconnectSlack = async () => {
+    if (confirm('Are you sure you want to disconnect Slack? You will no longer receive meeting booking alerts in Slack.')) {
+      try {
+        await api.patch('/integrations/slack/disconnect');
+        setIntegrations(prev => prev.filter(i => i.provider !== 'slack'));
+      } catch (err) {
+        console.error('Failed to disconnect Slack', err);
+        alert('Failed to disconnect Slack.');
+      }
+    }
+  };
+
   const googleIntegration = integrations.find(i => i.provider === 'google');
+  const slackIntegration = integrations.find(i => i.provider === 'slack');
 
   return (
     <div className="max-w-4xl space-y-8">
@@ -116,6 +167,13 @@ export default function IntegrationsPage() {
         <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center gap-3 text-green-500">
           <CheckCircle2 className="w-5 h-5" />
           <p className="font-medium">Google Calendar connected successfully!</p>
+        </div>
+      )}
+
+      {success === 'slack_connected' && (
+        <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center gap-3 text-green-500">
+          <CheckCircle2 className="w-5 h-5" />
+          <p className="font-medium">Slack connected successfully! You will now receive instant booking alerts in Slack.</p>
         </div>
       )}
 
@@ -261,6 +319,112 @@ export default function IntegrationsPage() {
                 </button>
               </div>
             </div>
+          )}
+        </motion.div>
+
+        {/* Slack Workspace Integration */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-card border border-border p-6 rounded-3xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
+        >
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4">
+            <div className="flex gap-4">
+              <div className="w-16 h-16 bg-[#4A154B] rounded-2xl flex items-center justify-center shadow-sm flex-shrink-0">
+                <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none">
+                  <path d="M5.04 15.21c-1.35 0-2.45-1.1-2.45-2.45s1.1-2.45 2.45-2.45 2.45 1.1 2.45 2.45v2.45H5.04zm1.23 0c0 1.35 1.1 2.45 2.45 2.45s2.45-1.1 2.45-2.45V8.29C11.17 6.94 10.07 5.84 8.72 5.84s-2.45 1.1-2.45 2.45v6.92z" fill="#36C5F0"/>
+                  <path d="M8.79 5.04c0-1.35 1.1-2.45 2.45-2.45s2.45 1.1 2.45 2.45-1.1 2.45-2.45 2.45H8.79V5.04zm0 1.23c-1.35 0-2.45 1.1-2.45 2.45s1.1 2.45 2.45 2.45h6.92c1.35 0 2.45-1.1 2.45-2.45s-1.1-2.45-2.45-2.45H8.79z" fill="#2EB67D"/>
+                  <path d="M18.96 8.79c1.35 0 2.45 1.1 2.45 2.45s-1.1 2.45-2.45 2.45-2.45-1.1-2.45-2.45V8.79h2.45zm-1.23 0c0-1.35-1.1-2.45-2.45-2.45s-2.45 1.1-2.45 2.45v6.92c0 1.35 1.1 2.45 2.45 2.45s2.45-1.1 2.45-2.45V8.79z" fill="#E01E5A"/>
+                  <path d="M15.21 18.96c0 1.35-1.1 2.45-2.45 2.45s-2.45-1.1-2.45-2.45 1.1-2.45 2.45-2.45h2.45v2.45zm0-1.23c1.35 0 2.45-1.1 2.45-2.45s-1.1-2.45-2.45-2.45H8.29c-1.35 0-2.45 1.1-2.45 2.45s1.1 2.45 2.45 2.45h6.92z" fill="#ECB22E"/>
+                </svg>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-xl font-bold">Slack Notifications</h3>
+                  {slackIntegration && (
+                    <span className="text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                      Active
+                    </span>
+                  )}
+                </div>
+                <p className="text-muted-foreground text-sm max-w-lg">
+                  Get real-time alerts in your Slack channels or direct messages whenever someone books, reschedules, or cancels a meeting with you.
+                </p>
+                <div className="flex gap-4 mt-4">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
+                    <Bell className="w-3.5 h-3.5" />
+                    Instant Alerts
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    Channel Updates
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              {loading ? (
+                <div className="w-24 h-10 bg-muted animate-pulse rounded-xl" />
+              ) : slackIntegration ? (
+                <div className="flex flex-col gap-2 items-center">
+                  <div className="px-4 py-2 bg-green-500/10 text-green-600 font-medium rounded-xl flex items-center gap-2 border border-green-500/20">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Connected
+                  </div>
+                  <button onClick={handleDisconnectSlack} className="text-xs font-semibold text-destructive hover:underline cursor-pointer">
+                    Disconnect
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:items-end gap-2">
+                  <button
+                    onClick={handleConnectSlack}
+                    className="px-6 py-2.5 bg-[#4A154B] hover:bg-[#3D113E] text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
+                  >
+                    Connect Slack
+                  </button>
+                  <button
+                    onClick={() => setShowSlackWebhook(prev => !prev)}
+                    className="text-xs font-semibold text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer"
+                  >
+                    <Link2 className="w-3 h-3" />
+                    {showSlackWebhook ? 'Hide Webhook Setup' : 'Or Paste Webhook URL'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Webhook Setup Accordion */}
+          {showSlackWebhook && !slackIntegration && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              className="mt-6 pt-4 border-t border-border/50 space-y-3"
+            >
+              <div>
+                <p className="text-sm font-semibold text-foreground">Paste Slack Incoming Webhook URL</p>
+                <p className="text-xs text-muted-foreground">
+                  Create an Incoming Webhook in your Slack workspace (e.g. at <a href="https://api.slack.com/apps" target="_blank" rel="noreferrer" className="text-primary underline">api.slack.com/apps</a>) and paste the webhook URL here.
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input
+                  placeholder="https://hooks.slack.com/services/T000/B000/XXXX"
+                  value={slackWebhookInput}
+                  onChange={(e) => setSlackWebhookInput(e.target.value)}
+                  className="rounded-xl flex-1 text-xs font-mono h-10"
+                />
+                <Button
+                  onClick={handleSaveSlackWebhook}
+                  disabled={savingSlackWebhook || !slackWebhookInput.trim()}
+                  className="rounded-xl h-10 px-5 text-xs font-bold cursor-pointer"
+                >
+                  {savingSlackWebhook ? 'Saving...' : 'Save Webhook'}
+                </Button>
+              </div>
+            </motion.div>
           )}
         </motion.div>
       </div>

@@ -12,6 +12,7 @@ import {
   UseGuards,
   Query,
   InternalServerErrorException,
+  BadRequestException,
 } from '@nestjs/common';
 import { google } from 'googleapis';
 import { PrismaService } from '../prisma/prisma.service';
@@ -452,6 +453,38 @@ export class IntegrationsController {
         this.getFrontendRedirect(customRedirectUrl, 'error=auth_failed'),
       );
     }
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('slack/webhook')
+  async connectSlackWebhook(
+    @Req() req: AuthenticatedRequest,
+    @Body('webhookUrl') webhookUrl: string,
+  ) {
+    if (!webhookUrl || typeof webhookUrl !== 'string' || !webhookUrl.trim().startsWith('https://hooks.slack.com/')) {
+      throw new BadRequestException('Please provide a valid Slack webhook URL (must start with https://hooks.slack.com/).');
+    }
+
+    await this.prisma.integration.upsert({
+      where: {
+        userId_provider: {
+          userId: req.user.userId,
+          provider: 'slack',
+        },
+      },
+      update: {
+        accessToken: encryptToken(webhookUrl.trim()),
+        lastSyncedAt: new Date(),
+      },
+      create: {
+        userId: req.user.userId,
+        provider: 'slack',
+        accessToken: encryptToken(webhookUrl.trim()),
+        lastSyncedAt: new Date(),
+      },
+    });
+
+    return { success: true, message: 'Slack Webhook connected successfully.' };
   }
 
   @UseGuards(JwtAuthGuard)
