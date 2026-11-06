@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, getApiBaseUrl } from '@/lib/api';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Clock, MapPin, ChevronRight, LayoutDashboard } from 'lucide-react';
+import { Clock, MapPin, ChevronRight, LayoutDashboard, X } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -43,6 +43,17 @@ export default function UserProfilePage() {
 
   const isOwner = myProfile && (myProfile.username === username || (username === 'me' && myProfile));
 
+  const handleClosePreview = () => {
+    if (typeof window !== 'undefined') {
+      // Close this preview tab and return to the open dashboard tab
+      window.close();
+      // Fallback if browser security blocks closing a tab that was not script-opened
+      setTimeout(() => {
+        router.push('/dashboard/events');
+      }, 150);
+    }
+  };
+
   useEffect(() => {
     if (!isOwner && profile) {
       // If the host has only 1 event type, take guest directly to it.
@@ -80,12 +91,15 @@ export default function UserProfilePage() {
               <span className="text-muted-foreground hidden sm:inline">|</span>
               <span className="text-xs sm:text-sm">You are viewing your public scheduling hub as guests see it.</span>
             </div>
-            <Link href="/dashboard/events">
-              <Button size="sm" variant="outline" className="h-8 rounded-xl font-semibold text-xs gap-1.5 border-blue-300 dark:border-blue-700">
-                <LayoutDashboard className="w-3.5 h-3.5" />
-                Dashboard
-              </Button>
-            </Link>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleClosePreview}
+              className="h-8 rounded-xl font-semibold text-xs gap-1.5 bg-white dark:bg-blue-900/60 text-blue-700 dark:text-blue-200 border-blue-300 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900 cursor-pointer shadow-xs"
+            >
+              <X className="w-3.5 h-3.5" />
+              Close Preview
+            </Button>
           </div>
         )}
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api, getApiBaseUrl } from '@/lib/api';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Clock, MapPin, ArrowLeft, Globe, CreditCard } from 'lucide-react';
+import { Clock, MapPin, ArrowLeft, Globe, CreditCard, X } from 'lucide-react';
 import Link from 'next/link';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO } from 'date-fns';
@@ -79,6 +79,15 @@ export default function SchedulingPage() {
   });
 
   const isOwner = myProfile && (myProfile.username === username || (username === 'me' && myProfile));
+
+  const handleClosePreview = () => {
+    if (typeof window !== 'undefined') {
+      window.close();
+      setTimeout(() => {
+        router.push('/dashboard/events');
+      }, 150);
+    }
+  };
 
   // Initialize timezone once on client side
   if (typeof Intl !== 'undefined' && timezone === '') {
@@ -277,11 +286,22 @@ export default function SchedulingPage() {
             <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
             You are viewing your public booking page in preview mode.
           </span>
-          {eventType && (
-            <Link href={`/dashboard/events/${eventType.id}/edit`} className="font-bold underline hover:text-amber-900 dark:hover:text-amber-100 transition-colors">
-              Edit Event Type Settings
-            </Link>
-          )}
+          <div className="flex items-center gap-3">
+            {eventType && (
+              <Link href={`/dashboard/events/${eventType.id}/edit`} className="font-bold underline hover:text-amber-900 dark:hover:text-amber-100 transition-colors">
+                Edit Event Type Settings
+              </Link>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleClosePreview}
+              className="h-7 px-2.5 rounded-lg text-xs font-semibold gap-1 border-amber-300 dark:border-amber-700 bg-white/80 dark:bg-zinc-800 text-amber-900 dark:text-amber-100 hover:bg-amber-100 dark:hover:bg-zinc-700 cursor-pointer shadow-xs"
+            >
+              <X className="w-3 h-3" />
+              Close Preview
+            </Button>
+          </div>
         </div>
       )}
       
