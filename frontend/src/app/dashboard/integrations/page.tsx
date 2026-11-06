@@ -278,37 +278,83 @@ export default function IntegrationsPage() {
 
           {/* Connected Google Controls */}
           {googleIntegration && (
-            <div className="mt-6 pt-4 border-t border-border/50 space-y-4">
+            <div className="mt-6 pt-4 border-t border-border/50 space-y-3">
               {/* 1. Auto Sync Toggle */}
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between p-3 rounded-2xl hover:bg-secondary/40 transition-colors">
                 <div className="flex items-center gap-3">
-                  <RefreshCw className="w-5 h-5 text-primary" />
+                  <div className={`p-2 rounded-xl transition-colors ${googleIntegration.autoSync !== false ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'}`}>
+                    <RefreshCw className="w-5 h-5" />
+                  </div>
                   <div>
-                    <p className="text-sm font-semibold text-foreground">Auto-Sync Bookings: {googleIntegration.autoSync !== false ? 'ON' : 'OFF'}</p>
-                    <p className="text-xs text-muted-foreground">Automatically push newly booked meetings to your Google Calendar.</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-foreground">Auto-Sync Bookings</p>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider transition-all ${
+                        googleIntegration.autoSync !== false 
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' 
+                          : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700'
+                      }`}>
+                        {googleIntegration.autoSync !== false ? 'ON' : 'OFF'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">Automatically push newly booked meetings to your Google Calendar.</p>
                   </div>
                 </div>
-                <Switch
-                  checked={googleIntegration.autoSync !== false}
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={googleIntegration.autoSync !== false}
                   disabled={updatingProvider === 'google'}
-                  onCheckedChange={() => handleToggleAutoSync('google', googleIntegration.autoSync !== false)}
-                />
+                  onClick={() => handleToggleAutoSync('google', googleIntegration.autoSync !== false)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
+                    googleIntegration.autoSync !== false ? 'bg-blue-600' : 'bg-zinc-300 dark:bg-zinc-700'
+                  } ${updatingProvider === 'google' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  title={`Click to turn ${googleIntegration.autoSync !== false ? 'OFF' : 'ON'}`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                      googleIntegration.autoSync !== false ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
               </div>
 
               {/* 2. Availability Conflict Check Toggle */}
-              <div className="flex items-center justify-between pt-2 border-t border-border/30">
+              <div className="flex items-center justify-between p-3 rounded-2xl hover:bg-secondary/40 transition-colors pt-3 border-t border-border/30">
                 <div className="flex items-center gap-3">
-                  <ShieldCheck className="w-5 h-5 text-primary" />
+                  <div className={`p-2 rounded-xl transition-colors ${(googleIntegration.checkConflicts ?? true) ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'}`}>
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
                   <div>
-                    <p className="text-sm font-semibold text-foreground">Availability Synchronization</p>
-                    <p className="text-xs text-muted-foreground">Block busy times on your public booking page when you add events to Google Calendar.</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-foreground">Availability Synchronization</p>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider transition-all ${
+                        (googleIntegration.checkConflicts ?? true)
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' 
+                          : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700'
+                      }`}>
+                        {(googleIntegration.checkConflicts ?? true) ? 'ON' : 'OFF'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">Block busy times on your public booking page when you add events to Google Calendar.</p>
                   </div>
                 </div>
-                <Switch
-                  checked={googleIntegration.checkConflicts ?? true}
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={googleIntegration.checkConflicts ?? true}
                   disabled={updatingProvider === 'google'}
-                  onCheckedChange={() => handleToggleConflicts('google', googleIntegration.checkConflicts ?? true)}
-                />
+                  onClick={() => handleToggleConflicts('google', googleIntegration.checkConflicts ?? true)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
+                    (googleIntegration.checkConflicts ?? true) ? 'bg-blue-600' : 'bg-zinc-300 dark:bg-zinc-700'
+                  } ${updatingProvider === 'google' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  title={`Click to turn ${(googleIntegration.checkConflicts ?? true) ? 'OFF' : 'ON'}`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                      (googleIntegration.checkConflicts ?? true) ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
               </div>
 
               {/* 3. Manual Sync Button */}
