@@ -3,11 +3,9 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { useSearchParams } from 'next/navigation';
-import { Calendar, Video, CheckCircle2, AlertCircle, RefreshCw, ShieldCheck, Bell, MessageSquare, Link2, ExternalLink, Hash } from 'lucide-react';
+import { Calendar, Video, CheckCircle2, AlertCircle, RefreshCw, ShieldCheck, Bell, MessageSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Switch } from '@/components/ui/switch';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 
 export default function IntegrationsPage() {
   const [loading, setLoading] = useState(true);
@@ -105,10 +103,6 @@ export default function IntegrationsPage() {
     }
   };
 
-  const [showSlackWebhook, setShowSlackWebhook] = useState(false);
-  const [slackWebhookInput, setSlackWebhookInput] = useState('');
-  const [savingSlackWebhook, setSavingSlackWebhook] = useState(false);
-
   const handleConnectSlack = async () => {
     try {
       const redirectUri = typeof window !== 'undefined' ? window.location.origin : '';
@@ -117,27 +111,8 @@ export default function IntegrationsPage() {
         window.location.href = data.url;
       }
     } catch (err: any) {
-      console.warn('Slack OAuth URL unavailable, opening webhook setup:', err);
-      setShowSlackWebhook(true);
-    }
-  };
-
-  const handleSaveSlackWebhook = async () => {
-    if (!slackWebhookInput.trim().startsWith('https://hooks.slack.com/')) {
-      alert('Please enter a valid Slack Incoming Webhook URL (must start with https://hooks.slack.com/)');
-      return;
-    }
-    setSavingSlackWebhook(true);
-    try {
-      await api.post('/integrations/slack/webhook', { webhookUrl: slackWebhookInput.trim() });
-      setShowSlackWebhook(false);
-      setSlackWebhookInput('');
-      fetchIntegrations();
-    } catch (err: any) {
-      console.error('Failed to save webhook', err);
-      alert(err.response?.data?.message || 'Failed to save Slack webhook URL.');
-    } finally {
-      setSavingSlackWebhook(false);
+      console.error('Failed to get Slack OAuth URL', err);
+      alert(err.response?.data?.message || 'Failed to connect to Slack. Please ensure SLACK_CLIENT_ID and SLACK_CLIENT_SECRET are configured in Render.');
     }
   };
 
@@ -377,55 +352,15 @@ export default function IntegrationsPage() {
                   </button>
                 </div>
               ) : (
-                <div className="flex flex-col sm:items-end gap-2">
-                  <button
-                    onClick={handleConnectSlack}
-                    className="px-6 py-2.5 bg-[#4A154B] hover:bg-[#3D113E] text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
-                  >
-                    Connect Slack
-                  </button>
-                  <button
-                    onClick={() => setShowSlackWebhook(prev => !prev)}
-                    className="text-xs font-semibold text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer"
-                  >
-                    <Link2 className="w-3 h-3" />
-                    {showSlackWebhook ? 'Hide Webhook Setup' : 'Or Paste Webhook URL'}
-                  </button>
-                </div>
+                <button
+                  onClick={handleConnectSlack}
+                  className="px-6 py-2.5 bg-[#4A154B] hover:bg-[#3D113E] text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
+                >
+                  Connect
+                </button>
               )}
             </div>
           </div>
-
-          {/* Webhook Setup Accordion */}
-          {showSlackWebhook && !slackIntegration && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              className="mt-6 pt-4 border-t border-border/50 space-y-3"
-            >
-              <div>
-                <p className="text-sm font-semibold text-foreground">Paste Slack Incoming Webhook URL</p>
-                <p className="text-xs text-muted-foreground">
-                  Create an Incoming Webhook in your Slack workspace (e.g. at <a href="https://api.slack.com/apps" target="_blank" rel="noreferrer" className="text-primary underline">api.slack.com/apps</a>) and paste the webhook URL here.
-                </p>
-              </div>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Input
-                  placeholder="https://hooks.slack.com/services/T000/B000/XXXX"
-                  value={slackWebhookInput}
-                  onChange={(e) => setSlackWebhookInput(e.target.value)}
-                  className="rounded-xl flex-1 text-xs font-mono h-10"
-                />
-                <Button
-                  onClick={handleSaveSlackWebhook}
-                  disabled={savingSlackWebhook || !slackWebhookInput.trim()}
-                  className="rounded-xl h-10 px-5 text-xs font-bold cursor-pointer"
-                >
-                  {savingSlackWebhook ? 'Saving...' : 'Save Webhook'}
-                </Button>
-              </div>
-            </motion.div>
-          )}
         </motion.div>
       </div>
     </div>
