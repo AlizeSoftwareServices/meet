@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { useSearchParams } from 'next/navigation';
 import { Calendar, Video, CheckCircle2, AlertCircle, RefreshCw, ShieldCheck, Bell, MessageSquare } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Switch } from '@/components/ui/switch';
 
 export default function IntegrationsPage() {
@@ -12,8 +12,33 @@ export default function IntegrationsPage() {
   const [integrations, setIntegrations] = useState<any[]>([]);
   const [updatingProvider, setUpdatingProvider] = useState<string | null>(null);
   const searchParams = useSearchParams();
-  const success = searchParams.get('success');
-  const error = searchParams.get('error');
+  const [success, setSuccess] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const s = searchParams.get('success');
+    const e = searchParams.get('error');
+    if (s) {
+      setSuccess(s);
+      const timer = setTimeout(() => {
+        setSuccess(null);
+        if (typeof window !== 'undefined') {
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+    if (e) {
+      setError(e);
+      const timer = setTimeout(() => {
+        setError(null);
+        if (typeof window !== 'undefined') {
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
 
   const fetchIntegrations = async () => {
     try {
@@ -138,26 +163,43 @@ export default function IntegrationsPage() {
         <p className="text-muted-foreground">Connect your Google Calendar and Meet for two-way synchronization.</p>
       </div>
 
-      {success === 'google_connected' && (
-        <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center gap-3 text-green-500">
-          <CheckCircle2 className="w-5 h-5" />
-          <p className="font-medium">Google Calendar connected successfully!</p>
-        </div>
-      )}
+      <AnimatePresence>
+        {success === 'google_connected' && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center gap-3 text-green-500"
+          >
+            <CheckCircle2 className="w-5 h-5 shrink-0" />
+            <p className="font-medium">Google Calendar connected successfully!</p>
+          </motion.div>
+        )}
 
-      {success === 'slack_connected' && (
-        <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center gap-3 text-green-500">
-          <CheckCircle2 className="w-5 h-5" />
-          <p className="font-medium">Slack connected successfully! You will now receive instant booking alerts in Slack.</p>
-        </div>
-      )}
+        {success === 'slack_connected' && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center gap-3 text-green-500"
+          >
+            <CheckCircle2 className="w-5 h-5 shrink-0" />
+            <p className="font-medium">Slack connected successfully! You will now receive instant booking alerts in Slack.</p>
+          </motion.div>
+        )}
 
-      {error === 'auth_failed' && (
-        <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 flex items-center gap-3 text-destructive">
-          <AlertCircle className="w-5 h-5" />
-          <p className="font-medium">Failed to connect. Please try again.</p>
-        </div>
-      )}
+        {error === 'auth_failed' && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 flex items-center gap-3 text-destructive"
+          >
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <p className="font-medium">Failed to connect. Please try again.</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="grid gap-6">
         {/* Google Workspace Integration */}
