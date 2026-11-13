@@ -183,9 +183,36 @@ export default function IntegrationsPage() {
     }
   };
 
+  const handleConnectZoho = async () => {
+    try {
+      const redirectUri = typeof window !== 'undefined' ? window.location.origin : '';
+      const { data } = await api.get(`/integrations/zoho/auth?redirect_uri=${encodeURIComponent(redirectUri)}`);
+      if (data?.url) {
+        window.location.href = data.url;
+      }
+    } catch (err) {
+      console.error('Failed to get Zoho auth URL', err);
+      alert('Failed to connect to Zoho.');
+    }
+  };
+
+  const handleDisconnectZoho = async () => {
+    if (confirm('Are you sure you want to disconnect Zoho? You will no longer auto-generate Zoho Meetings or sync leads to Zoho CRM.')) {
+      try {
+        await api.patch('/integrations/zoho/disconnect');
+        setIntegrations(prev => prev.filter(i => i.provider !== 'zoho'));
+        queryClient.invalidateQueries({ queryKey: ['integrations'] });
+      } catch (err) {
+        console.error('Failed to disconnect Zoho', err);
+        alert('Failed to disconnect Zoho.');
+      }
+    }
+  };
+
   const googleIntegration = integrations.find(i => i.provider === 'google');
   const slackIntegration = integrations.find(i => i.provider === 'slack');
   const zoomIntegration = integrations.find(i => i.provider === 'zoom');
+  const zohoIntegration = integrations.find(i => i.provider === 'zoho');
 
   return (
     <div className="max-w-4xl space-y-8">
@@ -228,6 +255,30 @@ export default function IntegrationsPage() {
           >
             <CheckCircle2 className="w-5 h-5 shrink-0" />
             <p className="font-medium">Zoom Video connected successfully! Dynamic Zoom meeting links will now be generated for your bookings.</p>
+          </motion.div>
+        )}
+
+        {success === 'zoho_connected' && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center gap-3 text-green-500"
+          >
+            <CheckCircle2 className="w-5 h-5 shrink-0" />
+            <p className="font-medium">Zoho CRM & Meeting connected successfully! Video meeting links and CRM leads will now sync automatically.</p>
+          </motion.div>
+        )}
+
+        {error === 'zoho_auth_failed' && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 flex items-center gap-3 text-destructive"
+          >
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <p className="font-medium">Failed to connect Zoho. Please verify your Zoho credentials and permissions.</p>
           </motion.div>
         )}
 
@@ -716,7 +767,7 @@ export default function IntegrationsPage() {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-card/70 border border-border p-6 rounded-3xl shadow-xs relative overflow-hidden group hover:border-amber-500/30 transition-all"
+          className="bg-card border border-border p-6 rounded-3xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
         >
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4">
             <div className="flex gap-4">
@@ -729,35 +780,99 @@ export default function IntegrationsPage() {
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="text-xl font-bold">Zoho CRM & Meeting</h3>
-                  <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/20">
-                    Pro
-                  </span>
+                  {zohoIntegration && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Connected
+                    </span>
+                  )}
                 </div>
                 <p className="text-muted-foreground text-sm max-w-lg">
                   Automatically sync guest leads directly into your Zoho CRM sales pipeline and host video conferences via Zoho Meeting.
                 </p>
+                {zohoIntegration?.connectedEmail && (
+                  <p className="text-xs text-muted-foreground mt-1 font-mono">
+                    Account: {zohoIntegration.connectedEmail}
+                  </p>
+                )}
                 <div className="flex gap-4 mt-4">
                   <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                     CRM Lead Capture
                   </div>
                   <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
-                    <Video className="w-3.5 h-3.5" />
+                    <Video className="w-3.5 h-3.5 text-red-600" />
                     Zoho Meeting
                   </div>
                 </div>
               </div>
             </div>
-            <div>
-              <button
-                onClick={() => setProModalItem('Zoho CRM & Meeting')}
-                className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-semibold rounded-xl text-xs flex items-center gap-2 shadow-md shadow-amber-500/20 hover:shadow-amber-500/30 transition-all active:scale-95 cursor-pointer whitespace-nowrap"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                Upgrade to Unlock
-              </button>
+
+            <div className="shrink-0">
+              {zohoIntegration ? (
+                <div className="flex flex-col items-end gap-2">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Connected
+                  </div>
+                  <button 
+                    onClick={handleDisconnectZoho} 
+                    className="text-xs font-semibold text-destructive hover:underline cursor-pointer"
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handleConnectZoho}
+                  className="px-5 py-2.5 bg-gradient-to-r from-[#E42527] to-[#F4B41A] hover:opacity-90 text-white font-semibold rounded-xl text-xs flex items-center gap-2 shadow-md shadow-red-500/20 transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+                >
+                  <Video className="w-3.5 h-3.5" />
+                  Connect with Zoho
+                </button>
+              )}
             </div>
           </div>
+
+          {zohoIntegration && (
+            <div className="mt-6 pt-6 border-t border-border grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/30">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-semibold text-foreground">Auto-Generate Zoho Meetings</p>
+                  <p className="text-xs text-muted-foreground">Create Zoho Meeting links for bookings</p>
+                </div>
+                <Switch 
+                  checked={zohoIntegration.autoSync !== false}
+                  onCheckedChange={async (checked) => {
+                    try {
+                      await api.patch('/integrations/zoho/auto-sync', { autoSync: checked });
+                      setIntegrations(prev => prev.map(i => i.provider === 'zoho' ? { ...i, autoSync: checked } : i));
+                    } catch {
+                      alert('Failed to update Zoho auto-sync setting.');
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/30">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-semibold text-foreground">Zoho CRM Lead Capture</p>
+                  <p className="text-xs text-muted-foreground">Automatically add bookers as Leads</p>
+                </div>
+                <Switch 
+                  checked={zohoIntegration.checkConflicts !== false}
+                  onCheckedChange={async (checked) => {
+                    try {
+                      await api.patch('/integrations/zoho/conflicts', { checkConflicts: checked });
+                      setIntegrations(prev => prev.map(i => i.provider === 'zoho' ? { ...i, checkConflicts: checked } : i));
+                    } catch {
+                      alert('Failed to update Zoho CRM setting.');
+                    }
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </motion.div>
       </div>
 

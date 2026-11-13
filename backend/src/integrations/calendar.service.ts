@@ -264,6 +264,102 @@ export class CalendarService {
     }
   }
 
+  // Helper for Zoho to auto-refresh tokens and make requests (Zoho Meeting + Zoho CRM)
+  public async zohoApiRequest(
+    hostId: string,
+    method: string,
+    url: string,
+    data?: any,
+  ): Promise<any> {
+    const integration = await this.prisma.integration.findUnique({
+      where: { userId_provider: { userId: hostId, provider: 'zoho' } },
+    });
+
+    if (!integration) return null;
+
+    const decryptedAccessToken = decryptToken(integration.accessToken);
+    const decryptedRefreshToken = integration.refreshToken
+      ? decryptToken(integration.refreshToken)
+      : null;
+    const accountsServer = integration.resourceId || 'https://accounts.zoho.com';
+
+    try {
+      const response = await axios({
+        method,
+        url,
+        data,
+        headers: {
+          Authorization: `Zoho-oauthtoken ${decryptedAccessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      return response.data !== '' ? response.data : true;
+    } catch (error: any) {
+      if (error.response?.status === 401 && decryptedRefreshToken) {
+        try {
+          const clientId =
+            process.env.ZOHO_CLIENT_ID || '1000.P87HDSC9MBZF4GOD1D7TB7W1PJO0ST';
+          const clientSecret =
+            process.env.ZOHO_CLIENT_SECRET ||
+            '033e7f892abfb889a5ed42145a11b2358acafc124e';
+
+          const tokenParams = new URLSearchParams();
+          tokenParams.append('grant_type', 'refresh_token');
+          tokenParams.append('refresh_token', decryptedRefreshToken);
+          tokenParams.append('client_id', clientId);
+          tokenParams.append('client_secret', clientSecret);
+
+          const tokenResponse = await axios.post(
+            `${accountsServer}/oauth/v2/token`,
+            tokenParams.toString(),
+            {
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+            },
+          );
+
+          const newAccessToken = tokenResponse.data.access_token;
+          if (!newAccessToken) {
+            throw new Error('No new access token from Zoho refresh');
+          }
+
+          await this.prisma.integration.update({
+            where: { userId_provider: { userId: hostId, provider: 'zoho' } },
+            data: {
+              accessToken: encryptToken(newAccessToken),
+              lastSyncedAt: new Date(),
+            },
+          });
+
+          const retryResponse = await axios({
+            method,
+            url,
+            data,
+            headers: {
+              Authorization: `Zoho-oauthtoken ${newAccessToken}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          return retryResponse.data !== '' ? retryResponse.data : true;
+        } catch (refreshErr: any) {
+          this.logger.error(
+            `Failed to refresh Zoho token for host ${hostId}: ${refreshErr.message}`,
+          );
+          await this.prisma.integration
+            .update({
+              where: { userId_provider: { userId: hostId, provider: 'zoho' } },
+              data: { accessToken: 'EXPIRED' },
+            })
+            .catch(() => {});
+          return null;
+        }
+      }
+      this.logger.error(`Zoho API error [${method} ${url}]: ${error.message}`);
+      throw error;
+    }
+  }
+
   async createCalendarEvent(
     hostId: string,
     hostEmail: string,
@@ -336,8 +432,12 @@ export class CalendarService {
           options?.locationType === 'Zoom' ||
           options?.locationType === 'Zoom Video' ||
           Boolean(options?.locationType?.startsWith('Zoom'));
+        const isZoho =
+          options?.locationType === 'Zoho Meeting' ||
+          options?.locationType === 'Zoho' ||
+          Boolean(options?.locationType?.startsWith('Zoho'));
         const isGoogleMeet =
-          (!options?.locationType || options.locationType === 'Google Meet') && !isZoom;
+          (!options?.locationType || options.locationType === 'Google Meet') && !isZoom && !isZoho;
         const tz = options?.hostTimezone || 'UTC';
 
         // Check if Zoom Meeting should be created
@@ -384,6 +484,74 @@ export class CalendarService {
           }
         }
 
+        // Check if Zoho Meeting should be created
+        let zohoMeetLink: string | null = null;
+        if (isZoho) {
+          try {
+            const zohoIntegration = await this.prisma.integration.findUnique({
+              where: { userId_provider: { userId: hostId, provider: 'zoho' } },
+            });
+            if (zohoIntegration && zohoIntegration.autoSync !== false) {
+              const durationMinutes = Math.max(
+                15,
+                Math.round(
+                  (new Date(endTime).getTime() - new Date(startTime).getTime()) / 60000,
+                ),
+              );
+              const apiDomain = zohoIntegration.channelId || 'https://meeting.zoho.com';
+              let zsoid = '';
+              try {
+                const uRes = await this.zohoApiRequest(hostId, 'GET', `${apiDomain}/api/v2/user.json`);
+                zsoid = uRes?.userDetails?.zsoid || uRes?.user?.zsoid || '';
+              } catch (zErr: any) {
+                this.logger.warn(`Zoho zsoid lookup: ${zErr.message}`);
+              }
+
+              const meetingUrl = zsoid
+                ? `${apiDomain}/api/v2/${zsoid}/sessions.json`
+                : `${apiDomain}/api/v2/sessions.json`;
+
+              const zohoRes = await this.zohoApiRequest(hostId, 'POST', meetingUrl, {
+                session: {
+                  topic: title,
+                  startTime: new Date(startTime).toISOString(),
+                  duration: durationMinutes * 60000,
+                  timezone: tz,
+                },
+              });
+
+              if (zohoRes?.session?.joinLink) {
+                zohoMeetLink = zohoRes.session.joinLink;
+                this.logger.log(`[ZOHO MEETING CREATED] ${zohoMeetLink} for ${hostEmail}`);
+              }
+            }
+          } catch (zohoErr: any) {
+            this.logger.warn(`Failed to create Zoho meeting for ${hostEmail}: ${zohoErr.message}`);
+          }
+        }
+
+        // Auto-sync Lead to Zoho CRM if host has Zoho integration
+        try {
+          const zohoInt = await this.prisma.integration.findUnique({
+            where: { userId_provider: { userId: hostId, provider: 'zoho' } },
+          });
+          if (zohoInt && zohoInt.autoSync !== false) {
+            const crmDomain = zohoInt.channelId?.includes('zohoapis')
+              ? zohoInt.channelId
+              : 'https://www.zohoapis.com';
+            await this.zohoApiRequest(hostId, 'POST', `${crmDomain}/crm/v2/Leads`, {
+              data: [
+                {
+                  Last_Name: guestEmail.split('@')[0],
+                  Email: guestEmail,
+                  Lead_Source: 'Meet by Alize',
+                  Description: `Booking: ${title} on ${new Date(startTime).toLocaleString()}`,
+                },
+              ],
+            }).catch(() => {});
+          }
+        } catch {}
+
         const event: any = {
           summary: title,
           start: { dateTime: startTime, timeZone: tz },
@@ -394,6 +562,9 @@ export class CalendarService {
         if (zoomMeetLink) {
           event.location = zoomMeetLink;
           event.description = `Zoom Meeting: ${zoomMeetLink}${zoomPassword ? `\nPasscode: ${zoomPassword}` : ''}\n\nConducted via Zoom Video.`;
+        } else if (zohoMeetLink) {
+          event.location = zohoMeetLink;
+          event.description = `Zoho Meeting: ${zohoMeetLink}\n\nConducted via Zoho Meeting.`;
         } else if (isGoogleMeet) {
           event.conferenceData = {
             createRequest: {
@@ -419,7 +590,7 @@ export class CalendarService {
           `[GOOGLE CALENDAR EVENT] Created for ${hostEmail} and ${guestEmail} (${options?.locationType || 'Google Meet'})`,
         );
 
-        const meetLink = zoomMeetLink || (isGoogleMeet ? response.data.hangoutLink || null : null);
+        const meetLink = zoomMeetLink || zohoMeetLink || (isGoogleMeet ? response.data.hangoutLink || null : null);
         const externalEventId = response.data.id || null;
 
         return {
@@ -538,7 +709,56 @@ export class CalendarService {
       }
     }
 
-    // 4. Fallback to nulls if NO integrations exist
+    // 4. Try Standalone Zoho if user chose Zoho Meeting and no external calendar is synced
+    if (
+      options?.locationType === 'Zoho Meeting' ||
+      options?.locationType === 'Zoho' ||
+      Boolean(options?.locationType?.startsWith('Zoho'))
+    ) {
+      try {
+        const zohoIntegration = await this.prisma.integration.findUnique({
+          where: { userId_provider: { userId: hostId, provider: 'zoho' } },
+        });
+        if (zohoIntegration && zohoIntegration.autoSync !== false) {
+          const durationMinutes = Math.max(
+            15,
+            Math.round(
+              (new Date(endTime).getTime() - new Date(startTime).getTime()) / 60000,
+            ),
+          );
+          const apiDomain = zohoIntegration.channelId || 'https://meeting.zoho.com';
+          let zsoid = '';
+          try {
+            const uRes = await this.zohoApiRequest(hostId, 'GET', `${apiDomain}/api/v2/user.json`);
+            zsoid = uRes?.userDetails?.zsoid || uRes?.user?.zsoid || '';
+          } catch {}
+
+          const meetingUrl = zsoid
+            ? `${apiDomain}/api/v2/${zsoid}/sessions.json`
+            : `${apiDomain}/api/v2/sessions.json`;
+
+          const zohoRes = await this.zohoApiRequest(hostId, 'POST', meetingUrl, {
+            session: {
+              topic: title,
+              startTime: new Date(startTime).toISOString(),
+              duration: durationMinutes * 60000,
+              timezone: options?.hostTimezone || 'UTC',
+            },
+          });
+
+          if (zohoRes?.session?.joinLink) {
+            return {
+              meetLink: zohoRes.session.joinLink,
+              eventId: null,
+            };
+          }
+        }
+      } catch (zohoErr: any) {
+        this.logger.warn(`Standalone Zoho creation failed: ${zohoErr.message}`);
+      }
+    }
+
+    // 5. Fallback to nulls if NO integrations exist
     return { meetLink: null, eventId: null };
   }
 

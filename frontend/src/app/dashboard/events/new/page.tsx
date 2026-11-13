@@ -77,6 +77,7 @@ export default function NewEventTypePage() {
 
   const isGoogleConnected = Boolean(integrations?.some((i: any) => i.provider === 'google' && !i.isExpired));
   const isZoomConnected = Boolean(integrations?.some((i: any) => i.provider === 'zoom' && !i.isExpired));
+  const isZohoConnected = Boolean(integrations?.some((i: any) => i.provider === 'zoho' && !i.isExpired));
 
   const form = useForm<EventTypeFormValues>({
     resolver: zodResolver(eventTypeSchema),
@@ -120,11 +121,15 @@ export default function NewEventTypePage() {
     if (integrations) {
       const hasGoogle = integrations.some((i: any) => i.provider === 'google' && !i.isExpired);
       const hasZoom = integrations.some((i: any) => i.provider === 'zoom' && !i.isExpired);
+      const hasZoho = integrations.some((i: any) => i.provider === 'zoho' && !i.isExpired);
 
       if (!hasGoogle && hasZoom && locationType === 'Google Meet') {
         setLocationType('Zoom Video');
         form.setValue('location', 'Zoom Video');
-      } else if (!hasGoogle && !hasZoom && (locationType === 'Google Meet' || locationType === 'Zoom Video')) {
+      } else if (!hasGoogle && !hasZoom && hasZoho && locationType === 'Google Meet') {
+        setLocationType('Zoho Meeting');
+        form.setValue('location', 'Zoho Meeting');
+      } else if (!hasGoogle && !hasZoom && !hasZoho && (locationType === 'Google Meet' || locationType === 'Zoom Video' || locationType === 'Zoho Meeting')) {
         setLocationType('Phone Call');
         form.setValue('location', 'Phone Call');
       }
@@ -287,7 +292,7 @@ export default function NewEventTypePage() {
                   </div>
 
                   {/* If no video platform connected at all */}
-                  {!isGoogleConnected && !isZoomConnected && (
+                  {!isGoogleConnected && !isZoomConnected && !isZohoConnected && (
                     <div className="p-4 rounded-2xl border border-dashed border-border bg-muted/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
@@ -295,7 +300,7 @@ export default function NewEventTypePage() {
                         </div>
                         <div>
                           <p className="font-semibold text-xs sm:text-sm text-foreground">No Video Platforms Connected</p>
-                          <p className="text-xs text-muted-foreground">Connect Zoom or Google Meet to auto-generate video conference links.</p>
+                          <p className="text-xs text-muted-foreground">Connect Zoom, Google Meet, or Zoho to auto-generate video conference links.</p>
                         </div>
                       </div>
                       <Link 
@@ -369,6 +374,36 @@ export default function NewEventTypePage() {
                             <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-blue-500/10 text-blue-600 border border-blue-500/20">Connected</span>
                           </div>
                           <p className="text-xs text-muted-foreground">Auto-generates Zoom meeting link</p>
+                        </div>
+                      </button>
+                    )}
+
+                    {/* Zoho Meeting - Dynamically rendered if connected */}
+                    {isZohoConnected && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLocationType('Zoho Meeting');
+                          form.setValue('location', 'Zoho Meeting');
+                        }}
+                        className={`p-4 rounded-2xl border text-left flex flex-col gap-2 transition-all ${
+                          locationType === 'Zoho Meeting' || locationType === 'Zoho'
+                            ? 'border-red-500 bg-red-500/5 ring-2 ring-red-500/20 shadow-xs'
+                            : 'border-border bg-card hover:bg-secondary/40'
+                        }`}
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-white border border-border flex items-center justify-center p-1.5 shadow-xs grid grid-cols-2 gap-0.5">
+                          <div className="bg-[#E42527] w-full h-full rounded-[2px]" />
+                          <div className="bg-[#226EB4] w-full h-full rounded-[2px]" />
+                          <div className="bg-[#439539] w-full h-full rounded-[2px]" />
+                          <div className="bg-[#F4B41A] w-full h-full rounded-[2px]" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-semibold text-sm text-foreground">Zoho Meeting</p>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-red-500/10 text-red-600 border border-red-500/20">Connected</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">Auto-generates Zoho Meeting link</p>
                         </div>
                       </button>
                     )}

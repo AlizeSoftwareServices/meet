@@ -631,6 +631,173 @@ export class IntegrationsController {
     }
   }
 
+  // --- ZOHO OAUTH ---
+  @UseGuards(JwtAuthGuard)
+  @Get('zoho/auth')
+  getZohoAuthUrl(
+    @Req() req: AuthenticatedRequest,
+    @Query('redirect_uri') customRedirect?: string,
+  ) {
+    const clientId =
+      process.env.ZOHO_CLIENT_ID || '1000.P87HDSC9MBZF4GOD1D7TB7W1PJO0ST';
+    const redirectUri =
+      process.env.ZOHO_REDIRECT_URI ||
+      'https://meet-f4ak.onrender.com/integrations/zoho/callback';
+
+    const state = this.generateOAuthState(
+      req.user.userId,
+      'zoho',
+      customRedirect,
+    );
+
+    const scopes = [
+      'ZohoMeeting.meeting.ALL',
+      'ZohoCRM.modules.leads.ALL',
+      'ZohoCRM.modules.contacts.ALL',
+      'ZohoCRM.modules.events.ALL',
+      'ZohoCRM.users.READ',
+      'AaaServer.profile.READ',
+    ].join(',');
+
+    const url = `https://accounts.zoho.com/oauth/v2/auth?scope=${encodeURIComponent(
+      scopes,
+    )}&client_id=${clientId}&response_type=code&access_type=offline&redirect_uri=${encodeURIComponent(
+      redirectUri,
+    )}&prompt=consent&state=${state}`;
+
+    return { url };
+  }
+
+  @Get('zoho/callback')
+  async zohoCallback(
+    @Query('code') code: string,
+    @Query('state') state: string,
+    @Query('accounts-server') accountsServerParam: string,
+    @Query('location') locationParam: string,
+    @Res() res: Response,
+  ) {
+    let customRedirectUrl: string | undefined;
+    try {
+      if (!code) {
+        return res.redirect(
+          this.getFrontendRedirect(undefined, 'error=missing_code'),
+        );
+      }
+
+      let userId: string | undefined;
+      if (state) {
+        const verified = this.verifyOAuthState(state, 'zoho');
+        if (verified) {
+          userId = verified.userId;
+          customRedirectUrl = verified.customRedirect;
+        }
+      }
+
+      const clientId =
+        process.env.ZOHO_CLIENT_ID || '1000.P87HDSC9MBZF4GOD1D7TB7W1PJO0ST';
+      const clientSecret =
+        process.env.ZOHO_CLIENT_SECRET ||
+        '033e7f892abfb889a5ed42145a11b2358acafc124e';
+      const redirectUri =
+        process.env.ZOHO_REDIRECT_URI ||
+        'https://meet-f4ak.onrender.com/integrations/zoho/callback';
+
+      const accountsServer =
+        accountsServerParam ||
+        (locationParam === 'in'
+          ? 'https://accounts.zoho.in'
+          : 'https://accounts.zoho.com');
+
+      const tokenParams = new URLSearchParams();
+      tokenParams.append('grant_type', 'authorization_code');
+      tokenParams.append('client_id', clientId);
+      tokenParams.append('client_secret', clientSecret);
+      tokenParams.append('redirect_uri', redirectUri);
+      tokenParams.append('code', code);
+
+      const tokenResponse = await axios.post(
+        `${accountsServer}/oauth/v2/token`,
+        tokenParams.toString(),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        },
+      );
+
+      const { access_token, refresh_token, api_domain } = tokenResponse.data;
+      if (!access_token) {
+        throw new Error(
+          `Zoho token exchange failed: ${tokenResponse.data.error || 'no access_token'}`,
+        );
+      }
+
+      // Fetch user profile from Zoho
+      let connectedEmail: string | null = null;
+      try {
+        const profileRes = await axios.get(`${accountsServer}/oauth/user/info`, {
+          headers: { Authorization: `Zoho-oauthtoken ${access_token}` },
+        });
+        connectedEmail = profileRes.data.Email || profileRes.data.email || null;
+      } catch (err: any) {
+        console.warn('Could not fetch Zoho profile:', err.message);
+      }
+
+      if (!userId && connectedEmail) {
+        const existingUser = await this.prisma.user.findFirst({
+          where: { email: { equals: connectedEmail, mode: 'insensitive' } },
+        });
+        if (existingUser) userId = existingUser.id;
+      }
+
+      if (!userId) {
+        const firstUser = await this.prisma.user.findFirst();
+        if (firstUser) userId = firstUser.id;
+        else throw new Error('No user found to associate Zoho integration.');
+      }
+
+      // Save Zoho integration with encrypted tokens
+      await this.prisma.integration.upsert({
+        where: {
+          userId_provider: {
+            userId: userId,
+            provider: 'zoho',
+          },
+        },
+        update: {
+          accessToken: encryptToken(access_token),
+          ...(refresh_token && { refreshToken: encryptToken(refresh_token) }),
+          ...(connectedEmail && { connectedEmail }),
+          channelId: api_domain || 'https://www.zohoapis.com',
+          resourceId: accountsServer,
+          lastSyncedAt: new Date(),
+        },
+        create: {
+          userId: userId,
+          provider: 'zoho',
+          accessToken: encryptToken(access_token),
+          refreshToken: refresh_token ? encryptToken(refresh_token) : null,
+          connectedEmail: connectedEmail || null,
+          channelId: api_domain || 'https://www.zohoapis.com',
+          resourceId: accountsServer,
+          lastSyncedAt: new Date(),
+        },
+      });
+
+      return res.redirect(
+        this.getFrontendRedirect(customRedirectUrl, 'success=zoho_connected'),
+      );
+    } catch (error: any) {
+      console.error(
+        'Zoho OAuth callback error:',
+        error?.response?.data || error.message,
+      );
+      return res.redirect(
+        this.getFrontendRedirect(customRedirectUrl, 'error=zoho_auth_failed'),
+      );
+    }
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get()
   async getIntegrations(@Req() req: AuthenticatedRequest) {
