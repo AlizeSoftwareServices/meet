@@ -436,9 +436,49 @@ export class CalendarService {
           options?.locationType === 'Zoho Meeting' ||
           options?.locationType === 'Zoho' ||
           Boolean(options?.locationType?.startsWith('Zoho'));
-        const isGoogleMeet =
-          (!options?.locationType || options.locationType === 'Google Meet') && !isZoom && !isZoho;
+        const isSlack =
+          options?.locationType === 'Slack' ||
+          options?.locationType === 'Slack Huddle' ||
+          Boolean(options?.locationType?.startsWith('Slack'));
         const tz = options?.hostTimezone || 'UTC';
+
+        // Internal vs External domain detection for Slack Huddles
+        const hostDomain = hostEmail.split('@')[1]?.toLowerCase().trim();
+        const guestDomain = guestEmail.split('@')[1]?.toLowerCase().trim();
+        const publicEmailDomains = [
+          'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 
+          'icloud.com', 'aol.com', 'zoho.com', 'proton.me', 'protonmail.com'
+        ];
+        const isInternalGuest = Boolean(
+          hostDomain &&
+          guestDomain &&
+          !publicEmailDomains.includes(hostDomain) &&
+          hostDomain === guestDomain
+        );
+
+        // Check if Slack Huddle should be created
+        let slackMeetLink: string | null = null;
+        if (isSlack) {
+          if (isInternalGuest) {
+            try {
+              const slackIntegration = await this.prisma.integration.findUnique({
+                where: { userId_provider: { userId: hostId, provider: 'slack' } },
+              });
+              const channelTarget = slackIntegration?.channelId || 'general';
+              slackMeetLink = `https://slack.com/app_redirect?channel=${channelTarget}`;
+              this.logger.log(`[SLACK HUDDLE] Internal guest ${guestEmail} matched host domain ${hostDomain}. Huddle: ${slackMeetLink}`);
+            } catch (err: any) {
+              this.logger.warn(`Failed to resolve Slack Huddle link: ${err.message}`);
+            }
+          } else {
+            this.logger.log(`[SLACK HUDDLE SMART FALLBACK] External guest ${guestEmail} detected. Auto-provisioning standard video conference.`);
+          }
+        }
+
+        // If isSlack and external guest, auto-fallback to Google Meet or other video
+        const isGoogleMeet =
+          ((!options?.locationType || options.locationType === 'Google Meet') && !isZoom && !isZoho && !isSlack) ||
+          (isSlack && !isInternalGuest);
 
         // Check if Zoom Meeting should be created
         let zoomMeetLink: string | null = null;
@@ -559,7 +599,26 @@ export class CalendarService {
           attendees: [{ email: guestEmail }, { email: hostEmail }],
         };
 
-        if (zoomMeetLink) {
+        if (slackMeetLink) {
+          event.location = slackMeetLink;
+          event.description = `Slack Huddle: ${slackMeetLink}\n\nInternal team sync conducted via Slack Huddle for organization colleagues (${hostDomain}).`;
+        } else if (isSlack && !isInternalGuest) {
+          if (zoomMeetLink) {
+            event.location = zoomMeetLink;
+            event.description = `Zoom Meeting: ${zoomMeetLink}${zoomPassword ? `\nPasscode: ${zoomPassword}` : ''}\n\n[Auto-Fallback Note] External attendee detected (${guestEmail}). Since Slack Huddles are restricted to internal workspace members, a Zoom link was automatically generated.\nHost notified in Slack.`;
+          } else if (zohoMeetLink) {
+            event.location = zohoMeetLink;
+            event.description = `Zoho Meeting: ${zohoMeetLink}\n\n[Auto-Fallback Note] External attendee detected (${guestEmail}). Since Slack Huddles are restricted to internal workspace members, a Zoho Meeting link was automatically generated.\nHost notified in Slack.`;
+          } else {
+            event.description = `[Auto-Fallback Note] External attendee detected (${guestEmail}). Since Slack Huddles are restricted to internal workspace members, a Google Meet link was automatically provisioned so external attendees can easily join.\nHost notified in Slack.`;
+            event.conferenceData = {
+              createRequest: {
+                requestId: `MeetSync-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                conferenceSolutionKey: { type: 'hangoutsMeet' },
+              },
+            };
+          }
+        } else if (zoomMeetLink) {
           event.location = zoomMeetLink;
           event.description = `Zoom Meeting: ${zoomMeetLink}${zoomPassword ? `\nPasscode: ${zoomPassword}` : ''}\n\nConducted via Zoom Video.`;
         } else if (zohoMeetLink) {
@@ -590,7 +649,7 @@ export class CalendarService {
           `[GOOGLE CALENDAR EVENT] Created for ${hostEmail} and ${guestEmail} (${options?.locationType || 'Google Meet'})`,
         );
 
-        const meetLink = zoomMeetLink || zohoMeetLink || (isGoogleMeet ? response.data.hangoutLink || null : null);
+        const meetLink = slackMeetLink || zoomMeetLink || zohoMeetLink || (isGoogleMeet ? response.data.hangoutLink || null : null);
         const externalEventId = response.data.id || null;
 
         return {
@@ -758,7 +817,44 @@ export class CalendarService {
       }
     }
 
-    // 5. Fallback to nulls if NO integrations exist
+    // 5. Try Standalone Slack Huddle if user chose Slack Huddle and no external calendar is synced
+    if (
+      options?.locationType === 'Slack' ||
+      options?.locationType === 'Slack Huddle' ||
+      Boolean(options?.locationType?.startsWith('Slack'))
+    ) {
+      try {
+        const slackIntegration = await this.prisma.integration.findUnique({
+          where: { userId_provider: { userId: hostId, provider: 'slack' } },
+        });
+        if (slackIntegration) {
+          const hostDomain = hostEmail.split('@')[1]?.toLowerCase().trim();
+          const guestDomain = guestEmail.split('@')[1]?.toLowerCase().trim();
+          const publicEmailDomains = [
+            'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 
+            'icloud.com', 'aol.com', 'zoho.com', 'proton.me', 'protonmail.com'
+          ];
+          const isInternal = Boolean(
+            hostDomain &&
+            guestDomain &&
+            !publicEmailDomains.includes(hostDomain) &&
+            hostDomain === guestDomain
+          );
+
+          if (isInternal) {
+            const channelTarget = slackIntegration.channelId || 'general';
+            return {
+              meetLink: `https://slack.com/app_redirect?channel=${channelTarget}`,
+              eventId: null,
+            };
+          }
+        }
+      } catch (slackErr: any) {
+        this.logger.warn(`Standalone Slack Huddle creation failed: ${slackErr.message}`);
+      }
+    }
+
+    // 6. Fallback to nulls if NO integrations exist
     return { meetLink: null, eventId: null };
   }
 

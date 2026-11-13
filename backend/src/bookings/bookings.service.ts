@@ -749,6 +749,8 @@ export class BookingsService {
             guestEmail,
             startTimeIso,
             eventTitle,
+            storedMeetLink,
+            booking.eventType.location,
           );
         } catch (error: any) {
           this.logger.error(

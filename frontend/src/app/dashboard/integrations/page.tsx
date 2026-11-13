@@ -159,6 +159,27 @@ export default function IntegrationsPage() {
     }
   };
 
+  const handleConnectSlackWebhook = async () => {
+    const webhookUrl = prompt('Enter your Slack Incoming Webhook URL (starts with https://hooks.slack.com/):');
+    if (!webhookUrl) return;
+    if (!webhookUrl.trim().startsWith('https://hooks.slack.com/')) {
+      alert('Invalid webhook URL. It must start with https://hooks.slack.com/');
+      return;
+    }
+    const channelName = prompt('Optional: Enter Channel Name (e.g. general, bookings):');
+    try {
+      await api.post('/integrations/slack/webhook', {
+        webhookUrl: webhookUrl.trim(),
+        channelName: channelName?.trim() || undefined,
+      });
+      alert('Slack connected successfully!');
+      fetchIntegrations();
+      queryClient.invalidateQueries({ queryKey: ['integrations'] });
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to connect Slack webhook.');
+    }
+  };
+
   const handleConnectZoom = async () => {
     try {
       const redirectUri = typeof window !== 'undefined' ? window.location.origin : '';
@@ -479,12 +500,12 @@ export default function IntegrationsPage() {
           )}
         </motion.div>
 
-        {/* Slack Workspace Integration */}
+        {/* Slack Workspace Integration - Dual Mode */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-card border border-border p-6 rounded-3xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
+          className="bg-card border border-border p-6 rounded-3xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden space-y-6"
         >
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4">
             <div className="flex gap-4">
@@ -497,25 +518,30 @@ export default function IntegrationsPage() {
                 </svg>
               </div>
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-xl font-bold">Slack Notifications</h3>
-                  {slackIntegration && (
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <h3 className="text-xl font-bold">Slack Workspace & Team Huddles</h3>
+                  {slackIntegration?.connectedEmail && (
+                    <span className="text-[11px] font-semibold bg-[#4A154B]/10 text-[#4A154B] dark:text-purple-300 px-2.5 py-0.5 rounded-full border border-[#4A154B]/20">
+                      {slackIntegration.connectedEmail}
+                    </span>
+                  )}
+                  {slackIntegration && !slackIntegration.connectedEmail && (
                     <span className="text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
                       Active
                     </span>
                   )}
                 </div>
                 <p className="text-muted-foreground text-sm max-w-lg">
-                  Get real-time alerts in your Slack channels or direct messages whenever someone books, reschedules, or cancels a meeting with you.
+                  Connect Slack for real-time channel notifications on bookings and enable Slack Huddles for internal team calls with smart external fallback.
                 </p>
-                <div className="flex gap-4 mt-4">
-                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
-                    <Bell className="w-3.5 h-3.5" />
-                    Instant Alerts
+                <div className="flex gap-2.5 mt-3 flex-wrap">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2.5 py-1 rounded-md">
+                    <Bell className="w-3.5 h-3.5 text-blue-500" />
+                    Channel Alerts (All Bookings)
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
-                    <MessageSquare className="w-3.5 h-3.5" />
-                    Channel Updates
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2.5 py-1 rounded-md">
+                    <Video className="w-3.5 h-3.5 text-purple-500" />
+                    Slack Huddles (Internal Team)
                   </div>
                 </div>
               </div>
@@ -534,15 +560,107 @@ export default function IntegrationsPage() {
                   </button>
                 </div>
               ) : (
-                <button
-                  onClick={handleConnectSlack}
-                  className="px-6 py-2.5 bg-[#4A154B] hover:bg-[#3D113E] text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
-                >
-                  Connect
-                </button>
+                <div className="flex flex-col sm:flex-row items-center gap-2">
+                  <button
+                    onClick={handleConnectSlack}
+                    className="px-5 py-2.5 bg-[#4A154B] hover:bg-[#3D113E] text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer text-xs sm:text-sm whitespace-nowrap"
+                  >
+                    Connect Slack
+                  </button>
+                  <button
+                    onClick={handleConnectSlackWebhook}
+                    className="px-3 py-2 bg-secondary hover:bg-secondary/80 text-foreground font-medium rounded-xl border border-border shadow-xs transition-all active:scale-95 cursor-pointer text-xs whitespace-nowrap"
+                    title="Paste an Incoming Webhook URL directly"
+                  >
+                    Use Webhook URL
+                  </button>
+                </div>
               )}
             </div>
           </div>
+
+          {/* Slack Dual Mode Settings when connected */}
+          {slackIntegration && (
+            <div className="pt-4 border-t border-border/50 space-y-4">
+              {/* 1. Channel Booking Alerts Toggle */}
+              <div className="flex items-center justify-between p-3 rounded-2xl hover:bg-secondary/40 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-xl transition-colors ${(slackIntegration.autoSync !== false) ? 'bg-[#4A154B]/10 text-[#4A154B] dark:text-purple-300' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'}`}>
+                    <Bell className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-foreground">Channel Booking Alerts</p>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider transition-all ${
+                        (slackIntegration.autoSync !== false)
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' 
+                          : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700'
+                      }`}>
+                        {(slackIntegration.autoSync !== false) ? 'ON' : 'OFF'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">Post instant notifications to your Slack channel whenever someone books, reschedules, or cancels.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={slackIntegration.autoSync !== false}
+                  disabled={updatingProvider === 'slack'}
+                  onClick={() => handleToggleAutoSync('slack', slackIntegration.autoSync !== false)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#4A154B] focus:ring-offset-2 ${
+                    (slackIntegration.autoSync !== false) ? 'bg-[#4A154B]' : 'bg-zinc-300 dark:bg-zinc-700'
+                  } ${updatingProvider === 'slack' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  title={`Click to turn ${(slackIntegration.autoSync !== false) ? 'OFF' : 'ON'}`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                      (slackIntegration.autoSync !== false) ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* 2. Slack Huddle for Internal Team Toggle */}
+              <div className="flex items-center justify-between p-3 rounded-2xl hover:bg-secondary/40 transition-colors pt-3 border-t border-border/30">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-xl transition-colors ${(slackIntegration.checkConflicts ?? true) ? 'bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'}`}>
+                    <Video className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-foreground">Slack Huddle Video Calls (Internal Team)</p>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider transition-all ${
+                        (slackIntegration.checkConflicts ?? true)
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' 
+                          : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700'
+                      }`}>
+                        {(slackIntegration.checkConflicts ?? true) ? 'ON' : 'OFF'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">Enable Slack Huddle as a meeting location for colleagues within your company. External clients automatically receive fallback video links.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={slackIntegration.checkConflicts ?? true}
+                  disabled={updatingProvider === 'slack'}
+                  onClick={() => handleToggleConflicts('slack', slackIntegration.checkConflicts ?? true)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-purple-600 focus:ring-offset-2 ${
+                    (slackIntegration.checkConflicts ?? true) ? 'bg-purple-600' : 'bg-zinc-300 dark:bg-zinc-700'
+                  } ${updatingProvider === 'slack' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  title={`Click to turn ${(slackIntegration.checkConflicts ?? true) ? 'OFF' : 'ON'}`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                      (slackIntegration.checkConflicts ?? true) ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          )}
         </motion.div>
 
         {/* Zoom Video Integration */}

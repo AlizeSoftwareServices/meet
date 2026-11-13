@@ -433,14 +433,30 @@ export class IntegrationsController {
         tokenResponse.data.incoming_webhook?.url ||
         tokenResponse.data.access_token;
 
+      const teamName = tokenResponse.data.team?.name || null;
+      const channelId = tokenResponse.data.incoming_webhook?.channel_id || null;
+      const channelName = tokenResponse.data.incoming_webhook?.channel || null;
+      const connectedDisplay = teamName
+        ? (channelName ? `${teamName} (#${channelName})` : teamName)
+        : null;
+
       await this.prisma.integration.upsert({
         where: { userId_provider: { userId: userId, provider: 'slack' } },
-        update: { accessToken: encryptToken(accessToken), refreshToken: null },
+        update: {
+          accessToken: encryptToken(accessToken),
+          refreshToken: null,
+          connectedEmail: connectedDisplay,
+          channelId: channelId,
+          lastSyncedAt: new Date(),
+        },
         create: {
           userId: userId,
           provider: 'slack',
           accessToken: encryptToken(accessToken),
           refreshToken: null,
+          connectedEmail: connectedDisplay,
+          channelId: channelId,
+          lastSyncedAt: new Date(),
         },
       });
 
@@ -460,10 +476,14 @@ export class IntegrationsController {
   async connectSlackWebhook(
     @Req() req: AuthenticatedRequest,
     @Body('webhookUrl') webhookUrl: string,
+    @Body('channelName') channelName?: string,
   ) {
     if (!webhookUrl || typeof webhookUrl !== 'string' || !webhookUrl.trim().startsWith('https://hooks.slack.com/')) {
       throw new BadRequestException('Please provide a valid Slack webhook URL (must start with https://hooks.slack.com/).');
     }
+
+    const trimmed = webhookUrl.trim();
+    const display = channelName?.trim() ? `Incoming Webhook (#${channelName.trim().replace(/^#/, '')})` : 'Slack Incoming Webhook';
 
     await this.prisma.integration.upsert({
       where: {
@@ -473,13 +493,15 @@ export class IntegrationsController {
         },
       },
       update: {
-        accessToken: encryptToken(webhookUrl.trim()),
+        accessToken: encryptToken(trimmed),
+        connectedEmail: display,
         lastSyncedAt: new Date(),
       },
       create: {
         userId: req.user.userId,
         provider: 'slack',
-        accessToken: encryptToken(webhookUrl.trim()),
+        accessToken: encryptToken(trimmed),
+        connectedEmail: display,
         lastSyncedAt: new Date(),
       },
     });

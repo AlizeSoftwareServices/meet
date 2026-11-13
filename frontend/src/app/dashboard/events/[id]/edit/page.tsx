@@ -97,6 +97,7 @@ export default function EditEventTypePage({ params }: any) {
   const isGoogleConnected = Boolean(integrations?.some((i: any) => i.provider === 'google' && !i.isExpired));
   const isZoomConnected = Boolean(integrations?.some((i: any) => i.provider === 'zoom' && !i.isExpired));
   const isZohoConnected = Boolean(integrations?.some((i: any) => i.provider === 'zoho' && !i.isExpired));
+  const isSlackConnected = Boolean(integrations?.some((i: any) => i.provider === 'slack' && !i.isExpired));
 
   const selectedTeam = teams?.find((t: any) => t.id === selectedTeamId);
   const teamMembers: any[] = selectedTeam?.members || [];
@@ -384,8 +385,24 @@ export default function EditEventTypePage({ params }: any) {
                     </div>
                   )}
 
+                  {!isSlackConnected && (locationType === 'Slack Huddle' || locationType === 'Slack') && (
+                    <div className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-900 dark:text-amber-200 text-xs flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span><strong>Slack is disconnected.</strong> Reconnect Slack in Integrations, or select another active location below.</span>
+                      </div>
+                      <Link 
+                        href="/dashboard/integrations" 
+                        target="_blank" 
+                        className="underline font-semibold hover:text-amber-700 shrink-0"
+                      >
+                        Manage Integrations →
+                      </Link>
+                    </div>
+                  )}
+
                   {/* If no video platform connected at all */}
-                  {!isGoogleConnected && !isZoomConnected && !isZohoConnected && (
+                  {!isGoogleConnected && !isZoomConnected && !isZohoConnected && !isSlackConnected && (
                     <div className="p-4 rounded-2xl border border-dashed border-border bg-muted/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
@@ -497,6 +514,38 @@ export default function EditEventTypePage({ params }: any) {
                             <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-red-500/10 text-red-600 border border-red-500/20">Connected</span>
                           </div>
                           <p className="text-xs text-muted-foreground">Auto-generates Zoho Meeting link</p>
+                        </div>
+                      </button>
+                    )}
+
+                    {/* Slack Huddle - Dynamically rendered if connected */}
+                    {isSlackConnected && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLocationType('Slack Huddle');
+                          form.setValue('location', 'Slack Huddle');
+                        }}
+                        className={`p-4 rounded-2xl border text-left flex flex-col gap-2 transition-all ${
+                          locationType === 'Slack Huddle' || locationType === 'Slack'
+                            ? 'border-[#4A154B] bg-[#4A154B]/5 ring-2 ring-[#4A154B]/20 shadow-xs'
+                            : 'border-border bg-card hover:bg-secondary/40'
+                        }`}
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-[#4A154B]/10 flex items-center justify-center p-2">
+                          <svg className="w-5 h-5" viewBox="0 0 24 24">
+                            <path fill="#E01E5A" d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313z"/>
+                            <path fill="#36C5F0" d="M8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312z"/>
+                            <path fill="#2EB67D" d="M18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312z"/>
+                            <path fill="#ECB22E" d="M15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/>
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-semibold text-sm text-foreground">Slack Huddle</p>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-[#4A154B]/10 text-[#4A154B] border border-[#4A154B]/20">Internal Team</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">Team video huddle with auto-fallback for external</p>
                         </div>
                       </button>
                     )}
