@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Body,
   Param,
   UseGuards,
@@ -45,6 +46,20 @@ export class EventTypesController {
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
   update(
+    @Request() req,
+    @Param('id') id: string,
+    @Body() updateEventTypeDto: UpdateEventTypeDto,
+  ) {
+    return this.eventTypesService.update(
+      id,
+      req.user.userId,
+      updateEventTypeDto,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put(':id')
+  updatePut(
     @Request() req,
     @Param('id') id: string,
     @Body() updateEventTypeDto: UpdateEventTypeDto,

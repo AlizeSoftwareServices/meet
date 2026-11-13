@@ -187,7 +187,7 @@ export default function EditEventTypePage({ params }: any) {
         teamId: schedulingType !== 'PERSONAL' ? selectedTeamId : undefined,
         hostIds: schedulingType !== 'PERSONAL' ? selectedHostIds : [],
       };
-      const response = await api.put(`/event-types/${params.id}`, payload);
+      const response = await api.patch(`/event-types/${params.id}`, payload);
       return response.data;
     },
     onSuccess: () => {
@@ -196,7 +196,10 @@ export default function EditEventTypePage({ params }: any) {
       router.push('/dashboard/events');
     },
     onError: (err: any) => {
-      setError(err.response?.data?.message || 'Failed to update event type');
+      setError(
+        err.response?.data?.message ||
+        (typeof err.response?.data === 'string' ? err.response.data : 'Failed to update event type')
+      );
     },
   });
 
