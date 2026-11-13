@@ -26,6 +26,13 @@ export class PublicController {
     return this.publicService.getUserProfile(username);
   }
 
+  // Resolve short URL to target username
+  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  @Get('s/:code')
+  async resolveShortUrl(@Param('code') code: string) {
+    return this.publicService.resolveShortUrl(code);
+  }
+
   // FIX #4: Availability slot queries — 60/min per IP is fair for calendar browsing
   @Throttle({ default: { limit: 60, ttl: 60000 } })
   @Get('availability/:username/:eventSlug/slots')

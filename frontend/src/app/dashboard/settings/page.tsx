@@ -28,9 +28,11 @@ import {
   ShieldCheck, 
   CheckCircle2, 
   X,
-  Link2
+  Link2,
+  QrCode
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ShareProfileModal from '@/components/ShareProfileModal';
 
 const profileSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').optional().or(z.literal('')),
@@ -56,6 +58,8 @@ export default function SettingsPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [isShortened, setIsShortened] = useState(false);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['profile'],
@@ -166,11 +170,14 @@ export default function SettingsPage() {
   };
 
   const username = profile?.username || 'me';
+  const shortCode = profile?.shortCode || (username.includes('-') ? username.split('-').pop() : username);
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://meet.alizesoftwareservices.com';
   const bookingUrl = `${origin}/book/${username}`;
+  const shortUrl = `${origin}/s/${shortCode}`;
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(bookingUrl);
+    const urlToCopy = isShortened ? shortUrl : bookingUrl;
+    navigator.clipboard.writeText(urlToCopy);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
   };
@@ -316,6 +323,17 @@ export default function SettingsPage() {
                 </Button>
               </a>
 
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsQrModalOpen(true)}
+                className="h-9 px-3 rounded-xl border-border text-xs font-semibold gap-1.5 hover:border-blue-500/40 hover:text-blue-600 transition-all shadow-xs cursor-pointer"
+                title="View & Download Profile QR Code"
+              >
+                <QrCode className="w-3.5 h-3.5 text-blue-600" />
+                QR Code
+              </Button>
+
               {!isEditing ? (
                 <Button
                   size="sm"
@@ -435,17 +453,45 @@ export default function SettingsPage() {
                   ) : (
                     <div className="h-11 px-3.5 rounded-xl bg-muted/40 border border-border/40 flex items-center justify-between text-sm font-mono text-foreground">
                       <span className="truncate">
-                        <span className="text-muted-foreground">{origin}/book/</span>
-                        <span className="font-bold text-blue-600 dark:text-blue-400">{form.watch('username') || username}</span>
+                        {isShortened ? (
+                          <>
+                            <span className="text-muted-foreground">{origin}/s/</span>
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400">{shortCode}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-muted-foreground">{origin}/book/</span>
+                            <span className="font-bold text-blue-600 dark:text-blue-400">{form.watch('username') || username}</span>
+                          </>
+                        )}
                       </span>
                       <button
                         type="button"
                         onClick={handleCopyLink}
-                        className="text-xs text-muted-foreground hover:text-foreground font-sans font-medium flex items-center gap-1 shrink-0 ml-2"
+                        className="text-xs text-muted-foreground hover:text-foreground font-sans font-medium flex items-center gap-1 shrink-0 ml-2 cursor-pointer"
                       >
-                        <Copy className="w-3.5 h-3.5" />
-                        Copy
+                        {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedLink ? 'Copied' : 'Copy'}
                       </button>
+                    </div>
+                  )}
+
+                  {!isEditing && (
+                    <div className="pt-2 flex items-center justify-between">
+                      <label className="flex items-center gap-2 cursor-pointer select-none group">
+                        <input
+                          type="checkbox"
+                          checked={isShortened}
+                          onChange={(e) => setIsShortened(e.target.checked)}
+                          className="w-4 h-4 rounded text-blue-600 border-border focus:ring-blue-500 cursor-pointer"
+                        />
+                        <span className="text-xs font-semibold text-foreground group-hover:text-blue-600 transition-colors">
+                          Shorten URL
+                        </span>
+                      </label>
+                      <span className="text-[11px] font-mono text-muted-foreground">
+                        {isShortened ? `${origin}/s/${shortCode}` : `${origin}/book/${form.watch('username') || username}`}
+                      </span>
                     </div>
                   )}
                   {form.formState.errors.username && (
@@ -735,6 +781,14 @@ export default function SettingsPage() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Profile QR & Share Modal */}
+      <ShareProfileModal
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+        profile={profile}
+        initialTab="qr"
+      />
     </div>
   );
 }

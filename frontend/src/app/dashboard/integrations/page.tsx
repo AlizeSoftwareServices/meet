@@ -703,7 +703,7 @@ export default function IntegrationsPage() {
 
             <div className="pt-2 flex flex-col gap-2">
               <a
-                href="mailto:support@alizesoftwareservices.com?subject=Meet%20Pro%20Upgrade%20Inquiry"
+                href="mailto:team@alizesoftwareservices.com?subject=Meet%20Pro%20Upgrade%20Inquiry"
                 className="w-full py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 text-white font-bold rounded-xl text-center text-sm shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
               >
                 Contact Sales to Upgrade →

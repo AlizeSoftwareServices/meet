@@ -27,12 +27,54 @@ export class UsersService {
     return this.prisma.user.create({ data });
   }
 
+  private generateRandomCode(length = 6): string {
+    const chars = '23456789abcdefghjkmnpqrstuvwxyz';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  }
+
+  private async generateUniqueShortCode(username?: string | null): Promise<string> {
+    if (username && username.includes('-')) {
+      const candidate = username.split('-').pop()?.toLowerCase();
+      if (candidate && candidate.length >= 4 && candidate.length <= 8) {
+        const existing = await this.prisma.profile.findFirst({
+          where: { shortCode: candidate },
+        });
+        if (!existing) return candidate;
+      }
+    }
+
+    let attempts = 0;
+    while (attempts < 10) {
+      const code = this.generateRandomCode(6);
+      const existing = await this.prisma.profile.findFirst({
+        where: { shortCode: code },
+      });
+      if (!existing) return code;
+      attempts++;
+    }
+    return this.generateRandomCode(8);
+  }
+
   async getProfile(userId: string) {
-    const profile = await this.prisma.profile.findUnique({
+    let profile = await this.prisma.profile.findUnique({
       where: { userId },
       include: { user: { select: { email: true } } },
     });
     if (!profile) return null;
+
+    if (!profile.shortCode) {
+      const shortCode = await this.generateUniqueShortCode(profile.username);
+      profile = await this.prisma.profile.update({
+        where: { id: profile.id },
+        data: { shortCode },
+        include: { user: { select: { email: true } } },
+      });
+    }
+
     return { ...profile, email: profile.user?.email };
   }
 

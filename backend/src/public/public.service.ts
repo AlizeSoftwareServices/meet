@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { addMinutes, isBefore, isAfter, startOfDay, endOfDay } from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
@@ -45,6 +45,38 @@ export class PublicService {
       bookingPageTitle: profile.bookingPageTitle,
       bookingPageDescription: profile.bookingPageDescription,
       eventTypes: profile.user.eventTypes,
+    };
+  }
+
+  async resolveShortUrl(code: string) {
+    if (!code) {
+      throw new BadRequestException('Short code is required');
+    }
+    const cleanCode = code.trim().toLowerCase();
+
+    // 1. Look up by shortCode
+    let profile = await this.prisma.profile.findFirst({
+      where: { shortCode: { equals: cleanCode, mode: 'insensitive' } },
+      select: { username: true, name: true, avatar: true },
+    });
+
+    // 2. Fallback: look up by username
+    if (!profile) {
+      profile = await this.prisma.profile.findFirst({
+        where: { username: { equals: cleanCode, mode: 'insensitive' } },
+        select: { username: true, name: true, avatar: true },
+      });
+    }
+
+    if (!profile || !profile.username) {
+      throw new NotFoundException('Short URL not found');
+    }
+
+    return {
+      username: profile.username,
+      name: profile.name,
+      avatar: profile.avatar,
+      targetUrl: `/book/${profile.username}`,
     };
   }
 
