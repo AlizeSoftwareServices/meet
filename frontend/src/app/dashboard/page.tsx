@@ -18,7 +18,8 @@ import {
   Sparkles,
   CheckCircle2,
   RefreshCw,
-  BarChart3
+  BarChart3,
+  X
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -157,42 +158,52 @@ export default function DashboardPage() {
               Welcome back to Meet. Here is an overview of your scheduling activity.
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 w-full sm:w-auto mt-4 md:mt-0">
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <div className="flex flex-col flex-1 sm:flex-none">
-                <span className="text-xs text-muted-foreground ml-1 mb-1">Start Date</span>
-                <Input 
-                  type="date" 
-                  value={startDate} 
-                  onChange={(e) => setStartDate(e.target.value)} 
-                  className="w-full sm:w-36 h-10"
-                />
-              </div>
-              <span className="text-muted-foreground mt-5 hidden sm:block">to</span>
-              <span className="text-muted-foreground mt-5 sm:hidden">-</span>
-              <div className="flex flex-col flex-1 sm:flex-none">
-                <span className="text-xs text-muted-foreground ml-1 mb-1">End Date</span>
-                <Input 
-                  type="date" 
-                  value={endDate} 
-                  onChange={(e) => setEndDate(e.target.value)} 
-                  className="w-full sm:w-36 h-10"
-                />
-              </div>
+          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto mt-4 md:mt-0">
+            {/* Unified Elegant Date Range Box */}
+            <div className="flex items-center gap-2 bg-card border border-border rounded-xl px-3 py-1.5 shadow-2xs">
+              <CalendarIcon className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <input 
+                type="date" 
+                value={startDate} 
+                onChange={(e) => setStartDate(e.target.value)} 
+                title="Filter Start Date"
+                className="bg-transparent text-xs font-semibold text-foreground outline-none cursor-pointer"
+              />
+              <span className="text-xs text-muted-foreground font-medium">to</span>
+              <input 
+                type="date" 
+                value={endDate} 
+                onChange={(e) => setEndDate(e.target.value)} 
+                title="Filter End Date"
+                className="bg-transparent text-xs font-semibold text-foreground outline-none cursor-pointer"
+              />
+              {(startDate || endDate) && (
+                <button
+                  type="button"
+                  onClick={() => { setStartDate(''); setEndDate(''); }}
+                  className="text-muted-foreground hover:text-foreground text-xs ml-1 p-0.5 rounded-md hover:bg-muted cursor-pointer"
+                  title="Clear date filter"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+
+            <div className="flex items-center gap-2">
               <Link href="/dashboard/analytics">
                 <Button 
                   variant="outline" 
-                  className="gap-2 h-10 w-full sm:w-auto text-xs font-semibold rounded-xl border-border hover:bg-muted/60"
+                  size="sm"
+                  className="gap-1.5 h-9 rounded-xl border-border hover:border-blue-500/30 hover:text-blue-600 text-xs font-semibold shadow-2xs cursor-pointer"
                 >
-                  <BarChart3 className="w-4 h-4 text-blue-600" />
+                  <BarChart3 className="w-3.5 h-3.5 text-blue-600" />
                   Analytics
                 </Button>
               </Link>
               <Button 
                 variant="outline" 
-                className="gap-2 h-10 w-full sm:w-auto text-xs rounded-xl" 
+                size="sm"
+                className="gap-1.5 h-9 rounded-xl border-border text-xs font-semibold shadow-2xs cursor-pointer" 
                 disabled={isExporting}
                 onClick={async () => {
                   try {
@@ -212,7 +223,7 @@ export default function DashboardPage() {
                   }
                 }}
               >
-                {isExporting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                {isExporting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
                 {isExporting ? 'Exporting...' : 'Export CSV'}
               </Button>
             </div>
@@ -410,30 +421,30 @@ export default function DashboardPage() {
                   </Link>
                 </div>
               ) : (
-                <div className="divide-y divide-border/50 overflow-auto max-h-[350px] p-4">
+                <div className="overflow-y-auto max-h-[340px] p-4 space-y-2.5">
                   {displayBookings.map((booking: any) => (
                     <motion.div 
                       key={booking.id} 
-                      whileHover={{ scale: 1.01, backgroundColor: 'hsl(var(--muted))' }}
-                      className="p-4 rounded-xl flex justify-between items-center transition-colors cursor-default my-2 border border-border/50 shadow-sm"
+                      whileHover={{ scale: 1.01, backgroundColor: 'hsl(var(--muted)/0.6)' }}
+                      className="p-3.5 rounded-2xl flex justify-between items-center transition-all cursor-default bg-card border border-border/70 hover:border-blue-500/30 shadow-2xs hover:shadow-xs"
                     >
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-sm shrink-0 border border-blue-500/20">
                           {booking.guestName ? booking.guestName.charAt(0).toUpperCase() : 'G'}
                         </div>
-                        <div>
-                          <p className="font-semibold text-sm text-foreground">{booking.guestName}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                            <span className={`w-2 h-2 rounded-full ${booking.status === 'CANCELLED' ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
-                            {booking.eventType?.title || 'Meet'}
+                        <div className="min-w-0">
+                          <p className="font-semibold text-sm text-foreground truncate">{booking.guestName}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 truncate">
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${booking.status === 'CANCELLED' ? 'bg-rose-500' : 'bg-emerald-500'}`}></span>
+                            <span className="truncate">{booking.eventType?.title || 'Meet'}</span>
                           </p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-foreground">
+                      <div className="text-right shrink-0 ml-3">
+                        <p className="text-xs font-bold text-foreground">
                           {new Date(booking.startTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                         </p>
-                        <p className="text-xs text-muted-foreground mt-0.5 bg-muted px-2 py-0.5 rounded-md inline-block">
+                        <p className="text-[11px] font-medium text-muted-foreground mt-0.5 bg-muted/60 px-2 py-0.5 rounded-lg border border-border/50 inline-block font-mono">
                           {new Date(booking.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>

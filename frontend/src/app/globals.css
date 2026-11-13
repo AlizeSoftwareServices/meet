@@ -138,6 +138,27 @@ button, a, nav, [role="button"] {
   scrollbar-width: none;
 }
 
+/* Universal Modern Ultra-Sleek Scrollbars across all browsers & OS */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(140, 140, 150, 0.25);
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(140, 140, 150, 0.45);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(140, 140, 150, 0.25) transparent;
+}
+
 /* Top Route Progress Bar Animation */
 @keyframes topProgress {
   0% { width: 0%; }
