@@ -311,7 +311,7 @@ export function ContactDrawer({
                             {b.meetLink && (
                               <div className="pt-1 flex items-center justify-between border-t border-border/50">
                                 <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-                                  <Video className="w-3 h-3 text-blue-600" /> Google Meet
+                                  <Video className="w-3 h-3 text-blue-600" /> {b.meetLink.includes('zoom.us') ? 'Zoom Video' : (b.eventType?.location || 'Google Meet')}
                                 </span>
                                 <a
                                   href={b.meetLink}

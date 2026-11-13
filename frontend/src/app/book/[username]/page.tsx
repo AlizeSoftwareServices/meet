@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, getApiBaseUrl } from '@/lib/api';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Clock, MapPin, ChevronRight, LayoutDashboard, X } from 'lucide-react';
+import { Clock, MapPin, ChevronRight, LayoutDashboard, X, Video, Phone } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -154,7 +154,13 @@ export default function UserProfilePage() {
                           </span>
                           {event.location && (
                             <span className="flex items-center gap-1">
-                              <MapPin className="w-4 h-4" />
+                              {event.location.startsWith('Phone') ? (
+                                <Phone className="w-4 h-4" />
+                              ) : event.location.startsWith('In Person') ? (
+                                <MapPin className="w-4 h-4" />
+                              ) : (
+                                <Video className="w-4 h-4 text-blue-500" />
+                              )}
                               {event.location}
                             </span>
                           )}

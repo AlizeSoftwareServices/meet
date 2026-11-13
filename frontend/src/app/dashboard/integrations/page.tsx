@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useSearchParams } from 'next/navigation';
 import { Calendar, Video, CheckCircle2, AlertCircle, RefreshCw, ShieldCheck, Bell, MessageSquare, Lock, Sparkles, X } from 'lucide-react';
@@ -8,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Switch } from '@/components/ui/switch';
 
 export default function IntegrationsPage() {
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(true);
   const [integrations, setIntegrations] = useState<any[]>([]);
   const [updatingProvider, setUpdatingProvider] = useState<string | null>(null);
@@ -45,6 +47,7 @@ export default function IntegrationsPage() {
     try {
       const { data } = await api.get('/integrations');
       setIntegrations(data);
+      queryClient.setQueryData(['integrations'], data);
     } catch (err) {
       console.error('Failed to fetch integrations', err);
     } finally {
@@ -122,6 +125,7 @@ export default function IntegrationsPage() {
       try {
         await api.patch('/integrations/google/disconnect');
         setIntegrations(prev => prev.filter(i => i.provider !== 'google'));
+        queryClient.invalidateQueries({ queryKey: ['integrations'] });
       } catch (err) {
         console.error('Failed to disconnect', err);
         alert('Failed to disconnect Google Calendar.');
@@ -147,6 +151,7 @@ export default function IntegrationsPage() {
       try {
         await api.patch('/integrations/slack/disconnect');
         setIntegrations(prev => prev.filter(i => i.provider !== 'slack'));
+        queryClient.invalidateQueries({ queryKey: ['integrations'] });
       } catch (err) {
         console.error('Failed to disconnect Slack', err);
         alert('Failed to disconnect Slack.');
@@ -170,6 +175,7 @@ export default function IntegrationsPage() {
       try {
         await api.patch('/integrations/zoom/disconnect');
         setIntegrations(prev => prev.filter(i => i.provider !== 'zoom'));
+        queryClient.invalidateQueries({ queryKey: ['integrations'] });
       } catch (err) {
         console.error('Failed to disconnect Zoom', err);
         alert('Failed to disconnect Zoom.');

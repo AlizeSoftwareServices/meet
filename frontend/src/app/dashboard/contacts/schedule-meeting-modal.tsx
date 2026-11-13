@@ -131,7 +131,7 @@ export function ScheduleMeetingModal({ isOpen, onClose, contact }: ScheduleMeeti
                             <Clock className="w-3.5 h-3.5" /> {event.duration} mins
                           </span>
                           <span className="flex items-center gap-1">
-                            <Video className="w-3.5 h-3.5" /> Google Meet
+                            <Video className="w-3.5 h-3.5" /> {event.location || 'Video Call'}
                           </span>
                         </div>
                       </div>

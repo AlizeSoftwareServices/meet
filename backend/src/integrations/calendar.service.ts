@@ -332,7 +332,10 @@ export class CalendarService {
         }
 
         // CASE B: New Event
-        const isZoom = options?.locationType === 'Zoom' || options?.locationType === 'Zoom Video';
+        const isZoom =
+          options?.locationType === 'Zoom' ||
+          options?.locationType === 'Zoom Video' ||
+          Boolean(options?.locationType?.startsWith('Zoom'));
         const isGoogleMeet =
           (!options?.locationType || options.locationType === 'Google Meet') && !isZoom;
         const tz = options?.hostTimezone || 'UTC';
@@ -490,7 +493,11 @@ export class CalendarService {
     }
 
     // 3. Try Standalone Zoom if user chose Zoom and no external calendar is synced
-    if (options?.locationType === 'Zoom' || options?.locationType === 'Zoom Video') {
+    if (
+      options?.locationType === 'Zoom' ||
+      options?.locationType === 'Zoom Video' ||
+      Boolean(options?.locationType?.startsWith('Zoom'))
+    ) {
       try {
         const zoomIntegration = await this.prisma.integration.findUnique({
           where: { userId_provider: { userId: hostId, provider: 'zoom' } },

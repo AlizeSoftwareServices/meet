@@ -11,7 +11,7 @@ import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Check, Sparkles, Bell, Users, UsersRound, Shuffle, GitMerge, Video, Phone, MapPin } from 'lucide-react';
+import { ArrowLeft, Check, Sparkles, Bell, Users, UsersRound, Shuffle, GitMerge, Video, Phone, MapPin, AlertCircle, Plug } from 'lucide-react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Switch } from '@/components/ui/switch';
@@ -62,8 +62,21 @@ export default function NewEventTypePage() {
   const [schedulingType, setSchedulingType] = useState<'PERSONAL' | 'ROUND_ROBIN' | 'COLLECTIVE'>('PERSONAL');
   const [selectedTeamId, setSelectedTeamId] = useState<string>('');
   const [selectedHostIds, setSelectedHostIds] = useState<string[]>([]);
-  const [locationType, setLocationType] = useState<'Google Meet' | 'Phone Call' | 'In Person'>('Google Meet');
+  const [locationType, setLocationType] = useState<string>('Google Meet');
   const [locationDetails, setLocationDetails] = useState('');
+
+  const { data: integrations } = useQuery({
+    queryKey: ['integrations'],
+    queryFn: async () => {
+      const res = await api.get('/integrations');
+      return res.data;
+    },
+    staleTime: 0,
+    refetchOnMount: 'always',
+  });
+
+  const isGoogleConnected = Boolean(integrations?.some((i: any) => i.provider === 'google' && !i.isExpired));
+  const isZoomConnected = Boolean(integrations?.some((i: any) => i.provider === 'zoom' && !i.isExpired));
 
   const form = useForm<EventTypeFormValues>({
     resolver: zodResolver(eventTypeSchema),
@@ -102,6 +115,21 @@ export default function NewEventTypePage() {
       form.setValue('description', 'Custom one-off private meeting link.');
     }
   }, [searchParams, form]);
+
+  useEffect(() => {
+    if (integrations) {
+      const hasGoogle = integrations.some((i: any) => i.provider === 'google' && !i.isExpired);
+      const hasZoom = integrations.some((i: any) => i.provider === 'zoom' && !i.isExpired);
+
+      if (!hasGoogle && hasZoom && locationType === 'Google Meet') {
+        setLocationType('Zoom Video');
+        form.setValue('location', 'Zoom Video');
+      } else if (!hasGoogle && !hasZoom && (locationType === 'Google Meet' || locationType === 'Zoom Video')) {
+        setLocationType('Phone Call');
+        form.setValue('location', 'Phone Call');
+      }
+    }
+  }, [integrations]);
 
   const { data: schedules } = useQuery({
     queryKey: ['schedules'],
@@ -243,31 +271,107 @@ export default function NewEventTypePage() {
                 </div>
 
                 <div className="space-y-3">
-                  <Label className="text-base font-semibold">Meeting Location / Type</Label>
-                  <p className="text-xs text-muted-foreground">Select how and where this meeting will take place.</p>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {/* Google Meet */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setLocationType('Google Meet');
-                        form.setValue('location', 'Google Meet');
-                      }}
-                      className={`p-4 rounded-2xl border text-left flex flex-col gap-2 transition-all ${
-                        locationType === 'Google Meet'
-                          ? 'border-primary bg-primary/5 ring-2 ring-primary/20 shadow-xs'
-                          : 'border-border bg-card hover:bg-secondary/40'
-                      }`}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <div>
+                      <Label className="text-base font-semibold">Meeting Location / Type</Label>
+                      <p className="text-xs text-muted-foreground">Select how and where this meeting will take place.</p>
+                    </div>
+                    <Link
+                      href="/dashboard/integrations"
+                      target="_blank"
+                      className="text-xs text-primary hover:underline font-medium inline-flex items-center gap-1 shrink-0"
                     >
-                      <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
-                        <Video className="w-5 h-5" />
+                      <Plug className="w-3.5 h-3.5" />
+                      Manage Connected Platforms
+                    </Link>
+                  </div>
+
+                  {/* If no video platform connected at all */}
+                  {!isGoogleConnected && !isZoomConnected && (
+                    <div className="p-4 rounded-2xl border border-dashed border-border bg-muted/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
+                          <Video className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-xs sm:text-sm text-foreground">No Video Platforms Connected</p>
+                          <p className="text-xs text-muted-foreground">Connect Zoom or Google Meet to auto-generate video conference links.</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-semibold text-sm text-foreground">Google Meet</p>
-                        <p className="text-xs text-muted-foreground">Auto-generates meeting link</p>
-                      </div>
-                    </button>
+                      <Link 
+                        href="/dashboard/integrations" 
+                        target="_blank"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold shrink-0 transition-colors"
+                      >
+                        <Plug className="w-3.5 h-3.5" />
+                        Connect in Integrations
+                      </Link>
+                    </div>
+                  )}
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {/* Google Meet - Dynamically rendered if connected */}
+                    {isGoogleConnected && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLocationType('Google Meet');
+                          form.setValue('location', 'Google Meet');
+                        }}
+                        className={`p-4 rounded-2xl border text-left flex flex-col gap-2 transition-all ${
+                          locationType === 'Google Meet'
+                            ? 'border-primary bg-primary/5 ring-2 ring-primary/20 shadow-xs'
+                            : 'border-border bg-card hover:bg-secondary/40'
+                        }`}
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center">
+                          <svg className="w-5 h-5" viewBox="0 0 24 24">
+                            <path fill="#00832d" d="M14 12l3.5-3v6z"/>
+                            <path fill="#0066da" d="M3 7.5A2.5 2.5 0 0 1 5.5 5H12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5.5A2.5 2.5 0 0 1 3 16.5z"/>
+                            <path fill="#e94235" d="M17.5 9L21 6v12l-3.5-3z"/>
+                            <path fill="#2684fc" d="M12 5H5.5A2.5 2.5 0 0 0 3 7.5V11h11V7a2 2 0 0 0-2-2z"/>
+                            <path fill="#00ac47" d="M3 13v3.5A2.5 2.5 0 0 0 5.5 19H12a2 2 0 0 0 2-2v-4z"/>
+                            <path fill="#ffba00" d="M14 11H3v2h11z"/>
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-semibold text-sm text-foreground">Google Meet</p>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">Connected</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">Auto-generates meeting link</p>
+                        </div>
+                      </button>
+                    )}
+
+                    {/* Zoom Video - Dynamically rendered if connected */}
+                    {isZoomConnected && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setLocationType('Zoom Video');
+                          form.setValue('location', 'Zoom Video');
+                        }}
+                        className={`p-4 rounded-2xl border text-left flex flex-col gap-2 transition-all ${
+                          locationType === 'Zoom Video' || locationType === 'Zoom'
+                            ? 'border-blue-500 bg-blue-500/5 ring-2 ring-blue-500/20 shadow-xs'
+                            : 'border-border bg-card hover:bg-secondary/40'
+                        }`}
+                      >
+                        <div className="w-9 h-9 rounded-xl bg-[#2D8CFF]/10 text-[#2D8CFF] flex items-center justify-center">
+                          <svg className="w-5 h-5 fill-[#2D8CFF]" viewBox="0 0 24 24">
+                            <path d="M4.5 6A2.5 2.5 0 0 0 2 8.5v7A2.5 2.5 0 0 0 4.5 18h8a2.5 2.5 0 0 0 2.5-2.5v-7A2.5 2.5 0 0 0 12.5 6h-8zm12.5 4.35 4.14-2.76A1 1 0 0 1 23 8.42v7.16a1 1 0 0 1-1.86.83L17 13.65v-3.3z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-semibold text-sm text-foreground">Zoom Video</p>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full font-medium bg-blue-500/10 text-blue-600 border border-blue-500/20">Connected</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">Auto-generates Zoom meeting link</p>
+                        </div>
+                      </button>
+                    )}
 
                     {/* Phone Call */}
                     <button

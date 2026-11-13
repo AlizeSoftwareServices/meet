@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { api, getApiBaseUrl } from '@/lib/api';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Clock, MapPin, ArrowLeft, Globe, CreditCard, X } from 'lucide-react';
+import { Clock, MapPin, ArrowLeft, Globe, CreditCard, X, Video, Phone } from 'lucide-react';
 import Link from 'next/link';
 import { Calendar } from '@/components/ui/calendar';
 import { format, parseISO } from 'date-fns';
@@ -362,7 +362,13 @@ export default function SchedulingPage() {
                   {eventType.location && (
                     <div className="flex items-center gap-2.5 text-sm font-semibold text-zinc-800 dark:text-zinc-200">
                       <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400">
-                        <MapPin className="w-4 h-4" />
+                        {eventType.location.startsWith('Phone') ? (
+                          <Phone className="w-4 h-4" />
+                        ) : eventType.location.startsWith('In Person') ? (
+                          <MapPin className="w-4 h-4" />
+                        ) : (
+                          <Video className="w-4 h-4" />
+                        )}
                       </div>
                       <span>{eventType.location}</span>
                     </div>
