@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
 import { useSearchParams } from 'next/navigation';
-import { Calendar, Video, CheckCircle2, AlertCircle, RefreshCw, ShieldCheck, Bell, MessageSquare } from 'lucide-react';
+import { Calendar, Video, CheckCircle2, AlertCircle, RefreshCw, ShieldCheck, Bell, MessageSquare, Lock, Sparkles, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Switch } from '@/components/ui/switch';
 
@@ -14,6 +14,7 @@ export default function IntegrationsPage() {
   const searchParams = useSearchParams();
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [proModalItem, setProModalItem] = useState<string | null>(null);
 
   useEffect(() => {
     const s = searchParams.get('success');
@@ -450,7 +451,273 @@ export default function IntegrationsPage() {
             </div>
           </div>
         </motion.div>
+
+        {/* Section Header: Premium Integrations */}
+        <div className="pt-6 border-t border-border/40">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center border border-amber-500/20">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <h2 className="text-xl font-bold text-foreground">Premium Integrations</h2>
+            </div>
+            <span className="text-[11px] font-bold uppercase tracking-wider bg-gradient-to-r from-amber-500/15 to-orange-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-xs">
+              <Lock className="w-3 h-3" /> Pro Tier
+            </span>
+          </div>
+          <p className="text-muted-foreground text-sm">
+            Unlock Microsoft Teams, Outlook, Zoom, and Zoho CRM to supercharge enterprise scheduling.
+          </p>
+        </div>
+
+        {/* 1. Microsoft Teams */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-card/70 border border-border p-6 rounded-3xl shadow-xs relative overflow-hidden group hover:border-amber-500/30 transition-all"
+        >
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4">
+            <div className="flex gap-4">
+              <div className="w-16 h-16 bg-[#6264A7] rounded-2xl flex items-center justify-center shadow-sm flex-shrink-0">
+                <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M22.5 16.5h-5.91a2.82 2.82 0 01-2.82-2.82V7.77a2.82 2.82 0 012.82-2.82h5.91a2.82 2.82 0 012.82 2.82v5.91a2.82 2.82 0 01-2.82 2.82zm-12.27 0h-5.91A2.82 2.82 0 011.5 13.68V7.77A2.82 2.82 0 014.32 4.95h5.91a2.82 2.82 0 012.82 2.82v5.91a2.82 2.82 0 01-2.82 2.82z" />
+                </svg>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-xl font-bold">Microsoft Teams</h3>
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/20">
+                    Pro
+                  </span>
+                </div>
+                <p className="text-muted-foreground text-sm max-w-lg">
+                  Automatically generate Microsoft Teams video conference links with dynamic passcodes for every booked meeting.
+                </p>
+                <div className="flex gap-4 mt-4">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
+                    <Video className="w-3.5 h-3.5" />
+                    Teams Video
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Auto-Meeting Room
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <button
+                onClick={() => setProModalItem('Microsoft Teams')}
+                className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-semibold rounded-xl text-xs flex items-center gap-2 shadow-md shadow-amber-500/20 hover:shadow-amber-500/30 transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                Upgrade to Unlock
+              </button>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* 2. Outlook Calendar */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-card/70 border border-border p-6 rounded-3xl shadow-xs relative overflow-hidden group hover:border-amber-500/30 transition-all"
+        >
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4">
+            <div className="flex gap-4">
+              <div className="w-16 h-16 bg-[#0078D4] rounded-2xl flex items-center justify-center shadow-sm flex-shrink-0">
+                <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12.98 1.63L1.12 3.7C.5 3.8.02 4.34.02 4.98v13.56c0 .64.48 1.18 1.1 1.28l11.86 2.07c.81.14 1.55-.47 1.55-1.3V2.94c0-.82-.74-1.44-1.55-1.3z" />
+                  <path d="M14.53 4.22v15.08l8.47-1.39c.55-.09.98-.56.98-1.12V6.73c0-.56-.43-1.03-.98-1.12l-8.47-1.39z" />
+                </svg>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-xl font-bold">Outlook Calendar</h3>
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/20">
+                    Pro
+                  </span>
+                </div>
+                <p className="text-muted-foreground text-sm max-w-lg">
+                  Two-way synchronization with Microsoft 365 and Outlook calendars to block busy times and prevent overlapping events.
+                </p>
+                <div className="flex gap-4 mt-4">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
+                    <Calendar className="w-3.5 h-3.5" />
+                    Two-Way Sync
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Conflict Checking
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <button
+                onClick={() => setProModalItem('Outlook Calendar')}
+                className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-semibold rounded-xl text-xs flex items-center gap-2 shadow-md shadow-amber-500/20 hover:shadow-amber-500/30 transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                Upgrade to Unlock
+              </button>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* 3. Zoom Video */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-card/70 border border-border p-6 rounded-3xl shadow-xs relative overflow-hidden group hover:border-amber-500/30 transition-all"
+        >
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4">
+            <div className="flex gap-4">
+              <div className="w-16 h-16 bg-[#2D8CFF] rounded-2xl flex items-center justify-center shadow-sm flex-shrink-0">
+                <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M4.5 7.5A2.5 2.5 0 017 5h7a2.5 2.5 0 012.5 2.5v5A2.5 2.5 0 0114 15H7a2.5 2.5 0 01-2.5-2.5v-5zm13 2.15l3.15-2.1a1 1 0 011.55.83v7.24a1 1 0 01-1.55.83L17.5 14.35V9.65z" />
+                </svg>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-xl font-bold">Zoom Video</h3>
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/20">
+                    Pro
+                  </span>
+                </div>
+                <p className="text-muted-foreground text-sm max-w-lg">
+                  Connect your Zoom account to auto-generate unique meeting URLs, encrypted passwords, and international dial-in numbers.
+                </p>
+                <div className="flex gap-4 mt-4">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
+                    <Video className="w-3.5 h-3.5" />
+                    Dynamic Zoom Link
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Passcode Protection
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <button
+                onClick={() => setProModalItem('Zoom Video')}
+                className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-semibold rounded-xl text-xs flex items-center gap-2 shadow-md shadow-amber-500/20 hover:shadow-amber-500/30 transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                Upgrade to Unlock
+              </button>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* 4. Zoho Suite */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-card/70 border border-border p-6 rounded-3xl shadow-xs relative overflow-hidden group hover:border-amber-500/30 transition-all"
+        >
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4">
+            <div className="flex gap-4">
+              <div className="w-16 h-16 bg-white border border-border rounded-2xl flex items-center justify-center p-2.5 shadow-sm flex-shrink-0 grid grid-cols-2 gap-1">
+                <div className="bg-[#E42527] w-full h-full rounded-xs" />
+                <div className="bg-[#226EB4] w-full h-full rounded-xs" />
+                <div className="bg-[#439539] w-full h-full rounded-xs" />
+                <div className="bg-[#F4B41A] w-full h-full rounded-xs" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-xl font-bold">Zoho CRM & Meeting</h3>
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/20">
+                    Pro
+                  </span>
+                </div>
+                <p className="text-muted-foreground text-sm max-w-lg">
+                  Automatically sync guest leads directly into your Zoho CRM sales pipeline and host video conferences via Zoho Meeting.
+                </p>
+                <div className="flex gap-4 mt-4">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    CRM Lead Capture
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
+                    <Video className="w-3.5 h-3.5" />
+                    Zoho Meeting
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <button
+                onClick={() => setProModalItem('Zoho CRM & Meeting')}
+                className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-semibold rounded-xl text-xs flex items-center gap-2 shadow-md shadow-amber-500/20 hover:shadow-amber-500/30 transition-all active:scale-95 cursor-pointer whitespace-nowrap"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                Upgrade to Unlock
+              </button>
+            </div>
+          </div>
+        </motion.div>
       </div>
+
+      {/* Meet Pro Upgrade Modal */}
+      {proModalItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-card border border-border max-w-md w-full rounded-3xl p-6 sm:p-8 shadow-2xl relative space-y-5 animate-in zoom-in-95">
+            <button 
+              onClick={() => setProModalItem(null)}
+              className="absolute top-5 right-5 p-2 rounded-full hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-400 text-white flex items-center justify-center shadow-lg shadow-amber-500/30">
+              <Sparkles className="w-7 h-7" />
+            </div>
+
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[11px] font-bold border border-amber-500/20 mb-2">
+                <Lock className="w-3 h-3" /> Meet Pro Plan
+              </div>
+              <h3 className="text-2xl font-black text-foreground">Unlock {proModalItem}</h3>
+              <p className="text-muted-foreground text-sm mt-1">
+                {proModalItem} integration is available on our Pro & Enterprise tiers. Upgrade today to automate your entire scheduling workflow.
+              </p>
+            </div>
+
+            <div className="space-y-2.5 pt-2 border-t border-border/50 text-sm">
+              {[
+                `Full two-way synchronization with ${proModalItem}`,
+                'Unlimited calendar connections & team seats',
+                'Automated meeting room generation & passcode encryption',
+                'Instant CRM lead and deal pipeline sync',
+                'Priority 24/7 dedicated enterprise support',
+              ].map((feat, i) => (
+                <div key={i} className="flex items-center gap-2.5 text-xs font-medium text-foreground">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                  <span>{feat}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 flex flex-col gap-2">
+              <a
+                href="mailto:support@alizesoftwareservices.com?subject=Meet%20Pro%20Upgrade%20Inquiry"
+                className="w-full py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700 text-white font-bold rounded-xl text-center text-sm shadow-lg shadow-blue-500/20 transition-all cursor-pointer"
+              >
+                Contact Sales to Upgrade →
+              </a>
+              <button
+                onClick={() => setProModalItem(null)}
+                className="w-full py-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                Maybe Later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
