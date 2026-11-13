@@ -59,7 +59,6 @@ export default function SettingsPage() {
   const [copiedLink, setCopiedLink] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
-  const [isShortened, setIsShortened] = useState(false);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['profile'],
@@ -170,14 +169,11 @@ export default function SettingsPage() {
   };
 
   const username = profile?.username || 'me';
-  const shortCode = profile?.shortCode || (username.includes('-') ? username.split('-').pop() : username);
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://meet.alizesoftwareservices.com';
   const bookingUrl = `${origin}/book/${username}`;
-  const shortUrl = `${origin}/s/${shortCode}`;
 
   const handleCopyLink = () => {
-    const urlToCopy = isShortened ? shortUrl : bookingUrl;
-    navigator.clipboard.writeText(urlToCopy);
+    navigator.clipboard.writeText(bookingUrl);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2000);
   };
@@ -237,12 +233,12 @@ export default function SettingsPage() {
         </div>
 
         {/* Avatar & Header Information Bar */}
-        <div className="px-6 sm:px-8 pb-6 border-b border-border/60">
-          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-5">
+        <div className="px-6 sm:px-8 pt-5 sm:pt-7 pb-6 border-b border-border/60">
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-5 sm:gap-6">
             {/* Avatar with Camera Overlay and User Details */}
-            <div className="flex flex-col sm:flex-row sm:items-end gap-4">
-              {/* Only Avatar has negative margin to overlap the banner cleanly */}
-              <div className="relative group shrink-0 -mt-12 sm:-mt-16">
+            <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-5">
+              {/* Avatar with negative margin to overlap the banner cleanly with ample breathing room */}
+              <div className="relative group shrink-0 -mt-16 sm:-mt-22">
                 <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl ring-4 ring-card bg-gradient-to-br from-blue-500 to-indigo-600 shadow-xl overflow-hidden flex items-center justify-center">
                   {profile?.avatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -283,7 +279,7 @@ export default function SettingsPage() {
                 )}
               </div>
 
-              {/* Name & Email - positioned 100% on card surface below banner */}
+              {/* Name & Email - positioned with comfortable spacing below banner */}
               <div className="pt-2 sm:pt-0 sm:pb-1">
                 <h2 className="text-xl sm:text-2xl font-heading font-extrabold text-foreground tracking-tight">
                   {profile?.name || 'Your Name'}
@@ -295,8 +291,8 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Header Right Actions - cleanly positioned on card surface */}
-            <div className="flex flex-wrap items-center gap-2.5 pt-2 sm:pt-0 sm:pb-1">
+            {/* Header Right Actions - cleanly positioned on card surface with clear space from banner edge */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 pt-3 lg:pt-0 pb-1">
               <Button
                 variant="outline"
                 size="sm"
@@ -453,17 +449,8 @@ export default function SettingsPage() {
                   ) : (
                     <div className="h-11 px-3.5 rounded-xl bg-muted/40 border border-border/40 flex items-center justify-between text-sm font-mono text-foreground">
                       <span className="truncate">
-                        {isShortened ? (
-                          <>
-                            <span className="text-muted-foreground">{origin}/s/</span>
-                            <span className="font-bold text-emerald-600 dark:text-emerald-400">{shortCode}</span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="text-muted-foreground">{origin}/book/</span>
-                            <span className="font-bold text-blue-600 dark:text-blue-400">{form.watch('username') || username}</span>
-                          </>
-                        )}
+                        <span className="text-muted-foreground">{origin}/book/</span>
+                        <span className="font-bold text-blue-600 dark:text-blue-400">{form.watch('username') || username}</span>
                       </span>
                       <button
                         type="button"
@@ -476,24 +463,6 @@ export default function SettingsPage() {
                     </div>
                   )}
 
-                  {!isEditing && (
-                    <div className="pt-2 flex items-center justify-between">
-                      <label className="flex items-center gap-2 cursor-pointer select-none group">
-                        <input
-                          type="checkbox"
-                          checked={isShortened}
-                          onChange={(e) => setIsShortened(e.target.checked)}
-                          className="w-4 h-4 rounded text-blue-600 border-border focus:ring-blue-500 cursor-pointer"
-                        />
-                        <span className="text-xs font-semibold text-foreground group-hover:text-blue-600 transition-colors">
-                          Shorten URL
-                        </span>
-                      </label>
-                      <span className="text-[11px] font-mono text-muted-foreground">
-                        {isShortened ? `${origin}/s/${shortCode}` : `${origin}/book/${form.watch('username') || username}`}
-                      </span>
-                    </div>
-                  )}
                   {form.formState.errors.username && (
                     <p className="text-xs text-red-500 font-medium mt-1">{form.formState.errors.username.message}</p>
                   )}

@@ -34,7 +34,6 @@ interface ShareProfileModalProps {
 
 export default function ShareProfileModal({ isOpen, onClose, profile, initialTab = 'link' }: ShareProfileModalProps) {
   const [activeTab, setActiveTab] = useState<'link' | 'qr'>(initialTab);
-  const [isShortened, setIsShortened] = useState(false);
   const [copied, setCopied] = useState(false);
   const [qrDownloaded, setQrDownloaded] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
@@ -44,15 +43,10 @@ export default function ShareProfileModal({ isOpen, onClose, profile, initialTab
   const username = profile?.username || 'me';
   const name = profile?.name || 'My';
   
-  // Extract or generate permanent short code
-  const shortCode = profile?.shortCode || (username.includes('-') ? username.split('-').pop() : username);
-  
   // Construct URLs
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://meet.alizesoftwareservices.com';
   const fullBookingUrl = `${origin}/book/${username}`;
-  const shortBookingUrl = `${origin}/s/${shortCode}`;
-  
-  const activeUrl = isShortened ? shortBookingUrl : fullBookingUrl;
+  const activeUrl = fullBookingUrl;
   const shareMessage = `Book a meeting with ${name} on Meet: ${activeUrl}`;
 
   const handleCopy = async () => {
@@ -144,14 +138,14 @@ export default function ShareProfileModal({ isOpen, onClose, profile, initialTab
             </button>
           </div>
 
-          {/* Navigation Tabs: Link vs QR Code */}
-          <div className="flex items-center gap-1 mt-4 p-1 rounded-xl bg-muted/60 border border-border">
+          {/* Navigation Tabs: Link vs QR Code with high-contrast active blue indicator */}
+          <div className="flex items-center gap-1.5 mt-4 p-1.5 rounded-xl bg-muted/60 border border-border">
             <button
               onClick={() => { triggerHaptic('light'); setActiveTab('link'); }}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
                 activeTab === 'link'
-                  ? 'bg-background text-foreground shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-blue-700'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
               }`}
             >
               <Globe className="w-3.5 h-3.5" />
@@ -159,10 +153,10 @@ export default function ShareProfileModal({ isOpen, onClose, profile, initialTab
             </button>
             <button
               onClick={() => { triggerHaptic('light'); setActiveTab('qr'); }}
-              className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+              className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
                 activeTab === 'qr'
-                  ? 'bg-background text-foreground shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/25 ring-1 ring-blue-700'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
               }`}
             >
               <QrCode className="w-3.5 h-3.5" />
@@ -171,7 +165,7 @@ export default function ShareProfileModal({ isOpen, onClose, profile, initialTab
           </div>
 
           {activeTab === 'link' ? (
-            /* TAB 1: Booking Link & Shorten URL */
+            /* TAB 1: Booking Link */
             <div className="animate-in fade-in duration-200">
               {/* User Profile Card */}
               <div className="mt-4 p-3.5 rounded-xl bg-muted/40 border border-border/80 flex items-center gap-3">
@@ -181,7 +175,7 @@ export default function ShareProfileModal({ isOpen, onClose, profile, initialTab
                 <div className="min-w-0 flex-1">
                   <h3 className="font-semibold text-sm truncate">{name}</h3>
                   <p className="text-xs text-muted-foreground font-mono truncate">
-                    {isShortened ? `/s/${shortCode}` : `/book/${username}`}
+                    /book/{username}
                   </p>
                 </div>
               </div>
@@ -190,13 +184,8 @@ export default function ShareProfileModal({ isOpen, onClose, profile, initialTab
               <div className="mt-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    {isShortened ? 'Shortened Booking URL' : 'Public Booking URL'}
+                    Public Booking URL
                   </label>
-                  {isShortened && (
-                    <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                      Permanent Short URL
-                    </span>
-                  )}
                 </div>
 
                 <div className="flex items-center gap-2 p-1.5 pl-3 rounded-xl border border-border bg-background focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500 transition-all">
@@ -228,27 +217,6 @@ export default function ShareProfileModal({ isOpen, onClose, profile, initialTab
                       </>
                     )}
                   </Button>
-                </div>
-
-                {/* Google Forms Style Shorten URL Checkbox */}
-                <div className="pt-1.5 flex items-center justify-between">
-                  <label className="flex items-center gap-2 cursor-pointer select-none group">
-                    <input
-                      type="checkbox"
-                      checked={isShortened}
-                      onChange={(e) => {
-                        triggerHaptic('light');
-                        setIsShortened(e.target.checked);
-                      }}
-                      className="w-4 h-4 rounded text-blue-600 border-border focus:ring-blue-500 cursor-pointer"
-                    />
-                    <span className="text-xs font-semibold text-foreground group-hover:text-blue-600 transition-colors">
-                      Shorten URL
-                    </span>
-                  </label>
-                  <span className="text-[11px] text-muted-foreground">
-                    {isShortened ? 'Always redirects to your profile' : 'Check to get a compact link'}
-                  </span>
                 </div>
               </div>
 
@@ -331,7 +299,7 @@ export default function ShareProfileModal({ isOpen, onClose, profile, initialTab
               </p>
 
               {/* Download and Copy Actions */}
-              <div className="flex items-center gap-2.5 mt-4 w-full">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 mt-4 w-full">
                 <Button
                   onClick={handleDownloadQr}
                   className="flex-1 rounded-xl h-10 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs gap-1.5 shadow-sm cursor-pointer"
@@ -352,7 +320,7 @@ export default function ShareProfileModal({ isOpen, onClose, profile, initialTab
                 <Button
                   variant="outline"
                   onClick={handleCopy}
-                  className="rounded-xl h-10 text-xs font-semibold gap-1.5 border-border hover:bg-secondary cursor-pointer"
+                  className="rounded-xl h-10 text-xs font-semibold gap-1.5 border-border hover:bg-secondary cursor-pointer shrink-0"
                 >
                   {copied ? (
                     <>
