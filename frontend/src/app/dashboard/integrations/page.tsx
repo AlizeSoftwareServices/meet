@@ -154,8 +154,32 @@ export default function IntegrationsPage() {
     }
   };
 
+  const handleConnectZoom = async () => {
+    try {
+      const redirectUri = typeof window !== 'undefined' ? window.location.origin : '';
+      const { data } = await api.get(`/integrations/zoom/auth?redirect_uri=${encodeURIComponent(redirectUri)}`);
+      window.location.href = data.url;
+    } catch (err) {
+      console.error('Failed to get Zoom auth URL', err);
+      alert('Failed to connect to Zoom');
+    }
+  };
+
+  const handleDisconnectZoom = async () => {
+    if (confirm('Are you sure you want to disconnect Zoom Video? You will no longer auto-generate Zoom meetings for bookings.')) {
+      try {
+        await api.patch('/integrations/zoom/disconnect');
+        setIntegrations(prev => prev.filter(i => i.provider !== 'zoom'));
+      } catch (err) {
+        console.error('Failed to disconnect Zoom', err);
+        alert('Failed to disconnect Zoom.');
+      }
+    }
+  };
+
   const googleIntegration = integrations.find(i => i.provider === 'google');
   const slackIntegration = integrations.find(i => i.provider === 'slack');
+  const zoomIntegration = integrations.find(i => i.provider === 'zoom');
 
   return (
     <div className="max-w-4xl space-y-8">
@@ -186,6 +210,18 @@ export default function IntegrationsPage() {
           >
             <CheckCircle2 className="w-5 h-5 shrink-0" />
             <p className="font-medium">Slack connected successfully! You will now receive instant booking alerts in Slack.</p>
+          </motion.div>
+        )}
+
+        {success === 'zoom_connected' && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="p-4 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center gap-3 text-green-500"
+          >
+            <CheckCircle2 className="w-5 h-5 shrink-0" />
+            <p className="font-medium">Zoom Video connected successfully! Dynamic Zoom meeting links will now be generated for your bookings.</p>
           </motion.div>
         )}
 
@@ -452,6 +488,111 @@ export default function IntegrationsPage() {
           </div>
         </motion.div>
 
+        {/* Zoom Video Integration */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-card border border-border p-6 rounded-3xl shadow-sm hover:shadow-md transition-shadow relative overflow-hidden"
+        >
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4">
+            <div className="flex gap-4">
+              <div className="w-16 h-16 bg-[#2D8CFF] rounded-2xl flex items-center justify-center shadow-sm flex-shrink-0">
+                <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M4.5 7.5A2.5 2.5 0 017 5h7a2.5 2.5 0 012.5 2.5v5A2.5 2.5 0 0114 15H7a2.5 2.5 0 01-2.5-2.5v-5zm13 2.15l3.15-2.1a1 1 0 011.55.83v7.24a1 1 0 01-1.55.83L17.5 14.35V9.65z" />
+                </svg>
+              </div>
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-xl font-bold">Zoom Video</h3>
+                  {zoomIntegration?.connectedEmail && (
+                    <span className="text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                      {zoomIntegration.connectedEmail}
+                    </span>
+                  )}
+                </div>
+                <p className="text-muted-foreground text-sm max-w-lg">
+                  Connect your Zoom account to auto-generate unique meeting URLs, encrypted passcodes, and video conferences for your bookings.
+                </p>
+                <div className="flex gap-4 mt-4">
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
+                    <Video className="w-3.5 h-3.5" />
+                    Dynamic Zoom Link
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Passcode Protection
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div>
+              {loading ? (
+                <div className="w-24 h-10 bg-muted animate-pulse rounded-xl" />
+              ) : zoomIntegration ? (
+                <div className="flex flex-col gap-2 items-center">
+                  <div className="px-4 py-2 bg-green-500/10 text-green-600 font-medium rounded-xl flex items-center gap-2 border border-green-500/20">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Connected
+                  </div>
+                  <button onClick={handleDisconnectZoom} className="text-xs font-semibold text-destructive hover:underline cursor-pointer">
+                    Disconnect
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handleConnectZoom}
+                  className="px-6 py-2.5 bg-[#2D8CFF] hover:bg-[#1A77F2] text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all active:scale-95 cursor-pointer"
+                >
+                  Connect
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Connected Zoom Controls */}
+          {zoomIntegration && (
+            <div className="mt-6 pt-4 border-t border-border/50 space-y-3">
+              <div className="flex items-center justify-between p-3 rounded-2xl hover:bg-secondary/40 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-xl transition-colors ${zoomIntegration.autoSync !== false ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'}`}>
+                    <RefreshCw className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-foreground">Auto-Generate Zoom Meetings</p>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider transition-all ${
+                        zoomIntegration.autoSync !== false 
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' 
+                          : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700'
+                      }`}>
+                        {zoomIntegration.autoSync !== false ? 'ON' : 'OFF'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">Automatically create new Zoom meeting links and passcodes when someone books with you.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={zoomIntegration.autoSync !== false}
+                  disabled={updatingProvider === 'zoom'}
+                  onClick={() => handleToggleAutoSync('zoom', zoomIntegration.autoSync !== false)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
+                    zoomIntegration.autoSync !== false ? 'bg-blue-600' : 'bg-zinc-300 dark:bg-zinc-700'
+                  } ${updatingProvider === 'zoom' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  title={`Click to turn ${zoomIntegration.autoSync !== false ? 'OFF' : 'ON'}`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                      zoomIntegration.autoSync !== false ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          )}
+        </motion.div>
+
         {/* Section Header: Premium Integrations */}
         <div className="pt-6 border-t border-border/40">
           <div className="flex items-center justify-between mb-2">
@@ -466,7 +607,7 @@ export default function IntegrationsPage() {
             </span>
           </div>
           <p className="text-muted-foreground text-sm">
-            Unlock Microsoft Teams, Outlook, Zoom, and Zoho CRM to supercharge enterprise scheduling.
+            Unlock Microsoft Teams, Outlook Calendar, and Zoho CRM to supercharge enterprise scheduling.
           </p>
         </div>
 
@@ -565,54 +706,7 @@ export default function IntegrationsPage() {
           </div>
         </motion.div>
 
-        {/* 3. Zoom Video */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-card/70 border border-border p-6 rounded-3xl shadow-xs relative overflow-hidden group hover:border-amber-500/30 transition-all"
-        >
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4">
-            <div className="flex gap-4">
-              <div className="w-16 h-16 bg-[#2D8CFF] rounded-2xl flex items-center justify-center shadow-sm flex-shrink-0">
-                <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M4.5 7.5A2.5 2.5 0 017 5h7a2.5 2.5 0 012.5 2.5v5A2.5 2.5 0 0114 15H7a2.5 2.5 0 01-2.5-2.5v-5zm13 2.15l3.15-2.1a1 1 0 011.55.83v7.24a1 1 0 01-1.55.83L17.5 14.35V9.65z" />
-                </svg>
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-xl font-bold">Zoom Video</h3>
-                  <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/20">
-                    Pro
-                  </span>
-                </div>
-                <p className="text-muted-foreground text-sm max-w-lg">
-                  Connect your Zoom account to auto-generate unique meeting URLs, encrypted passwords, and international dial-in numbers.
-                </p>
-                <div className="flex gap-4 mt-4">
-                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
-                    <Video className="w-3.5 h-3.5" />
-                    Dynamic Zoom Link
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs font-medium text-foreground/70 bg-secondary/50 px-2 py-1 rounded-md">
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    Passcode Protection
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div>
-              <button
-                onClick={() => setProModalItem('Zoom Video')}
-                className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-semibold rounded-xl text-xs flex items-center gap-2 shadow-md shadow-amber-500/20 hover:shadow-amber-500/30 transition-all active:scale-95 cursor-pointer whitespace-nowrap"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                Upgrade to Unlock
-              </button>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* 4. Zoho Suite */}
+        {/* 3. Zoho Suite */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

@@ -487,6 +487,150 @@ export class IntegrationsController {
     return { success: true, message: 'Slack Webhook connected successfully.' };
   }
 
+  // --- ZOOM OAUTH ---
+  @UseGuards(JwtAuthGuard)
+  @Get('zoom/auth')
+  getZoomAuthUrl(
+    @Req() req: AuthenticatedRequest,
+    @Query('redirect_uri') customRedirect?: string,
+  ) {
+    const clientId = process.env.ZOOM_CLIENT_ID || 'RhRNfFTyRDQyIDvoBkj9A';
+    const redirectUri =
+      process.env.ZOOM_REDIRECT_URI ||
+      'https://meet-f4ak.onrender.com/integrations/zoom/callback';
+
+    const state = this.generateOAuthState(
+      req.user.userId,
+      'zoom',
+      customRedirect,
+    );
+
+    const url = `https://zoom.us/oauth/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(
+      redirectUri,
+    )}&state=${state}`;
+
+    return { url };
+  }
+
+  @Get('zoom/callback')
+  async zoomCallback(
+    @Query('code') code: string,
+    @Query('state') state: string,
+    @Res() res: Response,
+  ) {
+    let customRedirectUrl: string | undefined;
+    try {
+      if (!code) {
+        return res.redirect(
+          this.getFrontendRedirect(undefined, 'error=missing_code'),
+        );
+      }
+
+      let userId: string | undefined;
+      if (state) {
+        const verified = this.verifyOAuthState(state, 'zoom');
+        if (verified) {
+          userId = verified.userId;
+          customRedirectUrl = verified.customRedirect;
+        }
+      }
+
+      const clientId = process.env.ZOOM_CLIENT_ID || 'RhRNfFTyRDQyIDvoBkj9A';
+      const clientSecret =
+        process.env.ZOOM_CLIENT_SECRET || 'Ggf6SB2CwJdfXx7MSisGWLXTDOflN2hF';
+      const redirectUri =
+        process.env.ZOOM_REDIRECT_URI ||
+        'https://meet-f4ak.onrender.com/integrations/zoom/callback';
+
+      // Exchange code for access & refresh tokens via HTTP Basic Auth
+      const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+
+      const tokenParams = new URLSearchParams();
+      tokenParams.append('grant_type', 'authorization_code');
+      tokenParams.append('code', code);
+      tokenParams.append('redirect_uri', redirectUri);
+
+      const tokenResponse = await axios.post(
+        'https://zoom.us/oauth/token',
+        tokenParams.toString(),
+        {
+          headers: {
+            Authorization: `Basic ${basicAuth}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        },
+      );
+
+      const { access_token, refresh_token } = tokenResponse.data;
+      if (!access_token) {
+        throw new Error('Zoom token exchange failed: no access_token returned');
+      }
+
+      // Fetch user profile from Zoom
+      let connectedEmail: string | null = null;
+      try {
+        const userRes = await axios.get('https://api.zoom.us/v2/users/me', {
+          headers: { Authorization: `Bearer ${access_token}` },
+        });
+        connectedEmail = userRes.data.email || null;
+      } catch (err: any) {
+        console.warn('Could not fetch Zoom user profile:', err.message);
+      }
+
+      // If userId wasn't in state, find matching user by email or active user
+      if (!userId && connectedEmail) {
+        const existingUser = await this.prisma.user.findFirst({
+          where: { email: { equals: connectedEmail, mode: 'insensitive' } },
+        });
+        if (existingUser) {
+          userId = existingUser.id;
+        }
+      }
+
+      if (!userId) {
+        const firstUser = await this.prisma.user.findFirst();
+        if (firstUser) {
+          userId = firstUser.id;
+        } else {
+          throw new Error('No user found to associate Zoom integration.');
+        }
+      }
+
+      // Save Zoom integration with encrypted tokens
+      await this.prisma.integration.upsert({
+        where: {
+          userId_provider: {
+            userId: userId,
+            provider: 'zoom',
+          },
+        },
+        update: {
+          accessToken: encryptToken(access_token),
+          ...(refresh_token && { refreshToken: encryptToken(refresh_token) }),
+          ...(connectedEmail && { connectedEmail }),
+          lastSyncedAt: new Date(),
+        },
+        create: {
+          userId: userId,
+          provider: 'zoom',
+          accessToken: encryptToken(access_token),
+          refreshToken: refresh_token ? encryptToken(refresh_token) : null,
+          connectedEmail: connectedEmail || null,
+          lastSyncedAt: new Date(),
+        },
+      });
+
+      return res.redirect(
+        this.getFrontendRedirect(customRedirectUrl, 'success=zoom_connected'),
+      );
+    } catch (error: any) {
+      console.error('Zoom OAuth callback error:', error?.response?.data || error.message);
+      return res.redirect(
+        this.getFrontendRedirect(customRedirectUrl, 'error=zoom_auth_failed'),
+      );
+    }
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get()
   async getIntegrations(@Req() req: AuthenticatedRequest) {

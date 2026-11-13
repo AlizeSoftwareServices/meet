@@ -166,6 +166,104 @@ export class CalendarService {
     }
   }
 
+  // Helper for Zoom to auto-refresh tokens and make requests
+  public async zoomApiRequest(
+    hostId: string,
+    method: string,
+    url: string,
+    data?: any,
+  ): Promise<any> {
+    const integration = await this.prisma.integration.findUnique({
+      where: { userId_provider: { userId: hostId, provider: 'zoom' } },
+    });
+
+    if (!integration) return null;
+
+    const decryptedAccessToken = decryptToken(integration.accessToken);
+    const decryptedRefreshToken = integration.refreshToken
+      ? decryptToken(integration.refreshToken)
+      : null;
+
+    try {
+      const response = await axios({
+        method,
+        url,
+        data,
+        headers: {
+          Authorization: `Bearer ${decryptedAccessToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      return response.data !== '' ? response.data : true;
+    } catch (error: any) {
+      if (error.response?.status === 401 && decryptedRefreshToken) {
+        try {
+          const clientId = process.env.ZOOM_CLIENT_ID || 'RhRNfFTyRDQyIDvoBkj9A';
+          const clientSecret =
+            process.env.ZOOM_CLIENT_SECRET || 'Ggf6SB2CwJdfXx7MSisGWLXTDOflN2hF';
+
+          const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString(
+            'base64',
+          );
+
+          const tokenParams = new URLSearchParams();
+          tokenParams.append('grant_type', 'refresh_token');
+          tokenParams.append('refresh_token', decryptedRefreshToken);
+
+          const tokenResponse = await axios.post(
+            'https://zoom.us/oauth/token',
+            tokenParams.toString(),
+            {
+              headers: {
+                Authorization: `Basic ${basicAuth}`,
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+            },
+          );
+
+          const newAccessToken = tokenResponse.data.access_token;
+          const newRefreshToken =
+            tokenResponse.data.refresh_token || decryptedRefreshToken;
+
+          await this.prisma.integration.update({
+            where: { userId_provider: { userId: hostId, provider: 'zoom' } },
+            data: {
+              accessToken: encryptToken(newAccessToken),
+              refreshToken: newRefreshToken
+                ? encryptToken(newRefreshToken)
+                : null,
+              lastSyncedAt: new Date(),
+            },
+          });
+
+          const retryResponse = await axios({
+            method,
+            url,
+            data,
+            headers: {
+              Authorization: `Bearer ${newAccessToken}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          return retryResponse.data !== '' ? retryResponse.data : true;
+        } catch (refreshErr: any) {
+          this.logger.error(
+            `Failed to refresh Zoom token for host ${hostId}: ${refreshErr.message}`,
+          );
+          await this.prisma.integration
+            .update({
+              where: { userId_provider: { userId: hostId, provider: 'zoom' } },
+              data: { accessToken: 'EXPIRED' },
+            })
+            .catch(() => {});
+          return null;
+        }
+      }
+      this.logger.error(`Zoom API error [${method} ${url}]: ${error.message}`);
+      throw error;
+    }
+  }
+
   async createCalendarEvent(
     hostId: string,
     hostEmail: string,
@@ -234,9 +332,54 @@ export class CalendarService {
         }
 
         // CASE B: New Event
+        const isZoom = options?.locationType === 'Zoom' || options?.locationType === 'Zoom Video';
         const isGoogleMeet =
-          !options?.locationType || options.locationType === 'Google Meet';
+          (!options?.locationType || options.locationType === 'Google Meet') && !isZoom;
         const tz = options?.hostTimezone || 'UTC';
+
+        // Check if Zoom Meeting should be created
+        let zoomMeetLink: string | null = null;
+        let zoomPassword: string | null = null;
+
+        if (isZoom) {
+          try {
+            const zoomIntegration = await this.prisma.integration.findUnique({
+              where: { userId_provider: { userId: hostId, provider: 'zoom' } },
+            });
+            if (zoomIntegration && zoomIntegration.autoSync !== false) {
+              const durationMinutes = Math.max(
+                15,
+                Math.round(
+                  (new Date(endTime).getTime() - new Date(startTime).getTime()) / 60000,
+                ),
+              );
+              const zoomRes = await this.zoomApiRequest(
+                hostId,
+                'POST',
+                'https://api.zoom.us/v2/users/me/meetings',
+                {
+                  topic: title,
+                  type: 2,
+                  start_time: new Date(startTime).toISOString(),
+                  duration: durationMinutes,
+                  timezone: tz,
+                  settings: {
+                    join_before_host: true,
+                    participant_video: true,
+                    host_video: true,
+                  },
+                },
+              );
+              if (zoomRes?.join_url) {
+                zoomMeetLink = zoomRes.join_url;
+                zoomPassword = zoomRes.password || null;
+                this.logger.log(`[ZOOM MEETING CREATED] ${zoomMeetLink} for ${hostEmail}`);
+              }
+            }
+          } catch (zoomErr: any) {
+            this.logger.warn(`Failed to create Zoom meeting for ${hostEmail}: ${zoomErr.message}`);
+          }
+        }
 
         const event: any = {
           summary: title,
@@ -245,7 +388,10 @@ export class CalendarService {
           attendees: [{ email: guestEmail }, { email: hostEmail }],
         };
 
-        if (isGoogleMeet) {
+        if (zoomMeetLink) {
+          event.location = zoomMeetLink;
+          event.description = `Zoom Meeting: ${zoomMeetLink}${zoomPassword ? `\nPasscode: ${zoomPassword}` : ''}\n\nConducted via Zoom Video.`;
+        } else if (isGoogleMeet) {
           event.conferenceData = {
             createRequest: {
               requestId: `MeetSync-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
@@ -270,9 +416,7 @@ export class CalendarService {
           `[GOOGLE CALENDAR EVENT] Created for ${hostEmail} and ${guestEmail} (${options?.locationType || 'Google Meet'})`,
         );
 
-        const meetLink = isGoogleMeet
-          ? response.data.hangoutLink || null
-          : null;
+        const meetLink = zoomMeetLink || (isGoogleMeet ? response.data.hangoutLink || null : null);
         const externalEventId = response.data.id || null;
 
         return {
@@ -345,7 +489,49 @@ export class CalendarService {
       );
     }
 
-    // 3. Fallback to nulls if NO integrations exist
+    // 3. Try Standalone Zoom if user chose Zoom and no external calendar is synced
+    if (options?.locationType === 'Zoom' || options?.locationType === 'Zoom Video') {
+      try {
+        const zoomIntegration = await this.prisma.integration.findUnique({
+          where: { userId_provider: { userId: hostId, provider: 'zoom' } },
+        });
+        if (zoomIntegration && zoomIntegration.autoSync !== false) {
+          const durationMinutes = Math.max(
+            15,
+            Math.round(
+              (new Date(endTime).getTime() - new Date(startTime).getTime()) / 60000,
+            ),
+          );
+          const zoomRes = await this.zoomApiRequest(
+            hostId,
+            'POST',
+            'https://api.zoom.us/v2/users/me/meetings',
+            {
+              topic: title,
+              type: 2,
+              start_time: new Date(startTime).toISOString(),
+              duration: durationMinutes,
+              timezone: options?.hostTimezone || 'UTC',
+              settings: {
+                join_before_host: true,
+                participant_video: true,
+                host_video: true,
+              },
+            },
+          );
+          if (zoomRes?.join_url) {
+            return {
+              meetLink: zoomRes.join_url,
+              eventId: null,
+            };
+          }
+        }
+      } catch (zoomErr: any) {
+        this.logger.warn(`Standalone Zoom creation failed: ${zoomErr.message}`);
+      }
+    }
+
+    // 4. Fallback to nulls if NO integrations exist
     return { meetLink: null, eventId: null };
   }
 
