@@ -5,7 +5,7 @@ import { api } from '@/lib/api';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, Video, User, XCircle, FileText, Filter, CheckCircle2, MoreHorizontal, UserX } from 'lucide-react';
+import { Calendar, Clock, Video, User, XCircle, FileText, Filter, CheckCircle2, UserX } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -159,7 +159,7 @@ export default function BookingsManagementPage() {
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.2 }}
         >
-          <Card className="border-border/50 bg-background/50 backdrop-blur-xl shadow-lg relative overflow-hidden min-h-[400px]">
+          <Card className="border-border/50 bg-background/50 backdrop-blur-xl shadow-lg relative overflow-hidden transition-all duration-200">
             <CardContent className="p-0">
               {isLoading ? (
                 <div className="p-8 space-y-6">
@@ -288,9 +288,6 @@ export default function BookingsManagementPage() {
                             Mark No-Show
                           </Button>
                         )}
-                        <Button variant="ghost" size="icon" className="hidden lg:flex self-end mt-auto text-muted-foreground hover:text-foreground">
-                          <MoreHorizontal className="w-5 h-5" />
-                        </Button>
                       </div>
                     </div>
                   ))}
