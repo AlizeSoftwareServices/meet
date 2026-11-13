@@ -396,12 +396,12 @@ export default function TeamsPage() {
   const { data: me } = useQuery({
     queryKey: ['me'],
     queryFn: async () => {
-      const res = await api.get('/users/me');
+      const res = await api.get('/profile');
       return res.data;
     },
   });
 
-  const currentUserId = me?.id;
+  const currentUserId = me?.userId || me?.id;
 
   return (
     <div className="flex-1 min-h-screen bg-background">

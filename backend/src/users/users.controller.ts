@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Put,
+  Patch,
   Delete,
   Body,
   UseGuards,
@@ -18,7 +19,7 @@ import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
-@Controller('profile')
+@Controller(['profile', 'users'])
 @UseGuards(JwtAuthGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -28,8 +29,28 @@ export class UsersController {
     return this.usersService.getProfile(req.user.userId);
   }
 
+  @Get('me')
+  getMe(@Request() req) {
+    return this.usersService.getProfile(req.user.userId);
+  }
+
   @Put()
   updateProfile(@Request() req, @Body() updateProfileDto: UpdateProfileDto) {
+    return this.usersService.updateProfile(req.user.userId, updateProfileDto);
+  }
+
+  @Patch()
+  updateProfilePatch(@Request() req, @Body() updateProfileDto: UpdateProfileDto) {
+    return this.usersService.updateProfile(req.user.userId, updateProfileDto);
+  }
+
+  @Put('me')
+  updateMePut(@Request() req, @Body() updateProfileDto: UpdateProfileDto) {
+    return this.usersService.updateProfile(req.user.userId, updateProfileDto);
+  }
+
+  @Patch('me')
+  updateMePatch(@Request() req, @Body() updateProfileDto: UpdateProfileDto) {
     return this.usersService.updateProfile(req.user.userId, updateProfileDto);
   }
 

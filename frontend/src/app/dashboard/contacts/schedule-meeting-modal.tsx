@@ -21,7 +21,7 @@ export function ScheduleMeetingModal({ isOpen, onClose, contact }: ScheduleMeeti
   const { data: profile } = useQuery({
     queryKey: ['profile'],
     queryFn: async () => {
-      const res = await api.get('/users/me');
+      const res = await api.get('/profile');
       return res.data;
     },
   });

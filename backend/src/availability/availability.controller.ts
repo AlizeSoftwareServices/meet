@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Put,
+  Patch,
   Post,
   Delete,
   Body,
@@ -37,6 +38,27 @@ export class AvailabilityController {
 
   @Put('schedules/:id')
   updateSchedule(
+    @Request() req,
+    @Param('id') id: string,
+    @Body('name') name: string,
+    @Body('isDefault') isDefault: boolean,
+    @Body('timezone') timezone: string,
+    @Body('slots') slots: any[],
+    @Body('overrides') overrides: any[] = [],
+  ) {
+    return this.availabilityService.updateSchedule(
+      req.user.userId,
+      id,
+      name,
+      isDefault,
+      timezone,
+      slots,
+      overrides,
+    );
+  }
+
+  @Patch('schedules/:id')
+  updateSchedulePatch(
     @Request() req,
     @Param('id') id: string,
     @Body('name') name: string,

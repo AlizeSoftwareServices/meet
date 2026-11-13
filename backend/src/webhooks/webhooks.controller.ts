@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Patch,
   Delete,
   Body,
@@ -36,6 +37,15 @@ export class WebhooksController {
 
   @Patch(':id')
   update(
+    @Request() req: any,
+    @Param('id') id: string,
+    @Body() dto: UpdateWebhookDto,
+  ) {
+    return this.webhooksService.update(req.user.userId, id, dto);
+  }
+
+  @Put(':id')
+  updatePut(
     @Request() req: any,
     @Param('id') id: string,
     @Body() dto: UpdateWebhookDto,

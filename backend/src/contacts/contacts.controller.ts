@@ -5,6 +5,7 @@ import {
   Request,
   Query,
   Post,
+  Put,
   Body,
   Param,
   Patch,
@@ -64,6 +65,11 @@ export class ContactsController {
 
   @Patch(':id')
   updateContact(@Request() req, @Param('id') id: string, @Body() data: any) {
+    return this.contactsService.updateContact(id, req.user.userId, data);
+  }
+
+  @Put(':id')
+  updateContactPut(@Request() req, @Param('id') id: string, @Body() data: any) {
     return this.contactsService.updateContact(id, req.user.userId, data);
   }
 

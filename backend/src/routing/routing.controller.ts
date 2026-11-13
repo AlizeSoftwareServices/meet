@@ -43,6 +43,12 @@ export class RoutingController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Patch('routing/:id')
+  updateFormPatch(@Request() req: any, @Param('id') id: string, @Body() data: any) {
+    return this.routingService.updateForm(id, req.user.userId, data);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('routing/:id/duplicate')
   duplicateForm(@Request() req: any, @Param('id') id: string) {
     return this.routingService.duplicateForm(id, req.user.userId);

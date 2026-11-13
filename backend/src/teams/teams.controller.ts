@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Body,
   Patch,
   Param,
@@ -64,6 +65,16 @@ export class TeamsController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Put(':id')
+  updatePut(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() updateTeamDto: UpdateTeamDto,
+  ) {
+    return this.teamsService.update(id, req.user.id, updateTeamDto);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Delete(':id')
   remove(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     return this.teamsService.remove(id, req.user.id);
@@ -111,6 +122,22 @@ export class TeamsController {
   @UseGuards(JwtAuthGuard)
   @Patch(':id/members/:userId/role')
   updateRole(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') teamId: string,
+    @Param('userId') memberUserId: string,
+    @Body() updateRoleDto: UpdateRoleDto,
+  ) {
+    return this.teamsService.updateRole(
+      teamId,
+      req.user.id,
+      memberUserId,
+      updateRoleDto,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put(':id/members/:userId/role')
+  updateRolePut(
     @Req() req: AuthenticatedRequest,
     @Param('id') teamId: string,
     @Param('userId') memberUserId: string,

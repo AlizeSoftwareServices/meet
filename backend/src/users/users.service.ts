@@ -75,7 +75,13 @@ export class UsersService {
       });
     }
 
-    return { ...profile, email: profile.user?.email };
+    return {
+      ...profile,
+      id: profile.userId,
+      profileId: profile.id,
+      userId: profile.userId,
+      email: profile.user?.email,
+    };
   }
 
   async updateProfile(userId: string, data: any) {

@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Body,
   Patch,
   Param,
@@ -42,6 +43,15 @@ export class WorkflowsController {
 
   @Patch(':id')
   update(
+    @Request() req,
+    @Param('id') id: string,
+    @Body() updateWorkflowDto: UpdateWorkflowDto,
+  ) {
+    return this.workflowsService.update(req.user.userId, id, updateWorkflowDto);
+  }
+
+  @Put(':id')
+  updatePut(
     @Request() req,
     @Param('id') id: string,
     @Body() updateWorkflowDto: UpdateWorkflowDto,
